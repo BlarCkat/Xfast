@@ -16,6 +16,7 @@ import {
   SLOWMO_SCALE,
   START_LIVES,
   CAT_LIVES,
+  CAT_REFILL_HOPS,
   CHICKEN_POWERUP_BONUS,
   TIME_TRAIT_HOPS,
   ROWS_AHEAD,
@@ -88,6 +89,8 @@ export interface UiSnapshot {
   /** Whole seconds left on each power-up (0 = inactive); only changes once a second. */
   effects: Effects;
   toast: null | { text: string; id: number };
+  /** Cat only: progress (0-1) towards regrowing the next life, or null for other characters. */
+  refill: number | null;
 }
 
 const BEST_KEY = "xfast-best";
@@ -159,6 +162,7 @@ export class Engine {
       coins: 0,
       effects: noEffects(),
       toast: null,
+      refill: character === "cat" ? 0 : null,
     };
     this.ensureLanes();
   }
@@ -329,7 +333,37 @@ export class Engine {
     this.setUi({ coins: this.ui.coins + n });
   }
 
+  // Cat life refill: half a life every `catRefillHops` hops, doubling with each life spent.
+  private catLivesSpent = 0;
+  private catHops = 0;
+  private catHalves = 0;
+
+  get catRefillHops() {
+    // The first life spent refills at the base rate; each one after that doubles it.
+    return CAT_REFILL_HOPS * 2 ** Math.max(0, this.catLivesSpent - 1);
+  }
+
+  private catRefill() {
+    if (this.ui.lives >= CAT_LIVES) return;
+    this.catHops++;
+    let toast: string | null = null;
+    let lives = this.ui.lives;
+    if (this.catHops >= this.catRefillHops) {
+      this.catHops = 0;
+      this.catHalves++;
+      toast = "+½ LIFE";
+      if (this.catHalves === 2) {
+        this.catHalves = 0;
+        lives++;
+        toast = "+1 LIFE";
+      }
+    }
+    const refill = lives >= CAT_LIVES ? 0 : (this.catHalves + this.catHops / this.catRefillHops) / 2;
+    this.setUi({ lives, refill, ...(toast ? { toast: { text: toast, id: ++this.toastId } } : {}) });
+  }
+
   private countStep() {
+    if (this.character === "cat") this.catRefill();
     const steps = this.ui.steps + 1;
     // Sparrow and snail bend time every so many hops.
     const timeTrait = this.character === "sparrow" ? "freeze" : this.character === "snail" ? "slowmo" : null;
@@ -441,6 +475,13 @@ export class Engine {
     this.effects = noEffects();
     this.syncEffects();
     if (revive) {
+      if (this.character === "cat") {
+        // Each life spent makes the next refill take twice as long; progress carries over proportionally.
+        const progress = this.catHops / this.catRefillHops;
+        this.catLivesSpent++;
+        this.catHops = Math.floor(progress * this.catRefillHops);
+        this.setUi({ refill: (this.catHalves + this.catHops / this.catRefillHops) / 2 });
+      }
       this.setUi({ lives: this.ui.lives - 1, toast: { text: "-1 LIFE", id: ++this.toastId } });
       return;
     }

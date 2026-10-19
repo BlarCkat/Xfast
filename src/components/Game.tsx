@@ -165,7 +165,7 @@ export default function Game() {
       </div>
 
       <div className="lives" aria-label={`${ui.lives} extra lives`}>
-        <Hex tone="white" size={40}>
+        <Hex tone="white" size={40} ring={ui.refill ?? undefined} ringColor="#ff4d6d">
           <span className="heart">
             <Icon id="life" size={18} />
           </span>

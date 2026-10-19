@@ -16,7 +16,7 @@ export const CHARACTERS: Character[] = [
   { id: "duck", name: "Duck", price: 50, trait: "Swims: falling in the water is safe, just paddle on." },
   { id: "frog", name: "Frog", price: 100, trait: "Never drowns: always lands on the nearest log ahead." },
   { id: "penguin", name: "Penguin", price: 150, trait: "Starts every run with a shield." },
-  { id: "cat", name: "Cat", price: 200, trait: "Starts every run with nine lives." },
+  { id: "cat", name: "Cat", price: 200, trait: "Nine lives, and regrows lost ones: half a life every 20 hops, twice as slow after each life spent." },
   { id: "robot", name: "Robot", price: 250, trait: "Foresight is always on." },
   { id: "sparrow", name: "Sparrow", price: 300, trait: "Stops time for a moment every 100 hops." },
   { id: "snail", name: "Snail", price: 350, trait: "Slows time for a moment every 100 hops." },

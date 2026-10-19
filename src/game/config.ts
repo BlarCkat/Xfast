@@ -25,6 +25,8 @@ export const TRAIN_WARNING = 1.3;
 export const START_LIVES = 1;
 /** The cat's nine lives: the one it's on plus eight extra. */
 export const CAT_LIVES = 8;
+/** Hops for the cat to regrow half a life; doubles every time it spends a life. */
+export const CAT_REFILL_HOPS = 20;
 /** Power-up durations are stretched by this much for the chicken. */
 export const CHICKEN_POWERUP_BONUS = 1.5;
 /** The sparrow stops time and the snail slows it every this many hops. */
