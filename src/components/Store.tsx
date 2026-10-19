@@ -202,7 +202,7 @@ export default function Store({ onClose }: { onClose: () => void }) {
                     role="option"
                     aria-selected={focused}
                     aria-label={c.name}
-                    className={`comb-cell ${focused ? "focused" : ""}`}
+                    className={`comb-cell ${focused ? "focused" : ""} ${focused && tone !== "locked" ? "bounce" : ""}`}
                     onClick={() => (focused ? act.run?.() : setFocus(i))}
                   >
                     {focused && showProgress && (
@@ -214,7 +214,7 @@ export default function Store({ onClose }: { onClose: () => void }) {
                     {level > 1 && <span className="cell-level">Lv{level}</span>}
                     <Hex
                       tone={tone}
-                      size={focused ? 112 : 96}
+                      size={96}
                       outline={focused}
                       ring={showProgress ? w.coins / c.price : level > 1 ? level / MAX_LEVEL : undefined}
                       ringColor={showProgress ? undefined : "var(--ui-gold)"}

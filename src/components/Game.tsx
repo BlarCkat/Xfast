@@ -215,28 +215,49 @@ export default function Game() {
           <p className="sub">
             <strong>{character.name}:</strong> {character.trait}
           </p>
-          <div className="menu-hints overlay-hints">
-            <button
-              className="primary"
-              onPointerDown={stop}
-              onPointerUp={(e) => {
-                e.stopPropagation();
-                setStoreOpen(true);
-              }}
-            >
-              <kbd>S</kbd> Store
-            </button>
-            <button
-              onPointerDown={stop}
-              onPointerUp={(e) => {
-                e.stopPropagation();
-                toggleFx();
-              }}
-            >
-              <kbd>B</kbd> {fx ? "Realistic" : "Classic"}
-            </button>
-          </div>
         </div>
+      )}
+
+      {ui.status === "ready" && (
+        <nav className="start-nav" aria-label="Main menu">
+          <button
+            onPointerDown={stop}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              setStoreOpen(true);
+            }}
+          >
+            <span className="start-coin">
+              <Icon id="coin" size={22} />
+            </span>
+            <span>Store</span>
+            <kbd>S</kbd>
+          </button>
+          <button
+            className="start-play"
+            onPointerDown={stop}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              engine.move("up");
+            }}
+          >
+            <svg viewBox="0 0 24 24" width={26} height={26} fill="currentColor" aria-hidden="true">
+              <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5Z" />
+            </svg>
+            <span>Play</span>
+          </button>
+          <button
+            onPointerDown={stop}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              toggleFx();
+            }}
+          >
+            <Icon id="foresight" size={22} />
+            <span>{fx ? "Realistic" : "Classic"}</span>
+            <kbd>B</kbd>
+          </button>
+        </nav>
       )}
 
       {ui.status === "dead" && (

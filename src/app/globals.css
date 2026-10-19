@@ -76,7 +76,6 @@ kbd {
   width: 100%;
   height: 100%;
   overflow: visible;
-  filter: drop-shadow(0 3px 6px var(--ui-shadow));
 }
 
 .hex-fill {
@@ -93,10 +92,6 @@ kbd {
 
 .hex-locked .hex-icon {
   color: var(--ui-locked-ink);
-}
-
-.hex-locked .hex-shape {
-  filter: none;
 }
 
 .hex-ring {
@@ -480,29 +475,68 @@ kbd {
   flex-direction: column;
 }
 
+/* Cells sit edge to edge: the visible hexagon is about 80px wide inside its 96px box. */
 .comb-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 112px;
+  gap: 0;
+  min-height: 96px;
 }
 
-/* Offset the second row by half a cell so the two rows interlock. */
+/* Offset the second row by half a cell and tuck it up so the two rows interlock. */
 .comb-row-1 {
-  margin-top: -18px;
-  padding-left: 52px;
+  margin-top: -22px;
+  padding-left: 43px;
 }
 
 .comb-cell {
   position: relative;
   display: grid;
   place-items: center;
-  width: 96px;
-  height: 112px;
+  width: 86px;
+  height: 96px;
   padding: 0;
   border: none;
   background: none;
   cursor: pointer;
+}
+
+.comb-cell .hex {
+  transition: transform 0.18s ease;
+}
+
+.comb-cell.focused {
+  z-index: 2;
+}
+
+.comb-cell.focused .hex {
+  transform: scale(1.15);
+}
+
+/* Selecting an available cell pops it to 1.5x and lets it spring back. */
+.comb-cell.bounce .hex {
+  animation: hex-bounce 0.6s cubic-bezier(0.3, 0, 0.3, 1) both;
+}
+
+@keyframes hex-bounce {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.5);
+  }
+  52% {
+    transform: scale(1.04);
+  }
+  70% {
+    transform: scale(1.24);
+  }
+  86% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1.15);
+  }
 }
 
 .comb-cell:focus-visible {
@@ -651,7 +685,8 @@ kbd {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hint {
+  .hint,
+  .comb-cell.bounce .hex {
     animation: none;
   }
   .hex,
@@ -678,4 +713,67 @@ kbd {
   font-size: 11px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---- Start screen navbar --------------------------------------------- */
+
+.start-nav {
+  position: absolute;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  max-width: calc(100% - 32px);
+}
+
+.start-nav button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--ui-text);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.start-nav button:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.start-nav .start-play {
+  padding: 12px 26px;
+  background: var(--ui-teal);
+  color: var(--ui-ink);
+  font-size: 17px;
+}
+
+.start-nav .start-play:hover {
+  background: var(--ui-teal-deep);
+}
+
+@media (max-width: 420px) {
+  .start-nav kbd {
+    display: none;
+  }
+  .start-nav button {
+    padding: 10px 12px;
+  }
+}
+
+.start-coin {
+  display: inline-flex;
+  color: var(--ui-gold);
 }
