@@ -15,6 +15,9 @@ import {
   RESPAWN_SHIELD,
   SLOWMO_SCALE,
   START_LIVES,
+  CAT_LIVES,
+  CHICKEN_POWERUP_BONUS,
+  ROBOT_MAGNET_RADIUS,
   ROWS_AHEAD,
   ROWS_BEHIND,
   TRAIN_SPEED,
@@ -151,7 +154,7 @@ export class Engine {
       status: "ready",
       score: 0,
       best: readBest(),
-      lives: START_LIVES,
+      lives: character === "cat" ? CAT_LIVES : START_LIVES,
       steps: 0,
       coins: 0,
       effects: noEffects(),
@@ -185,6 +188,10 @@ export class Engine {
     if (this.ui.status === "ready") {
       // Extra lives bought in the store are spent when a run starts.
       this.setUi({ status: "playing", lives: this.ui.lives + wallet.takeLives() });
+      if (this.character === "penguin") {
+        this.apply("shield");
+        this.syncEffects(true);
+      }
     }
     const p = this.player;
     if (p.death) return;
@@ -222,6 +229,11 @@ export class Engine {
       span = SUPER_HOP_TIME;
     }
     if (!open(toRow)) return;
+    // The frog aims for the nearest log in the river it is jumping into, so it never lands in water.
+    if (this.character === "frog" && !riding) {
+      const lane = this.lanes.get(toRow);
+      if (lane?.type === "river") toX = this.nearestLogSlot(lane, toX, HOP_DURATION * span) ?? toX;
+    }
 
     p.hop = { fromX: p.x, toX, fromZ: p.z, toZ: toRow, t: 0, drift, span };
     p.row = toRow;
@@ -243,6 +255,10 @@ export class Engine {
     p.y = 0;
 
     const lane = this.lanes.get(p.row);
+    if (lane?.type === "river" && this.character === "frog" && !this.boardLog(lane)) {
+      const slot = this.nearestLogSlot(lane, p.x);
+      if (slot !== null) p.x = slot;
+    }
     if (lane?.type === "river" && !this.boardLog(lane)) {
       // Wings let the chicken hover over open water.
       if (this.effects.wings <= 0) {
@@ -266,6 +282,21 @@ export class Engine {
     }
   }
 
+  /** Closest spot on a log in this lane, inside the playable columns, `ahead` seconds from now. */
+  private nearestLogSlot(lane: Lane, x: number, ahead = 0) {
+    let best: number | null = null;
+    for (const m of lane.movers) {
+      const center = m.x + lane.speed * ahead;
+      const half = (m.length - 1) / 2;
+      for (let s = -half; s <= half; s++) {
+        const at = center + s;
+        if (Math.abs(at) > COLS) continue;
+        if (best === null || Math.abs(at - x) < Math.abs(best - x)) best = at;
+      }
+    }
+    return best;
+  }
+
   /** Step onto the log under the chicken, if there is one. */
   private boardLog(lane: Lane) {
     const p = this.player;
@@ -282,7 +313,7 @@ export class Engine {
 
   private collectCoin(lane: Lane) {
     lane.coin = null;
-    const n = this.effects.double > 0 ? 2 : 1;
+    const n = (this.effects.double > 0 ? 2 : 1) * (this.character === "duck" ? 2 : 1);
     wallet.addCoins(n);
     this.setUi({ coins: this.ui.coins + n });
   }
@@ -320,7 +351,7 @@ export class Engine {
 
   private apply(kind: PowerUp) {
     if (!isInstant(kind)) {
-      this.effects[kind] = POWERUP_DURATION[kind];
+      this.effects[kind] = POWERUP_DURATION[kind] * (this.character === "chicken" ? CHICKEN_POWERUP_BONUS : 1);
       return;
     }
     if (kind === "warp") this.warp();
@@ -473,7 +504,17 @@ export class Engine {
 
     if (p.ride && !p.death) {
       p.x = p.ride.x + p.rideOffset;
-      if (Math.abs(p.x) > COLS + 0.6) this.die("water");
+      if (Math.abs(p.x) > COLS + 0.6) {
+        // Swept to the edge: the frog leaps to the nearest log still in play.
+        const lane = this.lanes.get(p.row);
+        const slot = this.character === "frog" && lane ? this.nearestLogSlot(lane, p.x) : null;
+        if (slot !== null && lane) {
+          p.x = slot;
+          this.boardLog(lane);
+        } else {
+          this.die("water");
+        }
+      }
     }
 
     // Hovering over water on wings: grab a log that drifts underneath, or fall in once the wings run out.
@@ -482,10 +523,11 @@ export class Engine {
       this.die("water");
     }
 
-    if (this.effects.magnet > 0 && !p.death) {
-      for (let r = p.row - MAGNET_RADIUS; r <= p.row + MAGNET_RADIUS; r++) {
+    const reach = this.effects.magnet > 0 ? MAGNET_RADIUS : this.character === "robot" ? ROBOT_MAGNET_RADIUS : 0;
+    if (reach > 0 && !p.death) {
+      for (let r = p.row - reach; r <= p.row + reach; r++) {
         const lane = this.lanes.get(r);
-        if (lane && lane.coin !== null && Math.abs(lane.coin - p.x) <= MAGNET_RADIUS + 0.5) this.collectCoin(lane);
+        if (lane && lane.coin !== null && Math.abs(lane.coin - p.x) <= reach + 0.5) this.collectCoin(lane);
       }
     }
 

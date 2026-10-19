@@ -1,20 +1,23 @@
 import { POWERUPS, noEffects, type PowerUp } from "./powerups";
 
-export type CharacterId = "chicken" | "duck" | "penguin" | "frog" | "robot";
+export type CharacterId = "chicken" | "duck" | "frog" | "cat" | "penguin" | "robot";
 export type StoreItemId = PowerUp | "life";
 
 export interface Character {
   id: CharacterId;
   name: string;
   price: number;
+  /** What this character does differently, shown in the store. */
+  trait: string;
 }
 
 export const CHARACTERS: Character[] = [
-  { id: "chicken", name: "Chicken", price: 0 },
-  { id: "duck", name: "Duck", price: 50 },
-  { id: "frog", name: "Frog", price: 100 },
-  { id: "penguin", name: "Penguin", price: 150 },
-  { id: "robot", name: "Robot", price: 250 },
+  { id: "chicken", name: "Chicken", price: 0, trait: "Power-ups last 50% longer." },
+  { id: "duck", name: "Duck", price: 50, trait: "Every coin is worth double." },
+  { id: "frog", name: "Frog", price: 100, trait: "Never drowns: always lands on the nearest log ahead." },
+  { id: "penguin", name: "Penguin", price: 150, trait: "Starts every run with a shield." },
+  { id: "cat", name: "Cat", price: 200, trait: "Starts every run with nine lives." },
+  { id: "robot", name: "Robot", price: 250, trait: "Built-in magnet pulls in coins one column away." },
 ];
 
 export interface StoreItem {

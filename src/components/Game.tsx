@@ -5,7 +5,7 @@ import { Canvas } from "@react-three/fiber";
 import { Engine, type Direction } from "@/game/engine";
 import { POWERUP_DURATION } from "@/game/config";
 import { POWERUPS, hotkeyFor } from "@/game/powerups";
-import { wallet } from "@/game/wallet";
+import { CHARACTERS, wallet } from "@/game/wallet";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
 import Store, { useWallet } from "./Store";
@@ -52,6 +52,7 @@ export default function Game() {
     });
   }, []);
   const diedAt = useRef(0);
+  const character = CHARACTERS.find((c) => c.id === engine.character) ?? CHARACTERS[0];
 
   // Show a newly picked character straight away on the start screen.
   useEffect(() => {
@@ -208,6 +209,9 @@ export default function Game() {
           <h1 className="title">XFAST</h1>
           <p className="hint">Tap or press ↑ to hop</p>
           <p className="sub">Swipe or use arrows / WASD. Grab coins, hearts and power-ups.</p>
+          <p className="sub">
+            <strong>{character.name}:</strong> {character.trait}
+          </p>
           <div className="menu-hints overlay-hints">
             <button
               className="primary"

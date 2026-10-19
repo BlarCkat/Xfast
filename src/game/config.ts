@@ -23,6 +23,12 @@ export const TRAIN_WARNING = 1.3;
 
 // Lives and power-ups.
 export const START_LIVES = 1;
+/** The cat's nine lives: the one it's on plus eight extra. */
+export const CAT_LIVES = 8;
+/** Power-up durations are stretched by this much for the chicken. */
+export const CHICKEN_POWERUP_BONUS = 1.5;
+/** Coin reach of the robot's always-on magnet, in columns. */
+export const ROBOT_MAGNET_RADIUS = 1;
 export const RESPAWN_DELAY = 1.2;
 export const RESPAWN_SHIELD = 2;
 export const POWERUP_DURATION = {

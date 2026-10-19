@@ -582,6 +582,35 @@ export function Frog() {
   );
 }
 
+export function Cat() {
+  const fur = "#f2a25c";
+  const stripe = "#d9823a";
+  return (
+    <group>
+      <Box size={[0.5, 0.42, 0.62]} position={[0, 0.34, 0.06]} color={fur} />
+      <Box size={[0.52, 0.06, 0.12]} position={[0, 0.46, 0.14]} color={stripe} cast={false} />
+      <Box size={[0.52, 0.06, 0.12]} position={[0, 0.46, 0.32]} color={stripe} cast={false} />
+      <Box size={[0.36, 0.08, 0.4]} position={[0, 0.14, 0.04]} color="#fff3e6" cast={false} />
+      <Box size={[0.46, 0.38, 0.4]} position={[0, 0.72, -0.16]} color={fur} />
+      <Box size={[0.12, 0.14, 0.1]} position={[0.15, 0.97, -0.16]} color={fur} />
+      <Box size={[0.12, 0.14, 0.1]} position={[-0.15, 0.97, -0.16]} color={fur} />
+      <Box size={[0.06, 0.08, 0.11]} position={[0.15, 0.96, -0.16]} color="#f7c6c6" cast={false} />
+      <Box size={[0.06, 0.08, 0.11]} position={[-0.15, 0.96, -0.16]} color="#f7c6c6" cast={false} />
+      <Box size={[0.22, 0.12, 0.06]} position={[0, 0.64, -0.37]} color="#fff3e6" />
+      <Box size={[0.06, 0.05, 0.04]} position={[0, 0.69, -0.4]} color="#e57373" />
+      <Box size={[0.07, 0.1, 0.04]} position={[0.12, 0.78, -0.37]} color="#2e7d32" />
+      <Box size={[0.07, 0.1, 0.04]} position={[-0.12, 0.78, -0.37]} color="#2e7d32" />
+      <Box size={[0.1, 0.1, 0.36]} position={[0, 0.5, 0.52]} color={stripe} />
+      <Box size={[0.1, 0.26, 0.1]} position={[0, 0.66, 0.66]} color={fur} />
+      {[-0.14, 0.14].map((x) =>
+        [-0.12, 0.24].map((z) => (
+          <Box key={`${x}${z}`} size={[0.12, 0.14, 0.12]} position={[x, 0.07, z]} color="#fff3e6" />
+        )),
+      )}
+    </group>
+  );
+}
+
 export function Penguin() {
   return (
     <group>
@@ -627,6 +656,8 @@ export function CharacterModel({ id }: { id: CharacterId }) {
       return <Frog />;
     case "penguin":
       return <Penguin />;
+    case "cat":
+      return <Cat />;
     case "robot":
       return <Robot />;
     default:

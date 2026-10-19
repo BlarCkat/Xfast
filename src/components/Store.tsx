@@ -23,12 +23,13 @@ const CHARACTER_BLURB: Record<CharacterId, string> = {
   duck: "Waddles like the chicken, but keeps its cool around water. Mostly.",
   frog: "Built for hopping. Has strong opinions about logs.",
   penguin: "Dressed for a formal event, crossing roads anyway.",
+  cat: "Lands on its feet. Usually. Nine times, at least.",
   robot: "Hop module v2. Runs on coins and optimism.",
 };
 
 const cellsFor = (tab: Tab): Cell[] =>
   tab === "characters"
-    ? CHARACTERS.map((c) => ({ id: c.id, name: c.name, price: c.price, kind: "Character", description: CHARACTER_BLURB[c.id] }))
+    ? CHARACTERS.map((c) => ({ id: c.id, name: c.name, price: c.price, kind: "Character", description: `${c.trait} ${CHARACTER_BLURB[c.id]}` }))
     : STORE_ITEMS.map((i) => ({
         id: i.id,
         name: i.name,

@@ -71,8 +71,21 @@ Performance: every car, train, log, coin and lane of trees is merged into one me
 - `src/game/` holds the rules with no rendering: `lanes.ts` generates lanes, `biomes.ts` defines the themes, `engine.ts` runs hopping, collisions, the camera focus and scoring.
 - `src/components/` renders it: `Scene.tsx` (camera, lights, player, eagle), `Lanes.tsx` (each lane type), `models.tsx` and `biomeModels.tsx` (voxel models), `Game.tsx` (HUD and input).
 
+## Characters
+
+Each character has its own trait, shown on the start screen and in the store.
+
+| Character | Price | Trait |
+| --- | --- | --- |
+| Chicken | Free | Power-ups last 50% longer. |
+| Duck | 50 | Every coin is worth double (stacks with Double coins). |
+| Frog | 100 | Never drowns: hops aim for the nearest log in the river ahead, and when a log drifts off the edge it leaps to the nearest log still in play. |
+| Penguin | 150 | Starts every run with a 20s shield. |
+| Cat | 200 | Starts every run with nine lives (eight extra on the HUD). |
+| Robot | 250 | Built-in magnet collects coins within one column and row. |
+
 ## Coins and the store
 
 - Coins sit on grass and road lanes. They are saved in your browser as soon as you pick them up, even if you die.
-- Open the **Store** from the start or game over screen to unlock characters (Duck 50, Frog 100, Penguin 150, Robot 250) and buy power-ups (Foresight 30, Slowmo 30, Rock 40, Extra life 60).
+- Open the **Store** from the start or game over screen to unlock characters (Duck 50, Frog 100, Penguin 150, Cat 200, Robot 250) and buy power-ups (Foresight 30, Slowmo 30, Rock 40, Extra life 60).
 - Bought power-ups appear as buttons in the bottom right during a run, or use keys 1 to 0 for the first ten power-ups in store order. Bought extra lives are added when your next run starts.
