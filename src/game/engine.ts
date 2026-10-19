@@ -15,6 +15,7 @@ import {
   WRAP,
 } from "./config";
 import { Lane, LaneGenerator, Mover, PickupKind, trainLength } from "./lanes";
+import { type CharacterId, wallet } from "./wallet";
 
 export type Direction = "up" | "down" | "left" | "right";
 export type Status = "ready" | "playing" | "dead";
@@ -61,6 +62,8 @@ export interface UiSnapshot {
   score: number;
   best: number;
   lives: number;
+  /** Coins picked up this run (they are banked in the wallet straight away). */
+  coins: number;
   /** Whole seconds left on each power-up (0 = inactive); only changes once a second. */
   effects: Effects;
   toast: null | { text: string; id: number };
@@ -117,13 +120,17 @@ export class Engine {
   private ui: UiSnapshot;
   private listeners = new Set<() => void>();
 
-  constructor(seed = Math.floor(Math.random() * 1e9)) {
+  readonly character: CharacterId;
+
+  constructor(character: CharacterId = "chicken", seed = Math.floor(Math.random() * 1e9)) {
+    this.character = character;
     this.generator = new LaneGenerator(seed);
     this.ui = {
       status: "ready",
       score: 0,
       best: readBest(),
       lives: START_LIVES,
+      coins: 0,
       effects: { foresight: 0, slowmo: 0, rock: 0 },
       toast: null,
     };
@@ -152,7 +159,10 @@ export class Engine {
 
   move(dir: Direction) {
     if (this.ui.status === "dead") return;
-    if (this.ui.status === "ready") this.setUi({ status: "playing" });
+    if (this.ui.status === "ready") {
+      // Extra lives bought in the store are spent when a run starts.
+      this.setUi({ status: "playing", lives: this.ui.lives + wallet.takeLives() });
+    }
     const p = this.player;
     if (p.death) return;
     if (p.hop) {
@@ -213,6 +223,11 @@ export class Engine {
     }
 
     if (lane?.pickup && Math.round(p.x) === lane.pickup.x) this.collect(lane);
+    if (lane && lane.coin !== null && Math.round(p.x) === lane.coin) {
+      lane.coin = null;
+      wallet.addCoins(1);
+      this.setUi({ coins: this.ui.coins + 1 });
+    }
 
     if (p.queued) {
       const next = p.queued;
@@ -228,6 +243,16 @@ export class Engine {
     else this.effects[kind] = POWERUP_DURATION[kind];
     this.syncEffects(true);
     this.setUi({ toast: { text: PICKUP_LABEL[kind], id: ++this.toastId } });
+  }
+
+  /** Use a power-up bought in the store. */
+  activate(kind: PowerUp) {
+    if (this.ui.status !== "playing" || this.player.death) return false;
+    if (!wallet.use(kind)) return false;
+    this.effects[kind] = POWERUP_DURATION[kind];
+    this.syncEffects(true);
+    this.setUi({ toast: { text: PICKUP_LABEL[kind], id: ++this.toastId } });
+    return true;
   }
 
   /** Push whole-second effect timers to the HUD when they change. */

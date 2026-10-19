@@ -6,7 +6,7 @@ import type { DirectionalLight, Group, OrthographicCamera } from "three";
 import { COLS, HOP_HEIGHT, ROWS_AHEAD, ROWS_BEHIND } from "@/game/config";
 import type { Engine } from "@/game/engine";
 import { LaneView } from "./Lanes";
-import { Chicken, Eagle, RockShell } from "./models";
+import { CharacterModel, Eagle, RockShell } from "./models";
 
 // Camera sits behind, above and slightly to the right of the action, like the original.
 const CAMERA_OFFSET: [number, number, number] = [3.2, 11, 7.5];
@@ -80,7 +80,7 @@ function Player({ engine }: { engine: Engine }) {
     <group ref={root}>
       <group ref={body}>
         <group ref={chicken}>
-          <Chicken />
+          <CharacterModel id={engine.character} />
         </group>
         <group ref={rock} visible={false}>
           <RockShell />

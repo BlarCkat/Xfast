@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Engine, type Direction, type PowerUp } from "@/game/engine";
+import { wallet } from "@/game/wallet";
 import { Scene } from "./Scene";
+import Store, { useWallet } from "./Store";
 
 const KEYS: Record<string, Direction> = {
   ArrowUp: "up",
@@ -18,18 +20,27 @@ const KEYS: Record<string, Direction> = {
 
 const SWIPE_MIN = 24;
 
-const POWERUPS: { key: PowerUp; label: string; color: string }[] = [
-  { key: "foresight", label: "FORESIGHT", color: "#8e5cf7" },
-  { key: "slowmo", label: "SLOWMO", color: "#2f6fb5" },
-  { key: "rock", label: "ROCK", color: "#6f7177" },
+const POWERUPS: { key: PowerUp; label: string; color: string; hotkey: string }[] = [
+  { key: "foresight", label: "FORESIGHT", color: "#8e5cf7", hotkey: "Digit1" },
+  { key: "slowmo", label: "SLOWMO", color: "#2f6fb5", hotkey: "Digit2" },
+  { key: "rock", label: "ROCK", color: "#6f7177", hotkey: "Digit3" },
 ];
+
+const stop = (e: React.PointerEvent) => e.stopPropagation();
 // Ignore input for a moment after dying so a held key doesn't skip the score screen.
 const RESTART_DELAY = 600;
 
 export default function Game() {
-  const [engine, setEngine] = useState(() => new Engine());
+  const [engine, setEngine] = useState(() => new Engine(wallet.get().selected));
   const ui = useSyncExternalStore(engine.subscribe, engine.getSnapshot, engine.getSnapshot);
+  const w = useWallet();
+  const [storeOpen, setStoreOpen] = useState(false);
   const diedAt = useRef(0);
+
+  // Show a newly picked character straight away on the start screen.
+  useEffect(() => {
+    if (engine.status === "ready" && engine.character !== w.selected) setEngine(new Engine(w.selected));
+  }, [engine, w.selected]);
 
   useEffect(() => {
     if (ui.status === "dead") diedAt.current = performance.now();
@@ -37,12 +48,22 @@ export default function Game() {
 
   const restart = useCallback(() => {
     if (performance.now() - diedAt.current < RESTART_DELAY) return;
-    setEngine(new Engine());
+    setStoreOpen(false);
+    setEngine(new Engine(wallet.get().selected));
   }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return;
+      if (storeOpen) {
+        if (e.code === "Escape") setStoreOpen(false);
+        return;
+      }
+      const power = POWERUPS.find((p) => p.hotkey === e.code);
+      if (power) {
+        engine.activate(power.key);
+        return;
+      }
       if (engine.status === "dead") {
         if (e.code === "Space" || e.code === "Enter" || KEYS[e.code]) restart();
         return;
@@ -55,7 +76,7 @@ export default function Game() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [engine, restart]);
+  }, [engine, restart, storeOpen]);
 
   // Tap to hop forward, swipe to hop in any direction.
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -94,6 +115,9 @@ export default function Game() {
       <div className="hud">
         <div className="score">{ui.score}</div>
         <div className="best">TOP {ui.best}</div>
+        <div className="coins">
+          <span className="coin-icon" /> {w.coins}
+        </div>
         <div className="effects">
           {POWERUPS.map(
             ({ key, label, color }) =>
@@ -110,6 +134,28 @@ export default function Game() {
         <span className="heart">♥</span> × {ui.lives}
       </div>
 
+      {ui.status === "playing" && (
+        <div className="inventory">
+          {POWERUPS.map(({ key, label, color, hotkey }) =>
+            w.inventory[key] > 0 ? (
+              <button
+                key={key}
+                className="use-power"
+                style={{ background: color }}
+                onPointerDown={stop}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  engine.activate(key);
+                }}
+              >
+                {label} ×{w.inventory[key]}
+                <small>key {hotkey.slice(-1)}</small>
+              </button>
+            ) : null,
+          )}
+        </div>
+      )}
+
       {ui.toast && (
         <div key={ui.toast.id} className="toast">
           {ui.toast.text}
@@ -121,7 +167,17 @@ export default function Game() {
           <h1 className="title">XFAST</h1>
           <p className="hint">Tap or press ↑ to hop</p>
           <p className="sub">Swipe or use arrows / WASD to move</p>
-          <p className="sub">Grab ♥ for extra lives, plus foresight, slowmo and rock power-ups</p>
+          <p className="sub">Grab coins, ♥ extra lives and foresight, slowmo and rock power-ups</p>
+          <button
+            className="play store-button"
+            onPointerDown={stop}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              setStoreOpen(true);
+            }}
+          >
+            STORE
+          </button>
         </div>
       )}
 
@@ -131,6 +187,9 @@ export default function Game() {
             <p className="panel-label">SCORE</p>
             <p className="panel-score">{ui.score}</p>
             <p className="panel-best">{ui.score >= ui.best && ui.score > 0 ? "NEW TOP SCORE!" : `TOP ${ui.best}`}</p>
+            <p className="panel-coins">
+              +{ui.coins} <span className="coin-icon" />
+            </p>
             <button
               className="play"
               onPointerUp={(e) => {
@@ -140,9 +199,21 @@ export default function Game() {
             >
               PLAY AGAIN
             </button>
+            <button
+              className="play secondary"
+              onPointerDown={stop}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                setStoreOpen(true);
+              }}
+            >
+              STORE
+            </button>
           </div>
         </div>
       )}
+
+      {storeOpen && <Store onClose={() => setStoreOpen(false)} />}
     </div>
   );
 }

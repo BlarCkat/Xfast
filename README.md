@@ -33,3 +33,9 @@ Open http://localhost:3000.
 
 - `src/game/` holds the rules with no rendering: `lanes.ts` generates lanes, `engine.ts` runs hopping, collisions, the camera focus and scoring.
 - `src/components/` renders it: `Scene.tsx` (camera, lights, player, eagle), `Lanes.tsx` (each lane type), `models.tsx` (voxel models), `Game.tsx` (HUD and input).
+
+## Coins and the store
+
+- Coins sit on grass and road lanes. They are saved in your browser as soon as you pick them up, even if you die.
+- Open the **Store** from the start or game over screen to unlock characters (Duck 50, Frog 100, Penguin 150, Robot 250) and buy power-ups (Foresight 30, Slowmo 30, Rock 40, Extra life 60).
+- Bought power-ups appear as buttons in the bottom right during a run, or use keys 1, 2 and 3. Bought extra lives are added when your next run starts.

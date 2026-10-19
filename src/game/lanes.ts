@@ -38,6 +38,8 @@ export interface Lane {
   continued: boolean;
   /** A collectible sitting on this lane, removed once picked up. */
   pickup: Pickup | null;
+  /** Column of a coin on this lane, or null. */
+  coin: number | null;
 }
 
 export type Rng = () => number;
@@ -71,6 +73,7 @@ function emptyLane(row: number, type: LaneType): Lane {
     train: { x: 0, active: false, timer: 0, cars: 0, warning: false },
     continued: false,
     pickup: null,
+    coin: null,
   };
 }
 
@@ -79,6 +82,7 @@ const PICKUP_CHANCE = 1 / 7;
 // Of those collectibles, this share are extra lives; the rest are power-ups.
 export const LIFE_CHANCE = 0.2;
 const POWERUPS: PickupKind[] = ["foresight", "slowmo", "rock"];
+const COIN_CHANCE = 0.35;
 
 /**
  * Endless lane generator. Lanes come in groups of one type, getting faster and
@@ -136,14 +140,17 @@ export class LaneGenerator {
   private placePickup(lane: Lane) {
     const rng = this.rng;
     if (lane.type !== "grass" && lane.type !== "road") return;
-    if (rng() >= PICKUP_CHANCE) return;
     const free: number[] = [];
     for (let x = -COLS; x <= COLS; x++) if (!lane.blocked.has(x)) free.push(x);
     if (free.length === 0) return;
-    lane.pickup = {
-      x: pick(rng, free),
-      kind: rng() < LIFE_CHANCE ? "life" : pick(rng, POWERUPS),
-    };
+    if (rng() < PICKUP_CHANCE) {
+      lane.pickup = {
+        x: pick(rng, free),
+        kind: rng() < LIFE_CHANCE ? "life" : pick(rng, POWERUPS),
+      };
+    }
+    const coinSpots = free.filter((x) => x !== lane.pickup?.x);
+    if (rng() < COIN_CHANCE && coinSpots.length > 0) lane.coin = pick(rng, coinSpots);
   }
 
   private pickGroup(row: number) {

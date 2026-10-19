@@ -7,7 +7,7 @@ import { COLS, FORESIGHT_STEPS, LANE_WIDTH, TRAIN_SPEED, WRAP } from "@/game/con
 import type { Engine } from "@/game/engine";
 import type { Lane } from "@/game/lanes";
 import { trainLength } from "@/game/lanes";
-import { Box, Car, Log, PickupModel, Train, Tree, Truck } from "./models";
+import { Box, Car, Coin, Log, PickupModel, Train, Tree, Truck } from "./models";
 
 const GRASS = ["#a6e35f", "#9ad653"];
 const ROAD = "#575c66";
@@ -225,11 +225,29 @@ function PickupView({ lane }: { lane: Lane }) {
   );
 }
 
+function CoinView({ lane }: { lane: Lane }) {
+  const ref = useRef<Group>(null);
+  const [x] = useState(lane.coin);
+  useFrame(({ clock }) => {
+    const g = ref.current;
+    if (!g) return;
+    g.visible = lane.coin !== null;
+    g.rotation.y = clock.elapsedTime * 3 + lane.row;
+  });
+  if (x === null) return null;
+  return (
+    <group ref={ref} position={[x, 0.35, 0]}>
+      <Coin />
+    </group>
+  );
+}
+
 export const LaneView = memo(function LaneView({ lane, engine }: { lane: Lane; engine: Engine }) {
   return (
     <group position={[0, 0, -lane.row]}>
       {lane.type !== "grass" && <ForesightGhosts lane={lane} engine={engine} />}
       {lane.pickup && <PickupView lane={lane} />}
+      {lane.coin !== null && <CoinView lane={lane} />}
       {lane.type === "grass" && <GrassLane lane={lane} />}
       {lane.type === "road" && <RoadLane lane={lane} />}
       {lane.type === "river" && <RiverLane lane={lane} />}

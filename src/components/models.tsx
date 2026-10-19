@@ -4,6 +4,7 @@ import { forwardRef } from "react";
 import type { Group } from "three";
 import { TRAIN_CAR_LENGTH } from "@/game/config";
 import type { PickupKind } from "@/game/lanes";
+import type { CharacterId } from "@/game/wallet";
 
 // Small voxel models built from boxes. Everything uses flat Lambert shading for the toy look.
 
@@ -206,6 +207,105 @@ export function RockShell() {
       <Box size={[0.24, 0.2, 0.24]} position={[-0.22, 0.6, 0.26]} color="#6f7177" />
       <Box size={[0.06, 0.08, 0.06]} position={[0.14, 0.84, -0.3]} color="#222222" />
       <Box size={[0.06, 0.08, 0.06]} position={[-0.06, 0.84, -0.3]} color="#222222" />
+    </group>
+  );
+}
+
+export function Duck() {
+  return (
+    <group>
+      <Box size={[0.56, 0.46, 0.6]} position={[0, 0.36, 0.04]} color="#ffd93b" />
+      <Box size={[0.4, 0.34, 0.38]} position={[0, 0.74, -0.1]} color="#ffd93b" />
+      <Box size={[0.3, 0.08, 0.2]} position={[0, 0.66, -0.36]} color="#f49d37" />
+      <Box size={[0.06, 0.08, 0.06]} position={[0.15, 0.82, -0.29]} color="#222222" />
+      <Box size={[0.06, 0.08, 0.06]} position={[-0.15, 0.82, -0.29]} color="#222222" />
+      <Box size={[0.08, 0.18, 0.3]} position={[0.31, 0.38, 0.06]} color="#f2c522" />
+      <Box size={[0.08, 0.18, 0.3]} position={[-0.31, 0.38, 0.06]} color="#f2c522" />
+      <Box size={[0.24, 0.12, 0.12]} position={[0, 0.5, 0.38]} color="#f2c522" />
+      <Box size={[0.16, 0.06, 0.2]} position={[0.12, 0.03, -0.04]} color="#f49d37" />
+      <Box size={[0.16, 0.06, 0.2]} position={[-0.12, 0.03, -0.04]} color="#f49d37" />
+      <Box size={[0.08, 0.1, 0.08]} position={[0.12, 0.1, 0]} color="#f49d37" />
+      <Box size={[0.08, 0.1, 0.08]} position={[-0.12, 0.1, 0]} color="#f49d37" />
+    </group>
+  );
+}
+
+export function Frog() {
+  return (
+    <group>
+      <Box size={[0.66, 0.36, 0.66]} position={[0, 0.26, 0]} color="#4caf50" />
+      <Box size={[0.56, 0.08, 0.5]} position={[0, 0.1, -0.02]} color="#c5e1a5" />
+      <Box size={[0.2, 0.2, 0.2]} position={[0.2, 0.52, -0.2]} color="#4caf50" />
+      <Box size={[0.2, 0.2, 0.2]} position={[-0.2, 0.52, -0.2]} color="#4caf50" />
+      <Box size={[0.14, 0.12, 0.06]} position={[0.2, 0.54, -0.3]} color="#ffffff" />
+      <Box size={[0.14, 0.12, 0.06]} position={[-0.2, 0.54, -0.3]} color="#ffffff" />
+      <Box size={[0.06, 0.08, 0.04]} position={[0.2, 0.54, -0.33]} color="#222222" />
+      <Box size={[0.06, 0.08, 0.04]} position={[-0.2, 0.54, -0.33]} color="#222222" />
+      <Box size={[0.36, 0.04, 0.04]} position={[0, 0.24, -0.34]} color="#2e7d32" />
+      <Box size={[0.2, 0.14, 0.34]} position={[0.36, 0.08, 0.14]} color="#388e3c" />
+      <Box size={[0.2, 0.14, 0.34]} position={[-0.36, 0.08, 0.14]} color="#388e3c" />
+    </group>
+  );
+}
+
+export function Penguin() {
+  return (
+    <group>
+      <Box size={[0.56, 0.72, 0.52]} position={[0, 0.44, 0.02]} color="#263238" />
+      <Box size={[0.42, 0.56, 0.06]} position={[0, 0.4, -0.25]} color="#fafafa" />
+      <Box size={[0.42, 0.24, 0.44]} position={[0, 0.9, -0.02]} color="#263238" />
+      <Box size={[0.32, 0.14, 0.06]} position={[0, 0.88, -0.25]} color="#fafafa" />
+      <Box size={[0.12, 0.08, 0.14]} position={[0, 0.84, -0.32]} color="#f49d37" />
+      <Box size={[0.06, 0.06, 0.04]} position={[0.1, 0.92, -0.28]} color="#111111" />
+      <Box size={[0.06, 0.06, 0.04]} position={[-0.1, 0.92, -0.28]} color="#111111" />
+      <Box size={[0.08, 0.4, 0.26]} position={[0.32, 0.46, 0.02]} color="#1c262b" />
+      <Box size={[0.08, 0.4, 0.26]} position={[-0.32, 0.46, 0.02]} color="#1c262b" />
+      <Box size={[0.16, 0.06, 0.22]} position={[0.13, 0.03, -0.06]} color="#f49d37" />
+      <Box size={[0.16, 0.06, 0.22]} position={[-0.13, 0.03, -0.06]} color="#f49d37" />
+    </group>
+  );
+}
+
+export function Robot() {
+  return (
+    <group>
+      <Box size={[0.56, 0.5, 0.46]} position={[0, 0.42, 0.02]} color="#b0bec5" />
+      <Box size={[0.26, 0.18, 0.04]} position={[0, 0.44, -0.22]} color="#ff7043" />
+      <Box size={[0.44, 0.34, 0.4]} position={[0, 0.88, -0.02]} color="#cfd8dc" />
+      <Box size={[0.34, 0.1, 0.04]} position={[0, 0.9, -0.23]} color="#263238" />
+      <Box size={[0.08, 0.06, 0.03]} position={[0.09, 0.9, -0.255]} color="#40c4ff" cast={false} />
+      <Box size={[0.08, 0.06, 0.03]} position={[-0.09, 0.9, -0.255]} color="#40c4ff" cast={false} />
+      <Box size={[0.04, 0.2, 0.04]} position={[0, 1.14, -0.02]} color="#90a4ae" />
+      <Box size={[0.1, 0.1, 0.1]} position={[0, 1.26, -0.02]} color="#ff5252" />
+      <Box size={[0.1, 0.36, 0.12]} position={[0.34, 0.42, 0]} color="#90a4ae" />
+      <Box size={[0.1, 0.36, 0.12]} position={[-0.34, 0.42, 0]} color="#90a4ae" />
+      <Box size={[0.14, 0.18, 0.18]} position={[0.13, 0.09, 0]} color="#78909c" />
+      <Box size={[0.14, 0.18, 0.18]} position={[-0.13, 0.09, 0]} color="#78909c" />
+    </group>
+  );
+}
+
+export function CharacterModel({ id }: { id: CharacterId }) {
+  switch (id) {
+    case "duck":
+      return <Duck />;
+    case "frog":
+      return <Frog />;
+    case "penguin":
+      return <Penguin />;
+    case "robot":
+      return <Robot />;
+    default:
+      return <Chicken />;
+  }
+}
+
+export function Coin() {
+  return (
+    <group>
+      <Box size={[0.38, 0.38, 0.08]} position={[0, 0, 0]} color="#ffc928" />
+      <Box size={[0.26, 0.26, 0.1]} position={[0, 0, 0]} color="#ffe27a" cast={false} />
+      <Box size={[0.06, 0.16, 0.11]} position={[0, 0, 0]} color="#e0a800" cast={false} />
     </group>
   );
 }
