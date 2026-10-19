@@ -213,7 +213,7 @@ export function Obstacle({ biome, height, variant }: { biome: BiomeId; height: n
     case "northpole":
       return height === 1 ? <Snowman /> : height === 2 ? <Present /> : <SnowPine />;
     default:
-      return <Tree height={height} />;
+      return extraObstacle(biome, height, variant) ?? <Tree height={height} />;
   }
 }
 
@@ -451,6 +451,8 @@ export const Vehicle = forwardRef<
       body = big ? <Sleigh color={color} length={length} /> : <Snowmobile color={color} length={length} />;
       break;
     default:
+      body = extraVehicle(biome, big, { color, length });
+      if (body) break;
       return big ? (
         <Truck ref={ref} color={color} length={length} dir={dir} />
       ) : (
@@ -481,5 +483,481 @@ export const Floater = forwardRef<Group, { biome: BiomeId; length: number }>(fun
   { biome, length },
   ref,
 ) {
-  return biome === "northpole" ? <IceFloe ref={ref} length={length} /> : <Log ref={ref} length={length} />;
+  if (biome === "northpole") return <IceFloe ref={ref} length={length} />;
+  if (biome in ExtraFloater) {
+    const Extra = ExtraFloater[biome as keyof typeof ExtraFloater];
+    return <Extra ref={ref} length={length} />;
+  }
+  return <Log ref={ref} length={length} />;
 });
+
+// ---- Desert ----------------------------------------------------------------------
+
+function SandstoneRocks() {
+  return (
+    <group>
+      <Box size={[0.7, 0.4, 0.6]} position={[0, 0.2, 0]} color="#c98b55" />
+      <Box size={[0.4, 0.3, 0.36]} position={[0.12, 0.55, 0.05]} color="#d9a06a" />
+      <Box size={[0.3, 0.22, 0.3]} position={[-0.3, 0.11, 0.3]} color="#b97a48" />
+    </group>
+  );
+}
+
+function BarrelCactus() {
+  return (
+    <group>
+      <Box size={[0.6, 0.55, 0.6]} position={[0, 0.28, 0]} color="#5f9a4a" />
+      <Box size={[0.5, 0.08, 0.5]} position={[0, 0.58, 0]} color="#6fae56" />
+      <Box size={[0.14, 0.1, 0.14]} position={[0.08, 0.66, 0]} color="#ff5f8f" />
+      <Box size={[0.12, 0.1, 0.12]} position={[-0.12, 0.66, 0.08]} color="#ffd34d" />
+    </group>
+  );
+}
+
+function Saguaro() {
+  return (
+    <group>
+      <Box size={[0.3, 1.5, 0.3]} position={[0, 0.75, 0]} color="#4f8f3f" />
+      <Box size={[0.3, 0.16, 0.2]} position={[0.26, 0.7, 0]} color="#4f8f3f" />
+      <Box size={[0.18, 0.5, 0.2]} position={[0.36, 0.98, 0]} color="#4f8f3f" />
+      <Box size={[0.3, 0.16, 0.2]} position={[-0.26, 0.95, 0]} color="#4f8f3f" />
+      <Box size={[0.18, 0.4, 0.2]} position={[-0.36, 1.18, 0]} color="#4f8f3f" />
+      <Box size={[0.32, 0.06, 0.32]} position={[0, 1.52, 0]} color="#ffe07a" />
+    </group>
+  );
+}
+
+function DuneBuggy({ color, length }: VehicleProps) {
+  return (
+    <group>
+      <Box size={[length * 0.9, 0.22, 0.7]} position={[0, 0.42, 0]} color={color} />
+      <Box size={[0.3, 0.2, 0.62]} position={[length * 0.36, 0.56, 0]} color={color} />
+      {/* Roll cage. */}
+      {[-1, 1].map((sz) => (
+        <group key={sz}>
+          <Box size={[0.06, 0.5, 0.06]} position={[-length * 0.2, 0.78, sz * 0.3]} color="#2b2f36" />
+          <Box size={[0.06, 0.5, 0.06]} position={[length * 0.1, 0.78, sz * 0.3]} color="#2b2f36" />
+          <Box size={[length * 0.36, 0.06, 0.06]} position={[-length * 0.05, 1.02, sz * 0.3]} color="#2b2f36" />
+        </group>
+      ))}
+      <Box size={[0.26, 0.34, 0.3]} position={[-length * 0.05, 0.68, 0]} color="#ff9f43" />
+      <Box size={[0.2, 0.2, 0.22]} position={[-length * 0.05, 0.95, 0]} color="#f2f2f2" />
+      <Box size={[0.06, 0.1, 0.16]} position={[length / 2 - 0.02, 0.5, 0.22]} color="#fff6b0" glow={2.5} />
+      <Box size={[0.06, 0.1, 0.16]} position={[length / 2 - 0.02, 0.5, -0.22]} color="#fff6b0" glow={2.5} />
+      {[-1, 1].map((sx) =>
+        [-1, 1].map((sz) => (
+          <Box key={`${sx}${sz}`} size={[0.42, 0.42, 0.16]} position={[sx * length * 0.32, 0.21, sz * 0.42]} color="#222" />
+        )),
+      )}
+    </group>
+  );
+}
+
+function Camel({ x }: { x: number }) {
+  const tan = "#c9955a";
+  return (
+    <group position={[x, 0, 0]}>
+      <Legs xs={[-0.32, 0.22]} height={0.55} color="#b5814a" width={0.12} />
+      <Box size={[0.9, 0.36, 0.42]} position={[-0.05, 0.72, 0]} color={tan} />
+      <Box size={[0.32, 0.26, 0.36]} position={[-0.12, 1.0, 0]} color={tan} />
+      <Box size={[0.14, 0.42, 0.16]} position={[0.42, 0.98, 0]} color={tan} />
+      <Box size={[0.32, 0.16, 0.18]} position={[0.52, 1.2, 0]} color={tan} />
+      <Box size={[0.36, 0.08, 0.46]} position={[-0.12, 1.15, 0]} color="#c0392b" cast={false} />
+    </group>
+  );
+}
+
+function CamelCaravan({ length }: VehicleProps) {
+  return (
+    <group>
+      <Camel x={length / 2 - 0.62} />
+      <Camel x={-length / 2 + 0.62} />
+      <Box size={[0.6, 0.03, 0.03]} position={[0, 1.0, 0]} color="#6b4a2f" cast={false} />
+    </group>
+  );
+}
+
+// ---- Beach ------------------------------------------------------------------------
+
+function Sandcastle() {
+  return (
+    <group>
+      <Box size={[0.7, 0.3, 0.7]} position={[0, 0.15, 0]} color="#e9c98a" />
+      <Box size={[0.24, 0.3, 0.24]} position={[0.2, 0.45, 0.2]} color="#e2bf7d" />
+      <Box size={[0.24, 0.3, 0.24]} position={[-0.2, 0.45, -0.2]} color="#e2bf7d" />
+      <Box size={[0.3, 0.42, 0.3]} position={[0, 0.5, 0]} color="#e9c98a" />
+      <Box size={[0.04, 0.24, 0.04]} position={[0, 0.82, 0]} color="#6b4a2f" />
+      <Box size={[0.16, 0.1, 0.02]} position={[0.08, 0.89, 0]} color="#e94f37" />
+    </group>
+  );
+}
+
+function Umbrella({ variant }: { variant: number }) {
+  const colors = ["#e94f37", "#3f88c5", "#f6c90e", "#44bba4"];
+  const c = colors[variant % colors.length];
+  return (
+    <group>
+      <Box size={[0.06, 1.2, 0.06]} position={[0, 0.6, 0]} color="#f4f4f4" />
+      <Box size={[1.0, 0.12, 1.0]} position={[0, 1.2, 0]} color={c} />
+      <Box size={[0.7, 0.12, 0.7]} position={[0, 1.3, 0]} color="#ffffff" />
+      <Box size={[0.36, 0.12, 0.36]} position={[0, 1.4, 0]} color={c} />
+      <Box size={[0.7, 0.06, 0.36]} position={[0.1, 0.03, 0.25]} color="#f6a6c1" cast={false} />
+    </group>
+  );
+}
+
+function Palm() {
+  return (
+    <group>
+      {[0, 1, 2, 3].map((i) => (
+        <Box key={i} size={[0.22, 0.4, 0.22]} position={[i * 0.05, 0.2 + i * 0.36, 0]} color={i % 2 ? "#a77b4f" : "#8f6a42"} />
+      ))}
+      {[
+        [0.45, 0, 0.9, 0.1],
+        [-0.3, 0, 0.9, 0.1],
+        [0.08, 0.4, 0.1, 0.9],
+        [0.08, -0.4, 0.1, 0.9],
+      ].map(([x, z, w, d], i) => (
+        <Box key={i} size={[w, 0.08, d]} position={[0.15 + x, 1.5, z]} color="#3f9d3a" />
+      ))}
+      <Box size={[0.36, 0.16, 0.36]} position={[0.15, 1.52, 0]} color="#4fae44" />
+      <Box size={[0.12, 0.12, 0.12]} position={[0.15, 1.38, 0.14]} color="#6b4a2f" />
+    </group>
+  );
+}
+
+function Crab({ color, length }: VehicleProps) {
+  return (
+    <group>
+      <Box size={[length * 0.6, 0.34, 0.7]} position={[0, 0.36, 0]} color={color} />
+      <Box size={[length * 0.5, 0.1, 0.6]} position={[0, 0.56, 0]} color="#ff8a65" />
+      {[-1, 1].map((sz) => (
+        <group key={sz}>
+          {[-0.3, 0, 0.3].map((x) => (
+            <Box key={x} size={[0.08, 0.3, 0.08]} position={[x * length * 0.6, 0.12, sz * 0.42]} color={color} />
+          ))}
+          <Box size={[0.08, 0.2, 0.08]} position={[length * 0.2, 0.68, sz * 0.14]} color={color} />
+          <Box size={[0.1, 0.1, 0.1]} position={[length * 0.2, 0.8, sz * 0.14]} color="#111" />
+          <Box size={[0.3, 0.22, 0.2]} position={[length * 0.42, 0.42, sz * 0.32]} color={color} />
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function IceCreamTruck({ length }: VehicleProps) {
+  return (
+    <group>
+      <Box size={[length, 0.95, 0.88]} position={[0, 0.65, 0]} color="#fdf6ec" />
+      <Box size={[length + 0.02, 0.18, 0.9]} position={[0, 0.3, 0]} color="#f48fb1" />
+      <Box size={[0.9, 0.36, 0.9]} position={[-0.2, 0.75, 0]} color="#8fd3f4" />
+      <Box size={[0.06, 0.34, 0.74]} position={[length / 2, 0.82, 0]} color="#2c3e50" />
+      {/* Giant cone on the roof. */}
+      <Box size={[0.18, 0.3, 0.18]} position={[-0.3, 1.27, 0]} color="#d9a05b" />
+      <Box size={[0.34, 0.26, 0.34]} position={[-0.3, 1.52, 0]} color="#f8bbd0" />
+      <Box size={[0.06, 0.12, 0.18]} position={[length / 2, 0.45, 0.28]} color="#fff6b0" glow={2.5} />
+      <Box size={[0.06, 0.12, 0.18]} position={[length / 2, 0.45, -0.28]} color="#fff6b0" glow={2.5} />
+      {[-length * 0.3, length * 0.3].map((x) =>
+        [-1, 1].map((sz) => (
+          <Box key={`${x}${sz}`} size={[0.32, 0.3, 0.1]} position={[x, 0.15, sz * 0.44]} color="#222" />
+        )),
+      )}
+    </group>
+  );
+}
+
+const PoolFloat = forwardRef<Group, { length: number }>(function PoolFloat({ length }, ref) {
+  const stripes = Math.max(2, Math.round(length * 2));
+  return (
+    <group ref={ref}>
+      {Array.from({ length: stripes }, (_, i) => (
+        <Box
+          key={i}
+          size={[length / stripes - 0.02, 0.26, 0.78]}
+          position={[-length / 2 + (i + 0.5) * (length / stripes), -0.12, 0]}
+          color={i % 2 ? "#ffffff" : "#ff6f91"}
+          receive
+        />
+      ))}
+    </group>
+  );
+});
+
+// ---- Jungle -----------------------------------------------------------------------
+
+function Fern() {
+  return (
+    <group>
+      {[
+        [0.3, 0.1, 0.5, 0.08],
+        [-0.3, -0.1, 0.5, 0.08],
+        [0.05, 0.3, 0.08, 0.5],
+        [-0.05, -0.3, 0.08, 0.5],
+      ].map(([x, z, w, d], i) => (
+        <Box key={i} size={[w, 0.06, d]} position={[x, 0.32 + i * 0.03, z]} color="#2f8f3a" />
+      ))}
+      <Box size={[0.2, 0.36, 0.2]} position={[0, 0.18, 0]} color="#3e7a2c" />
+    </group>
+  );
+}
+
+function FlowerBush() {
+  return (
+    <group>
+      <Box size={[0.8, 0.6, 0.75]} position={[0, 0.3, 0]} color="#2e7d32" />
+      <Box size={[0.18, 0.12, 0.18]} position={[0.2, 0.64, 0.15]} color="#ff4f81" />
+      <Box size={[0.18, 0.12, 0.18]} position={[-0.22, 0.58, -0.1]} color="#ffb300" />
+      <Box size={[0.16, 0.12, 0.16]} position={[0.05, 0.66, -0.25]} color="#ab47bc" />
+    </group>
+  );
+}
+
+function JungleTree() {
+  return (
+    <group>
+      <Box size={[0.32, 1.3, 0.32]} position={[0, 0.65, 0]} color="#6d4c33" />
+      <Box size={[1.0, 0.4, 1.0]} position={[0, 1.4, 0]} color="#1f7a35" />
+      <Box size={[0.7, 0.3, 0.7]} position={[0.05, 1.72, 0]} color="#2a9142" />
+      <Box size={[0.05, 0.6, 0.05]} position={[0.4, 0.95, 0.3]} color="#3e8e2f" />
+      <Box size={[0.05, 0.45, 0.05]} position={[-0.38, 1.0, -0.2]} color="#3e8e2f" />
+    </group>
+  );
+}
+
+function Tiger({ length }: VehicleProps) {
+  const orange = "#f28b2a";
+  return (
+    <group>
+      <Legs xs={[-length * 0.28, length * 0.2]} height={0.32} color={orange} width={0.14} />
+      <Box size={[length * 0.66, 0.36, 0.42]} position={[-length * 0.04, 0.5, 0]} color={orange} />
+      {[-0.4, -0.2, 0, 0.2].map((x) => (
+        <Box key={x} size={[0.06, 0.38, 0.44]} position={[x * length * 0.6, 0.5, 0]} color="#222" cast={false} />
+      ))}
+      <Box size={[0.36, 0.32, 0.36]} position={[length * 0.36, 0.66, 0]} color={orange} />
+      <Box size={[0.14, 0.12, 0.26]} position={[length * 0.52, 0.58, 0]} color="#fff3e6" />
+      <Box size={[0.08, 0.1, 0.08]} position={[length * 0.36, 0.86, 0.12]} color={orange} />
+      <Box size={[0.08, 0.1, 0.08]} position={[length * 0.36, 0.86, -0.12]} color={orange} />
+      <Box size={[0.4, 0.08, 0.08]} position={[-length * 0.45, 0.62, 0]} color={orange} />
+    </group>
+  );
+}
+
+function Crocodile({ length }: VehicleProps) {
+  const green = "#4a7d36";
+  return (
+    <group>
+      <Legs xs={[-length * 0.22, length * 0.12]} height={0.16} color={green} width={0.16} />
+      <Box size={[length * 0.5, 0.3, 0.56]} position={[-length * 0.04, 0.28, 0]} color={green} />
+      {[-0.25, -0.1, 0.05].map((x) => (
+        <Box key={x} size={[0.12, 0.08, 0.2]} position={[x * length, 0.46, 0]} color="#3b6a2a" />
+      ))}
+      <Box size={[length * 0.3, 0.2, 0.4]} position={[length * 0.34, 0.24, 0]} color={green} />
+      <Box size={[length * 0.26, 0.04, 0.38]} position={[length * 0.36, 0.25, 0]} color="#f4f4f4" cast={false} />
+      <Box size={[0.1, 0.1, 0.1]} position={[length * 0.24, 0.4, 0.14]} color="#ffd34d" />
+      <Box size={[0.1, 0.1, 0.1]} position={[length * 0.24, 0.4, -0.14]} color="#ffd34d" />
+      <Box size={[length * 0.3, 0.16, 0.24]} position={[-length * 0.42, 0.2, 0]} color={green} />
+    </group>
+  );
+}
+
+// ---- Volcano ----------------------------------------------------------------------
+
+function LavaRock() {
+  return (
+    <group>
+      <Box size={[0.7, 0.45, 0.65]} position={[0, 0.22, 0]} color="#3b3433" />
+      <Box size={[0.5, 0.06, 0.06]} position={[0, 0.3, 0.33]} color="#ff6a1a" cast={false} glow={2} />
+      <Box size={[0.06, 0.06, 0.4]} position={[0.36, 0.2, 0]} color="#ff6a1a" cast={false} glow={2} />
+      <Box size={[0.4, 0.25, 0.36]} position={[0.08, 0.55, 0]} color="#4a4140" />
+    </group>
+  );
+}
+
+function ObsidianSpikes() {
+  return (
+    <group>
+      <Box size={[0.24, 0.9, 0.24]} position={[0, 0.45, 0]} color="#241f2b" />
+      <Box size={[0.2, 0.6, 0.2]} position={[0.24, 0.3, 0.12]} color="#2f2838" />
+      <Box size={[0.18, 0.5, 0.18]} position={[-0.22, 0.25, -0.12]} color="#2f2838" />
+      <Box size={[0.14, 0.2, 0.14]} position={[0, 0.98, 0]} color="#5b4e6e" />
+    </group>
+  );
+}
+
+function MiniVolcano() {
+  return (
+    <group>
+      <Box size={[0.9, 0.4, 0.9]} position={[0, 0.2, 0]} color="#4a3f3c" />
+      <Box size={[0.66, 0.4, 0.66]} position={[0, 0.6, 0]} color="#554946" />
+      <Box size={[0.44, 0.36, 0.44]} position={[0, 0.98, 0]} color="#605350" />
+      <Box size={[0.26, 0.06, 0.26]} position={[0, 1.18, 0]} color="#ff7a1a" cast={false} glow={3} />
+      <Box size={[0.08, 0.5, 0.08]} position={[0.2, 0.75, 0.3]} color="#ff6a1a" cast={false} glow={2} />
+    </group>
+  );
+}
+
+function LavaRover({ color, length }: VehicleProps) {
+  return (
+    <group>
+      <Box size={[length, 0.4, 0.8]} position={[0, 0.42, 0]} color={color} />
+      <Box size={[length * 0.5, 0.28, 0.66]} position={[-length * 0.1, 0.76, 0]} color="#2b2f36" />
+      <Box size={[length * 0.46, 0.14, 0.68]} position={[-length * 0.1, 0.76, 0]} color="#ffb04d" glow={1.2} cast={false} />
+      <Box size={[0.06, 0.1, 0.5]} position={[length / 2, 0.48, 0]} color="#ff6a1a" glow={3} />
+      {[-1, 1].map((sz) => (
+        <Box key={sz} size={[length * 0.9, 0.3, 0.14]} position={[0, 0.16, sz * 0.4]} color="#1d1b1c" />
+      ))}
+    </group>
+  );
+}
+
+function DumpTruck({ color, length }: VehicleProps) {
+  const cab = 0.75;
+  return (
+    <group>
+      <Box size={[cab, 0.8, 0.84]} position={[length / 2 - cab / 2, 0.55, 0]} color={color} />
+      <Box size={[0.06, 0.28, 0.7]} position={[length / 2, 0.72, 0]} color="#2c3e50" />
+      <Box size={[length - cab - 0.06, 0.6, 0.9]} position={[-cab / 2, 0.55, 0]} color="#5b5f66" />
+      <Box size={[length - cab - 0.3, 0.2, 0.7]} position={[-cab / 2, 0.92, 0]} color="#ff6a1a" glow={2.2} cast={false} />
+      <Box size={[0.06, 0.12, 0.18]} position={[length / 2, 0.45, 0.28]} color="#fff6b0" glow={2.5} />
+      <Box size={[0.06, 0.12, 0.18]} position={[length / 2, 0.45, -0.28]} color="#fff6b0" glow={2.5} />
+      {[-0.55, 0.05, length / 2 - 0.35].map((x) =>
+        [-1, 1].map((sz) => (
+          <Box key={`${x}${sz}`} size={[0.34, 0.34, 0.12]} position={[x, 0.17, sz * 0.44]} color="#222" />
+        )),
+      )}
+    </group>
+  );
+}
+
+const BasaltSlab = forwardRef<Group, { length: number }>(function BasaltSlab({ length }, ref) {
+  return (
+    <group ref={ref}>
+      <Box size={[length - 0.08, 0.3, 0.78]} position={[0, -0.15, 0]} color="#3a3434" receive />
+      <Box size={[length - 0.3, 0.04, 0.6]} position={[0, 0.01, 0]} color="#4a4342" cast={false} receive />
+      <Box size={[length - 0.04, 0.06, 0.82]} position={[0, -0.27, 0]} color="#ff7a1a" cast={false} glow={2} />
+    </group>
+  );
+});
+
+// ---- Spooky -----------------------------------------------------------------------
+
+function Pumpkin() {
+  return (
+    <group>
+      <Box size={[0.66, 0.5, 0.6]} position={[0, 0.25, 0]} color="#f07c1a" />
+      <Box size={[0.08, 0.5, 0.62]} position={[0, 0.25, 0]} color="#d96a10" cast={false} />
+      <Box size={[0.1, 0.16, 0.1]} position={[0, 0.58, 0]} color="#4a7d36" />
+      {/* Carved face lit from inside. */}
+      <Box size={[0.1, 0.1, 0.04]} position={[0.14, 0.33, 0.3]} color="#ffd34d" glow={2.5} cast={false} />
+      <Box size={[0.1, 0.1, 0.04]} position={[-0.14, 0.33, 0.3]} color="#ffd34d" glow={2.5} cast={false} />
+      <Box size={[0.3, 0.06, 0.04]} position={[0, 0.17, 0.3]} color="#ffd34d" glow={2.5} cast={false} />
+    </group>
+  );
+}
+
+function Gravestone() {
+  return (
+    <group>
+      <Box size={[0.5, 0.7, 0.18]} position={[0, 0.35, 0]} color="#8f939a" />
+      <Box size={[0.36, 0.12, 0.18]} position={[0, 0.76, 0]} color="#9ca0a7" />
+      <Box size={[0.24, 0.05, 0.02]} position={[0, 0.5, 0.1]} color="#5d6066" cast={false} />
+      <Box size={[0.05, 0.22, 0.02]} position={[0, 0.5, 0.1]} color="#5d6066" cast={false} />
+      <Box size={[0.6, 0.08, 0.4]} position={[0, 0.04, 0.2]} color="#4b3a2a" cast={false} />
+    </group>
+  );
+}
+
+function DeadTree() {
+  return (
+    <group>
+      <Box size={[0.24, 1.3, 0.24]} position={[0, 0.65, 0]} color="#4a3b33" />
+      <Box size={[0.5, 0.1, 0.1]} position={[0.28, 1.0, 0]} color="#4a3b33" />
+      <Box size={[0.1, 0.3, 0.1]} position={[0.5, 1.18, 0]} color="#4a3b33" />
+      <Box size={[0.4, 0.1, 0.1]} position={[-0.22, 1.25, 0]} color="#4a3b33" />
+      <Box size={[0.1, 0.24, 0.1]} position={[-0.38, 1.4, 0]} color="#4a3b33" />
+      <Box size={[0.1, 0.1, 0.36]} position={[0, 0.8, 0.2]} color="#4a3b33" />
+    </group>
+  );
+}
+
+function Ghost({ length }: VehicleProps) {
+  return (
+    <group position={[0, 0.15, 0]}>
+      <Box size={[length * 0.55, 0.7, 0.62]} position={[0, 0.6, 0]} color="#eef1ff" glow={0.5} />
+      <Box size={[length * 0.45, 0.3, 0.52]} position={[-length * 0.05, 1.05, 0]} color="#eef1ff" glow={0.5} />
+      {[-0.3, 0, 0.3].map((x) => (
+        <Box key={x} size={[0.16, 0.18, 0.5]} position={[x * length * 0.5, 0.18, 0]} color="#dfe4ff" glow={0.4} />
+      ))}
+      <Box size={[0.04, 0.16, 0.12]} position={[length * 0.28, 0.8, 0.14]} color="#111" />
+      <Box size={[0.04, 0.16, 0.12]} position={[length * 0.28, 0.8, -0.14]} color="#111" />
+      <Box size={[0.04, 0.12, 0.16]} position={[length * 0.28, 0.56, 0]} color="#111" />
+    </group>
+  );
+}
+
+function Hearse({ length }: VehicleProps) {
+  return (
+    <group>
+      <Box size={[length, 0.45, 0.84]} position={[0, 0.35, 0]} color="#1d1b22" />
+      <Box size={[length * 0.75, 0.42, 0.78]} position={[-length * 0.1, 0.78, 0]} color="#26232c" />
+      <Box size={[length * 0.4, 0.22, 0.8]} position={[-length * 0.2, 0.8, 0]} color="#5c4a7a" cast={false} />
+      <Box size={[0.06, 0.12, 0.18]} position={[length / 2, 0.4, 0.26]} color="#c9a7ff" glow={2.5} />
+      <Box size={[0.06, 0.12, 0.18]} position={[length / 2, 0.4, -0.26]} color="#c9a7ff" glow={2.5} />
+      {[-length * 0.32, length * 0.32].map((x) =>
+        [-1, 1].map((sz) => (
+          <Box key={`${x}${sz}`} size={[0.32, 0.28, 0.1]} position={[x, 0.14, sz * 0.44]} color="#111" />
+        )),
+      )}
+    </group>
+  );
+}
+
+const Coffin = forwardRef<Group, { length: number }>(function Coffin({ length }, ref) {
+  return (
+    <group ref={ref}>
+      <Box size={[length - 0.08, 0.3, 0.72]} position={[0, -0.15, 0]} color="#5a3b28" receive />
+      <Box size={[length - 0.3, 0.04, 0.56]} position={[0, 0.01, 0]} color="#6e4a32" cast={false} receive />
+      <Box size={[0.4, 0.05, 0.08]} position={[0, 0.03, 0]} color="#c9b27c" cast={false} />
+      <Box size={[0.08, 0.05, 0.3]} position={[-0.06, 0.03, 0]} color="#c9b27c" cast={false} />
+    </group>
+  );
+});
+
+// ---- Biome lookups for the newer biomes ------------------------------------------------
+
+/** Obstacles for the biomes added after the first six. */
+export function extraObstacle(biome: BiomeId, height: number, variant: number): React.ReactNode | null {
+  switch (biome) {
+    case "desert":
+      return height === 1 ? <SandstoneRocks /> : height === 2 ? <BarrelCactus /> : <Saguaro />;
+    case "beach":
+      return height === 1 ? <Sandcastle /> : height === 2 ? <Umbrella variant={variant} /> : <Palm />;
+    case "jungle":
+      return height === 1 ? <Fern /> : height === 2 ? <FlowerBush /> : <JungleTree />;
+    case "volcano":
+      return height === 1 ? <LavaRock /> : height === 2 ? <ObsidianSpikes /> : <MiniVolcano />;
+    case "spooky":
+      return height === 1 ? <Pumpkin /> : height === 2 ? <Gravestone /> : <DeadTree />;
+    default:
+      return null;
+  }
+}
+
+export function extraVehicle(biome: BiomeId, big: boolean, props: VehicleProps): React.ReactNode | null {
+  switch (biome) {
+    case "desert":
+      return big ? <CamelCaravan {...props} /> : <DuneBuggy {...props} />;
+    case "beach":
+      return big ? <IceCreamTruck {...props} /> : <Crab {...props} />;
+    case "jungle":
+      return big ? <Crocodile {...props} /> : <Tiger {...props} />;
+    case "volcano":
+      return big ? <DumpTruck {...props} /> : <LavaRover {...props} />;
+    case "spooky":
+      return big ? <Hearse {...props} /> : <Ghost {...props} />;
+    default:
+      return null;
+  }
+}
+
+export const ExtraFloater = { beach: PoolFloat, volcano: BasaltSlab, spooky: Coffin } as const;

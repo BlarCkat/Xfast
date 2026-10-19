@@ -5,7 +5,7 @@ import { mulberry32 } from "@/game/lanes";
 // Small procedural greyscale textures, painted once and multiplied over each lane's ground colour.
 // One texture tile covers one world unit, repeated along the lane.
 
-export type GroundTexture = "grass" | "tiles" | "snow" | "road" | "water" | "gravel";
+export type GroundTexture = "grass" | "tiles" | "snow" | "road" | "water" | "gravel" | "sand" | "ash";
 
 const SIZE = 32;
 const cache = new Map<GroundTexture, CanvasTexture>();
@@ -48,6 +48,16 @@ function paint(kind: GroundTexture, ctx: CanvasRenderingContext2D) {
       // Lighter ripple streaks running along the river.
       dots(10, 255, 255, 4, 1);
       dots(14, 226, 236, 3, 1);
+      break;
+    case "sand":
+      // Wind ripples and a few grains catching the light.
+      dots(16, 230, 238, 3, 1);
+      dots(30, 255, 255, 1, 1);
+      break;
+    case "ash":
+      // Cooled cinders with a dusting of pale ash.
+      dots(60, 196, 226, 1, 1);
+      dots(8, 180, 200, 2, 2);
       break;
     case "gravel":
       dots(70, 205, 240, 1, 1);

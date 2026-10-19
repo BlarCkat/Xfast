@@ -1,7 +1,18 @@
 // The world cycles through themed biomes as the player hops forward. Biomes only
 // change how lanes look; the mechanics of each lane type stay the same.
 
-export type BiomeId = "meadow" | "farm" | "safari" | "savannah" | "city" | "northpole";
+export type BiomeId =
+  | "meadow"
+  | "farm"
+  | "safari"
+  | "savannah"
+  | "desert"
+  | "beach"
+  | "jungle"
+  | "city"
+  | "spooky"
+  | "volcano"
+  | "northpole";
 
 export interface Biome {
   id: BiomeId;
@@ -67,6 +78,42 @@ export const BIOMES: Record<BiomeId, Biome> = {
     truckColors: ["#9da2a8"],
     trainColors: ["#b5532f", "#e09a3c", "#f0d27a", "#7a4a2a"],
   },
+  desert: {
+    id: "desert",
+    label: "Desert",
+    grass: ["#ecd08f", "#e4c682"],
+    road: "#b9925e",
+    marking: "#e8d2a6",
+    water: "#4fb6c9",
+    railBed: "#a98a62",
+    carColors: ["#e94f37", "#3f88c5", "#f6c90e", "#44bba4"],
+    truckColors: ["#c8a06a"],
+    trainColors: ["#b5532f", "#d9a45b", "#8a5a3a", "#e6c58f"],
+  },
+  beach: {
+    id: "beach",
+    label: "Beach",
+    grass: ["#f6e2a8", "#efd99a"],
+    road: "#c8a27a",
+    marking: "#e8cfa9",
+    water: "#2fb3d6",
+    railBed: "#b59c7c",
+    carColors: ["#e5533d", "#f07a3a"],
+    truckColors: ["#ffffff", "#ffd1dc", "#bfe9ff"],
+    trainColors: ["#ff6f61", "#ffd166", "#06d6a0", "#118ab2"],
+  },
+  jungle: {
+    id: "jungle",
+    label: "Jungle",
+    grass: ["#5fae3f", "#55a238"],
+    road: "#7a5a3c",
+    marking: "#9c7b55",
+    water: "#3f9a8a",
+    railBed: "#6f5a44",
+    carColors: ["#f29c38", "#e8892c"],
+    truckColors: ["#4f7a3a"],
+    trainColors: ["#3d6b35", "#8a6a3e", "#c9842f", "#5d7f3a"],
+  },
   city: {
     id: "city",
     label: "City",
@@ -78,6 +125,30 @@ export const BIOMES: Record<BiomeId, Biome> = {
     carColors: ["#f6c90e", "#f6c90e", "#e94f37", "#3f88c5", "#ffffff", "#2b2f36"],
     truckColors: ["#d93a2b", "#3f88c5", "#44bba4"],
     trainColors: ["#b9c0c8", "#9aa3ad", "#c9d0d8", "#aab2bb"],
+  },
+  spooky: {
+    id: "spooky",
+    label: "Spooky",
+    grass: ["#4f6a3f", "#48613a"],
+    road: "#3b3640",
+    marking: "#a07cc5",
+    water: "#3c5a6b",
+    railBed: "#4d4350",
+    carColors: ["#e8eef2", "#d6e0e6"],
+    truckColors: ["#1f1c24"],
+    trainColors: ["#3b2f45", "#5a4a6b", "#ff8c1a", "#2b2530"],
+  },
+  volcano: {
+    id: "volcano",
+    label: "Volcano",
+    grass: ["#5a4e4a", "#524643"],
+    road: "#3a3433",
+    marking: "#ff7a2f",
+    water: "#ff6a1a",
+    railBed: "#4a403c",
+    carColors: ["#5b5f66", "#7a2e1f", "#8a8f96"],
+    truckColors: ["#f2b134", "#d98c1f"],
+    trainColors: ["#2b2626", "#4a403c", "#7a2e1f", "#3a3433"],
   },
   northpole: {
     id: "northpole",
@@ -94,7 +165,19 @@ export const BIOMES: Record<BiomeId, Biome> = {
 };
 
 /** The order biomes appear in; after the last one the cycle starts over. */
-export const BIOME_ORDER: BiomeId[] = ["meadow", "farm", "safari", "savannah", "city", "northpole"];
+export const BIOME_ORDER: BiomeId[] = [
+  "meadow",
+  "farm",
+  "safari",
+  "savannah",
+  "desert",
+  "beach",
+  "jungle",
+  "city",
+  "spooky",
+  "volcano",
+  "northpole",
+];
 /** Rows each biome lasts before the next one takes over. */
 export const BIOME_LENGTH = 50;
 

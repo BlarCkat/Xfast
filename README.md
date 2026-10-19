@@ -49,7 +49,7 @@ Lanes stay at their starting density until score 500. From there roads gradually
 
 ## Biomes
 
-Every 50 rows the world changes theme, then the cycle repeats after the sixth. A new biome always starts on a strip of grass, and its name pops up as you enter it. Biomes change the look only; every lane plays the same.
+Every 50 rows the world changes theme, then the cycle repeats after the eleventh. A new biome always starts on a strip of grass, and its name pops up as you enter it. Biomes change the look only; every lane plays the same.
 
 | Biome | Obstacles | Road traffic | River |
 | --- | --- | --- | --- |
@@ -57,7 +57,12 @@ Every 50 rows the world changes theme, then the cycle repeats after the sixth. A
 | Farm | Hay bales, corn, apple trees | Tractors and hay wagons | Logs |
 | Safari | Bushes, boulders, baobabs | Safari jeeps and rhinos | Logs |
 | Savannah | Dry grass, termite mounds, acacias | Zebras and elephants | Logs |
+| Desert | Sandstone rocks, barrel cacti, saguaros | Dune buggies and camel caravans | Logs |
+| Beach | Sandcastles, umbrellas, palms | Crabs and ice cream trucks | Pool floats |
+| Jungle | Ferns, flowering bushes, jungle trees | Tigers and crocodiles | Logs |
 | City | Hydrants, planters, buildings | Taxis, cars and buses | Logs |
+| Spooky | Pumpkins, gravestones, dead trees | Ghosts and hearses | Coffins |
+| Volcano | Lava rocks, obsidian spikes, mini volcanoes | Lava rovers and dump trucks | Basalt slabs on glowing lava |
 | North Pole | Snowmen, presents, snowy pines | Snowmobiles and Santa's sleigh | Ice floes |
 
 ## Rendering

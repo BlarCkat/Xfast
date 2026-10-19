@@ -3,6 +3,7 @@
 import { memo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Group, Mesh, MeshBasicMaterial } from "three";
+import { Color } from "three";
 import { COLS, FORESIGHT_STEPS, LANE_WIDTH, TRAIN_SPEED, WRAP } from "@/game/config";
 import type { Engine } from "@/game/engine";
 import type { Lane } from "@/game/lanes";
@@ -17,16 +18,23 @@ function Ground({
   texture,
   top = 0,
   depth = 0.6,
+  glow = false,
 }: {
   color: string;
   texture: GroundTexture;
   top?: number;
   depth?: number;
+  /** Self-lit and bright enough to bloom, for lava. */
+  glow?: boolean;
 }) {
   return (
     <mesh position={[0, top - depth / 2, 0]} receiveShadow>
       <boxGeometry args={[LANE_WIDTH, depth, 1]} />
-      <meshLambertMaterial color={color} map={groundTexture(texture)} />
+      {glow ? (
+        <meshBasicMaterial color={new Color(color).multiplyScalar(2.2)} map={groundTexture(texture)} toneMapped={false} />
+      ) : (
+        <meshLambertMaterial color={color} map={groundTexture(texture)} />
+      )}
     </mesh>
   );
 }
@@ -36,7 +44,12 @@ const GRASS_TEXTURE: Record<BiomeId, GroundTexture> = {
   farm: "grass",
   safari: "grass",
   savannah: "grass",
+  desert: "sand",
+  beach: "sand",
+  jungle: "grass",
   city: "tiles",
+  spooky: "grass",
+  volcano: "ash",
   northpole: "snow",
 };
 
@@ -118,7 +131,7 @@ function RiverLane({ lane }: { lane: Lane }) {
   });
   return (
     <>
-      <Ground color={BIOMES[lane.biome].water} texture="water" top={-0.28} depth={0.4} />
+      <Ground color={BIOMES[lane.biome].water} texture="water" top={-0.28} depth={0.4} glow={lane.biome === "volcano"} />
       <group ref={bob}>
         {lane.movers.map((m, i) => (
           <group key={i} ref={(g) => void (refs.current[i] = g)}>
