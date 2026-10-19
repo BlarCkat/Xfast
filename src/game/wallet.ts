@@ -1,7 +1,7 @@
-import { POWERUP_DURATION } from "./config";
+import { POWERUPS, noEffects, type PowerUp } from "./powerups";
 
 export type CharacterId = "chicken" | "duck" | "penguin" | "frog" | "robot";
-export type StoreItemId = keyof typeof POWERUP_DURATION | "life";
+export type StoreItemId = PowerUp | "life";
 
 export interface Character {
   id: CharacterId;
@@ -26,9 +26,12 @@ export interface StoreItem {
 
 export const STORE_ITEMS: StoreItem[] = [
   { id: "life", name: "Extra life", price: 60, description: "Start your next run with one more life." },
-  { id: "foresight", name: "Foresight", price: 30, description: "See traffic a moment ahead for 5s." },
-  { id: "slowmo", name: "Slowmo", price: 30, description: "Slow the world for 5s while you hop at full speed." },
-  { id: "rock", name: "Rock", price: 40, description: "Wreck any car that hits you for 6s." },
+  ...POWERUPS.map((p) => ({
+    id: p.key,
+    name: p.label.charAt(0) + p.label.slice(1).toLowerCase(),
+    price: p.price,
+    description: p.description,
+  })),
 ];
 
 export interface WalletState {
@@ -44,7 +47,7 @@ const fresh = (): WalletState => ({
   coins: 0,
   owned: ["chicken"],
   selected: "chicken",
-  inventory: { life: 0, foresight: 0, slowmo: 0, rock: 0 },
+  inventory: { life: 0, ...noEffects() },
 });
 
 function load(): WalletState {

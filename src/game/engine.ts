@@ -2,6 +2,7 @@ import {
   COLS,
   HOP_DURATION,
   IDLE_LIMIT,
+  MAGNET_RADIUS,
   MAX_ROWS_BEHIND_CAMERA,
   POWERUP_DURATION,
   RESPAWN_DELAY,
@@ -15,20 +16,20 @@ import {
   WRAP,
 } from "./config";
 import { Lane, LaneGenerator, Mover, PickupKind, trainLength } from "./lanes";
+import { POWERUPS, noEffects, type Effects, type PowerUp } from "./powerups";
 import { type CharacterId, wallet } from "./wallet";
+
+export type { Effects, PowerUp };
 
 export type Direction = "up" | "down" | "left" | "right";
 export type Status = "ready" | "playing" | "dead";
 export type DeathKind = "car" | "train" | "water" | "eagle";
-export type PowerUp = keyof typeof POWERUP_DURATION;
-export type Effects = Record<PowerUp, number>;
-
-const PICKUP_LABEL: Record<PickupKind, string> = {
+const PICKUP_LABEL = {
   life: "+1 LIFE",
-  foresight: "FORESIGHT",
-  slowmo: "SLOWMO",
-  rock: "ROCK",
-};
+  ...Object.fromEntries(POWERUPS.map((p) => [p.key, p.label])),
+} as Record<PickupKind, string>;
+
+const SUPER_HOP_TIME = 1.6;
 
 const FACING: Record<Direction, number> = {
   up: 0,
@@ -47,7 +48,16 @@ export interface PlayerState {
   /** Hop height above the ground. */
   y: number;
   facing: number;
-  hop: null | { fromX: number; toX: number; fromZ: number; toZ: number; t: number; drift: number };
+  hop: null | {
+    fromX: number;
+    toX: number;
+    fromZ: number;
+    toZ: number;
+    t: number;
+    drift: number;
+    /** Duration multiplier; super hops take longer and fly higher. */
+    span: number;
+  };
   queued: Direction | null;
   ride: Mover | null;
   rideOffset: number;
@@ -99,7 +109,7 @@ export class Engine {
   laneVersion = 0;
   eagle: null | { t: number; startZ: number } = null;
   /** Exact seconds left on each power-up. */
-  effects: Effects = { foresight: 0, slowmo: 0, rock: 0 };
+  effects: Effects = noEffects();
   private toastId = 0;
 
   player: PlayerState = {
@@ -131,7 +141,7 @@ export class Engine {
       best: readBest(),
       lives: START_LIVES,
       coins: 0,
-      effects: { foresight: 0, slowmo: 0, rock: 0 },
+      effects: noEffects(),
       toast: null,
     };
     this.ensureLanes();
@@ -179,17 +189,26 @@ export class Engine {
 
     const lateral = dir === "left" || dir === "right";
     const riding = p.ride !== null && lateral;
-    const toRow = p.row + (dir === "up" ? 1 : dir === "down" ? -1 : 0);
+    let toRow = p.row + (dir === "up" ? 1 : dir === "down" ? -1 : 0);
     let toX = p.x + (dir === "left" ? -1 : dir === "right" ? 1 : 0);
     // Sideways hops along a log stay relative to it; everything else lands on a whole column.
     if (!riding) toX = Math.round(toX);
     const drift = riding ? this.lanes.get(p.row)!.speed : 0;
-    const toLane = this.lanes.get(toRow);
+    const open = (row: number) => {
+      const lane = this.lanes.get(row);
+      return !!lane && !(lane.type === "grass" && lane.blocked.has(Math.round(toX)));
+    };
 
-    if (!toLane || Math.abs(toX) > COLS + 0.01) return;
-    if (toLane.type === "grass" && toLane.blocked.has(Math.round(toX))) return;
+    if (Math.abs(toX) > COLS + 0.01) return;
+    // Super hop clears a whole extra row when the landing spot is open.
+    let span = 1;
+    if (dir === "up" && this.effects.superhop > 0 && open(toRow + 1)) {
+      toRow++;
+      span = SUPER_HOP_TIME;
+    }
+    if (!open(toRow)) return;
 
-    p.hop = { fromX: p.x, toX, fromZ: p.z, toZ: toRow, t: 0, drift };
+    p.hop = { fromX: p.x, toX, fromZ: p.z, toZ: toRow, t: 0, drift, span };
     p.row = toRow;
     p.ride = null;
 
@@ -208,32 +227,43 @@ export class Engine {
     p.y = 0;
 
     const lane = this.lanes.get(p.row);
-    if (lane?.type === "river") {
-      const log = lane.movers.find((m) => Math.abs(p.x - m.x) <= m.length / 2 + 0.2);
-      if (!log) {
+    if (lane?.type === "river" && !this.boardLog(lane)) {
+      // Wings let the chicken hover over open water.
+      if (this.effects.wings <= 0) {
         this.die("water");
         return;
       }
-      // Snap to the nearest slot on the log.
-      const half = (log.length - 1) / 2;
-      const slot = Math.max(-half, Math.min(half, Math.round(p.x - log.x + half) - half));
-      p.ride = log;
-      p.rideOffset = slot;
-      p.x = log.x + slot;
     }
 
     if (lane?.pickup && Math.round(p.x) === lane.pickup.x) this.collect(lane);
-    if (lane && lane.coin !== null && Math.round(p.x) === lane.coin) {
-      lane.coin = null;
-      wallet.addCoins(1);
-      this.setUi({ coins: this.ui.coins + 1 });
-    }
+    if (lane && lane.coin !== null && Math.round(p.x) === lane.coin) this.collectCoin(lane);
 
     if (p.queued) {
       const next = p.queued;
       p.queued = null;
       this.startHop(next);
     }
+  }
+
+  /** Step onto the log under the chicken, if there is one. */
+  private boardLog(lane: Lane) {
+    const p = this.player;
+    const log = lane.movers.find((m) => Math.abs(p.x - m.x) <= m.length / 2 + 0.2);
+    if (!log) return false;
+    // Snap to the nearest slot on the log.
+    const half = (log.length - 1) / 2;
+    const slot = Math.max(-half, Math.min(half, Math.round(p.x - log.x + half) - half));
+    p.ride = log;
+    p.rideOffset = slot;
+    p.x = log.x + slot;
+    return true;
+  }
+
+  private collectCoin(lane: Lane) {
+    lane.coin = null;
+    const n = this.effects.double > 0 ? 2 : 1;
+    wallet.addCoins(n);
+    this.setUi({ coins: this.ui.coins + n });
   }
 
   private collect(lane: Lane) {
@@ -275,7 +305,7 @@ export class Engine {
     p.ride = null;
     if (kind !== "eagle") p.hop = null;
     // Power-ups end with the life they were collected on.
-    this.effects = { foresight: 0, slowmo: 0, rock: 0 };
+    this.effects = noEffects();
     this.syncEffects();
     if (revive) {
       this.setUi({ lives: this.ui.lives - 1, toast: { text: "-1 LIFE", id: ++this.toastId } });
@@ -336,7 +366,9 @@ export class Engine {
     const playing = this.ui.status === "playing";
     const p = this.player;
 
-    for (const lane of this.lanes.values()) this.updateLane(lane, worldDt);
+    // Freeze stops traffic and trains outright.
+    const trafficDt = this.effects.freeze > 0 ? 0 : worldDt;
+    for (const lane of this.lanes.values()) this.updateLane(lane, trafficDt);
 
     for (const k of Object.keys(this.effects) as PowerUp[]) this.effects[k] = Math.max(0, this.effects[k] - dt);
     p.shield = Math.max(0, p.shield - dt);
@@ -345,13 +377,13 @@ export class Engine {
     // Hop animation.
     if (p.hop) {
       const hop = p.hop;
-      hop.t += dt / HOP_DURATION;
-      hop.fromX += hop.drift * worldDt;
-      hop.toX += hop.drift * worldDt;
+      hop.t += dt / (HOP_DURATION * hop.span);
+      hop.fromX += hop.drift * trafficDt;
+      hop.toX += hop.drift * trafficDt;
       const t = Math.min(1, hop.t);
       p.x = hop.fromX + (hop.toX - hop.fromX) * t;
       p.z = hop.fromZ + (hop.toZ - hop.fromZ) * t;
-      p.y = Math.sin(Math.PI * t);
+      p.y = Math.sin(Math.PI * t) * (hop.span > 1 ? 2 : 1);
       if (hop.t >= 1 && !p.death) this.land();
     }
 
@@ -360,10 +392,27 @@ export class Engine {
       if (Math.abs(p.x) > COLS + 0.6) this.die("water");
     }
 
+    // Hovering over water on wings: grab a log that drifts underneath, or fall in once the wings run out.
+    const here = this.lanes.get(p.row);
+    if (here?.type === "river" && !p.ride && !p.hop && !p.death && !this.boardLog(here) && this.effects.wings <= 0) {
+      this.die("water");
+    }
+
+    if (this.effects.magnet > 0 && !p.death) {
+      for (let r = p.row - MAGNET_RADIUS; r <= p.row + MAGNET_RADIUS; r++) {
+        const lane = this.lanes.get(r);
+        if (lane && lane.coin !== null && Math.abs(lane.coin - p.x) <= MAGNET_RADIUS + 0.5) this.collectCoin(lane);
+      }
+    }
+
     if (playing && !p.death) {
       this.checkCollisions();
       this.idle += worldDt;
-      if (this.idle > IDLE_LIMIT || p.row < this.focus - MAX_ROWS_BEHIND_CAMERA) {
+      if (this.effects.scarecrow > 0) {
+        // No eagle: forget idling and hold the camera back so it can't leave the chicken behind.
+        this.idle = 0;
+        this.focus = Math.min(this.focus, p.row + MAX_ROWS_BEHIND_CAMERA - 0.5);
+      } else if (this.idle > IDLE_LIMIT || p.row < this.focus - MAX_ROWS_BEHIND_CAMERA) {
         this.die("eagle");
         this.eagle = { t: 0, startZ: p.z + 14 };
       }
@@ -431,17 +480,27 @@ export class Engine {
         if (m.wrecked !== null || Math.abs(p.x - m.x) >= m.length / 2 + 0.3) continue;
         // A rock chicken wrecks whatever drives into it.
         if (this.effects.rock > 0) m.wrecked = 0;
-        else if (p.shield <= 0) {
+        else if (p.shield <= 0 && !this.popShield()) {
           this.die("car");
           return;
         }
       }
     } else if (lane.type === "rail" && lane.train.active && p.shield <= 0) {
       const len = trainLength(lane);
-      if (Math.abs(p.x - lane.train.x) < len / 2 + 0.3) {
+      if (Math.abs(p.x - lane.train.x) < len / 2 + 0.3 && !this.popShield()) {
         this.die("train", Math.sign(lane.speed));
       }
     }
+  }
+
+  /** The shield bubble soaks up one hit, then gives a moment to get clear. */
+  private popShield() {
+    if (this.effects.shield <= 0) return false;
+    this.effects.shield = 0;
+    this.player.shield = 1.5;
+    this.syncEffects();
+    this.setUi({ toast: { text: "SHIELD POPPED", id: ++this.toastId } });
+    return true;
   }
 
   private updateDeath(dt: number) {

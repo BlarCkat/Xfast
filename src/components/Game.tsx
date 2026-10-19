@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas } from "@react-three/fiber";
-import { Engine, type Direction, type PowerUp } from "@/game/engine";
+import { Engine, type Direction } from "@/game/engine";
+import { POWERUPS, hotkeyFor } from "@/game/powerups";
 import { wallet } from "@/game/wallet";
 import { Scene } from "./Scene";
 import Store, { useWallet } from "./Store";
@@ -19,12 +20,6 @@ const KEYS: Record<string, Direction> = {
 };
 
 const SWIPE_MIN = 24;
-
-const POWERUPS: { key: PowerUp; label: string; color: string; hotkey: string }[] = [
-  { key: "foresight", label: "FORESIGHT", color: "#8e5cf7", hotkey: "Digit1" },
-  { key: "slowmo", label: "SLOWMO", color: "#2f6fb5", hotkey: "Digit2" },
-  { key: "rock", label: "ROCK", color: "#6f7177", hotkey: "Digit3" },
-];
 
 const stop = (e: React.PointerEvent) => e.stopPropagation();
 // Ignore input for a moment after dying so a held key doesn't skip the score screen.
@@ -59,7 +54,7 @@ export default function Game() {
         if (e.code === "Escape") setStoreOpen(false);
         return;
       }
-      const power = POWERUPS.find((p) => p.hotkey === e.code);
+      const power = POWERUPS.find((_, i) => hotkeyFor(i) === e.code);
       if (power) {
         engine.activate(power.key);
         return;
@@ -111,6 +106,7 @@ export default function Game() {
 
       {ui.effects.slowmo > 0 && <div className="tint tint-slowmo" />}
       {ui.effects.foresight > 0 && <div className="tint tint-foresight" />}
+      {ui.effects.freeze > 0 && <div className="tint tint-freeze" />}
 
       <div className="hud">
         <div className="score">{ui.score}</div>
@@ -136,7 +132,7 @@ export default function Game() {
 
       {ui.status === "playing" && (
         <div className="inventory">
-          {POWERUPS.map(({ key, label, color, hotkey }) =>
+          {POWERUPS.map(({ key, label, color }, i) =>
             w.inventory[key] > 0 ? (
               <button
                 key={key}
@@ -149,7 +145,7 @@ export default function Game() {
                 }}
               >
                 {label} ×{w.inventory[key]}
-                <small>key {hotkey.slice(-1)}</small>
+                <small>key {hotkeyFor(i).slice(-1)}</small>
               </button>
             ) : null,
           )}
@@ -167,7 +163,7 @@ export default function Game() {
           <h1 className="title">XFAST</h1>
           <p className="hint">Tap or press ↑ to hop</p>
           <p className="sub">Swipe or use arrows / WASD to move</p>
-          <p className="sub">Grab coins, ♥ extra lives and foresight, slowmo and rock power-ups</p>
+          <p className="sub">Grab coins, ♥ extra lives and power-ups</p>
           <button
             className="play store-button"
             onPointerDown={stop}

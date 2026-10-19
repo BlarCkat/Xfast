@@ -1,8 +1,9 @@
 import { COLS, TRAIN_CAR_LENGTH, WRAP } from "./config";
+import { POWERUP_KEYS, type PowerUp } from "./powerups";
 
 export type LaneType = "grass" | "road" | "river" | "rail";
 export type MoverKind = "car" | "truck" | "log";
-export type PickupKind = "life" | "foresight" | "slowmo" | "rock";
+export type PickupKind = "life" | PowerUp;
 
 export interface Pickup {
   x: number;
@@ -81,7 +82,7 @@ function emptyLane(row: number, type: LaneType): Lane {
 const PICKUP_CHANCE = 1 / 7;
 // Of those collectibles, this share are extra lives; the rest are power-ups.
 export const LIFE_CHANCE = 0.2;
-const POWERUPS: PickupKind[] = ["foresight", "slowmo", "rock"];
+const POWERUPS: PickupKind[] = POWERUP_KEYS;
 const COIN_CHANCE = 0.35;
 
 /**

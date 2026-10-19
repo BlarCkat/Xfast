@@ -25,7 +25,19 @@ export const TRAIN_WARNING = 1.3;
 export const START_LIVES = 1;
 export const RESPAWN_DELAY = 1.2;
 export const RESPAWN_SHIELD = 2;
-export const POWERUP_DURATION = { foresight: 5, slowmo: 5, rock: 6 } as const;
+export const POWERUP_DURATION = {
+  foresight: 5,
+  slowmo: 5,
+  rock: 6,
+  magnet: 8,
+  double: 10,
+  superhop: 8,
+  shield: 20,
+  freeze: 4,
+  wings: 6,
+  scarecrow: 10,
+} as const;
+export const MAGNET_RADIUS = 2;
 /** World speed while slowmo is active; the chicken keeps hopping at full speed. */
 export const SLOWMO_SCALE = 0.35;
 /** How far ahead (seconds) the foresight ghosts show traffic. */

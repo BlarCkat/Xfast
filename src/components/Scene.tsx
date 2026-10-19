@@ -6,7 +6,7 @@ import type { DirectionalLight, Group, OrthographicCamera } from "three";
 import { COLS, HOP_HEIGHT, ROWS_AHEAD, ROWS_BEHIND } from "@/game/config";
 import type { Engine } from "@/game/engine";
 import { LaneView } from "./Lanes";
-import { CharacterModel, Eagle, RockShell } from "./models";
+import { CharacterModel, Eagle, RockShell, ShieldBubble, Wings } from "./models";
 
 // Camera sits behind, above and slightly to the right of the action, like the original.
 const CAMERA_OFFSET: [number, number, number] = [3.2, 11, 7.5];
@@ -17,6 +17,8 @@ function Player({ engine }: { engine: Engine }) {
   const body = useRef<Group>(null);
   const chicken = useRef<Group>(null);
   const rock = useRef<Group>(null);
+  const bubble = useRef<Group>(null);
+  const wings = useRef<Group>(null);
   useFrame((_, dt) => {
     const p = engine.player;
     const g = root.current;
@@ -57,6 +59,14 @@ function Player({ engine }: { engine: Engine }) {
     }
 
     const isRock = engine.effects.rock > 0 && !death;
+    if (bubble.current) bubble.current.visible = engine.effects.shield > 0 && !death;
+    const flying = engine.effects.wings > 0 && !death;
+    if (wings.current) {
+      wings.current.visible = flying;
+      wings.current.rotation.z = Math.sin(engine.time * 18) * 0.25;
+    }
+    // Hover a little above the water while flying.
+    if (flying && !p.hop && !p.ride) y = 0.35 + Math.sin(engine.time * 6) * 0.05;
     if (chicken.current) chicken.current.visible = !isRock;
     if (rock.current) rock.current.visible = isRock;
     // Blink while the respawn shield is up; also flicker the last second of rock.
@@ -85,6 +95,12 @@ function Player({ engine }: { engine: Engine }) {
         <group ref={rock} visible={false}>
           <RockShell />
         </group>
+        <group ref={wings} position={[0, 0.55, 0.1]} visible={false}>
+          <Wings />
+        </group>
+      </group>
+      <group ref={bubble} visible={false}>
+        <ShieldBubble />
       </group>
     </group>
   );

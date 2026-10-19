@@ -116,8 +116,8 @@ export default function Store({ onClose }: { onClose: () => void }) {
               </div>
             ))}
             <p className="store-note">
-              Bought power-ups show as buttons during a run (keys 1, 2, 3). Bought lives are added when your next run
-              starts.
+              Bought power-ups show as buttons during a run (keys 1 to 0, in this order). Bought lives are added when
+              your next run starts.
             </p>
           </div>
         )}

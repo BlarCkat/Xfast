@@ -178,6 +178,74 @@ export function PickupModel({ kind }: { kind: PickupKind }) {
       </group>
     );
   }
+  if (kind === "magnet") {
+    return (
+      <group>
+        <Box size={[0.12, 0.34, 0.14]} position={[-0.16, 0.02, 0]} color="#d63c3c" />
+        <Box size={[0.12, 0.34, 0.14]} position={[0.16, 0.02, 0]} color="#d63c3c" />
+        <Box size={[0.44, 0.12, 0.14]} position={[0, -0.18, 0]} color="#d63c3c" />
+        <Box size={[0.12, 0.1, 0.15]} position={[-0.16, 0.22, 0]} color="#e0e0e0" />
+        <Box size={[0.12, 0.1, 0.15]} position={[0.16, 0.22, 0]} color="#e0e0e0" />
+      </group>
+    );
+  }
+  if (kind === "double") {
+    return (
+      <group>
+        <group position={[-0.1, 0.06, -0.06]}>
+          <Coin />
+        </group>
+        <group position={[0.1, -0.06, 0.06]}>
+          <Coin />
+        </group>
+      </group>
+    );
+  }
+  if (kind === "superhop") {
+    return (
+      <group>
+        <Box size={[0.14, 0.3, 0.14]} position={[0, -0.08, 0]} color="#2e9e4f" />
+        <Box size={[0.4, 0.1, 0.14]} position={[0, 0.1, 0]} color="#2e9e4f" />
+        <Box size={[0.24, 0.1, 0.14]} position={[0, 0.2, 0]} color="#2e9e4f" />
+        <Box size={[0.1, 0.1, 0.14]} position={[0, 0.3, 0]} color="#2e9e4f" />
+      </group>
+    );
+  }
+  if (kind === "shield") {
+    return (
+      <group>
+        <Box size={[0.4, 0.42, 0.12]} position={[0, 0.02, 0]} color="#1fa3b8" />
+        <Box size={[0.24, 0.12, 0.13]} position={[0, -0.24, 0]} color="#1fa3b8" />
+        <Box size={[0.08, 0.3, 0.14]} position={[0, 0.02, 0]} color="#e0f7fa" cast={false} />
+      </group>
+    );
+  }
+  if (kind === "freeze") {
+    return (
+      <group>
+        <Box size={[0.12, 0.5, 0.12]} position={[0, 0, 0]} color="#bfe9ff" />
+        <Box size={[0.5, 0.12, 0.12]} position={[0, 0, 0]} color="#bfe9ff" />
+        <group rotation={[0, 0, Math.PI / 4]}>
+          <Box size={[0.1, 0.42, 0.1]} position={[0, 0, 0]} color="#5bc0eb" />
+          <Box size={[0.42, 0.1, 0.1]} position={[0, 0, 0]} color="#5bc0eb" />
+        </group>
+      </group>
+    );
+  }
+  if (kind === "wings") {
+    return <Wings />;
+  }
+  if (kind === "scarecrow") {
+    return (
+      <group>
+        <Box size={[0.06, 0.5, 0.06]} position={[0, -0.04, 0]} color="#7a4b2a" />
+        <Box size={[0.44, 0.06, 0.06]} position={[0, 0.06, 0]} color="#7a4b2a" />
+        <Box size={[0.2, 0.18, 0.18]} position={[0, 0.24, 0]} color="#f2d18b" />
+        <Box size={[0.34, 0.04, 0.3]} position={[0, 0.34, 0]} color="#c8a04a" />
+        <Box size={[0.18, 0.1, 0.16]} position={[0, 0.4, 0]} color="#c8a04a" />
+      </group>
+    );
+  }
   if (kind === "slowmo") {
     return (
       <group>
@@ -307,5 +375,26 @@ export function Coin() {
       <Box size={[0.26, 0.26, 0.1]} position={[0, 0, 0]} color="#ffe27a" cast={false} />
       <Box size={[0.06, 0.16, 0.11]} position={[0, 0, 0]} color="#e0a800" cast={false} />
     </group>
+  );
+}
+
+export function Wings() {
+  return (
+    <group>
+      <Box size={[0.36, 0.06, 0.26]} position={[-0.2, 0.06, 0]} color="#ffffff" />
+      <Box size={[0.24, 0.06, 0.2]} position={[-0.38, 0.12, 0.02]} color="#eef2f6" />
+      <Box size={[0.36, 0.06, 0.26]} position={[0.2, 0.06, 0]} color="#ffffff" />
+      <Box size={[0.24, 0.06, 0.2]} position={[0.38, 0.12, 0.02]} color="#eef2f6" />
+    </group>
+  );
+}
+
+/** See-through bubble around the player while the shield power-up is up. */
+export function ShieldBubble() {
+  return (
+    <mesh position={[0, 0.5, 0]}>
+      <sphereGeometry args={[0.62, 12, 10]} />
+      <meshLambertMaterial color="#7ee8f7" transparent opacity={0.35} depthWrite={false} flatShading />
+    </mesh>
   );
 }

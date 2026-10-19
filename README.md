@@ -28,6 +28,13 @@ Open http://localhost:3000.
 - **Foresight (5s):** ghost outlines show where cars, logs and trains will be over the next moment.
 - **Slowmo (5s):** the world slows to about a third of its speed while you keep hopping at full speed.
 - **Rock (6s):** you turn to stone and any car or truck that hits you is wrecked. Trains and water still get you.
+- **Magnet (8s):** coins within 2 tiles fly to you.
+- **2x coins (10s):** every coin counts twice.
+- **Super hop (8s):** forward hops jump 2 rows when the landing spot is open.
+- **Shield (20s or one hit):** a bubble absorbs one hit from a car or train.
+- **Freeze (4s):** all traffic and trains stop where they are (a parked car still blocks you).
+- **Wings (6s):** hover over water; you drop in if the wings run out while over open water.
+- **Scarecrow (10s):** the eagle stays away, so standing still or falling behind is safe.
 
 ## Code layout
 
@@ -38,4 +45,4 @@ Open http://localhost:3000.
 
 - Coins sit on grass and road lanes. They are saved in your browser as soon as you pick them up, even if you die.
 - Open the **Store** from the start or game over screen to unlock characters (Duck 50, Frog 100, Penguin 150, Robot 250) and buy power-ups (Foresight 30, Slowmo 30, Rock 40, Extra life 60).
-- Bought power-ups appear as buttons in the bottom right during a run, or use keys 1, 2 and 3. Bought extra lives are added when your next run starts.
+- Bought power-ups appear as buttons in the bottom right during a run, or use keys 1 to 0 in store order. Bought extra lives are added when your next run starts.
