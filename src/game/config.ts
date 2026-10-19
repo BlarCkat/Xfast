@@ -36,7 +36,19 @@ export const POWERUP_DURATION = {
   freeze: 4,
   wings: 6,
   scarecrow: 10,
+  ghost: 6,
+  tiny: 8,
+  lumberjack: 8,
+  // 0 = instant: the effect happens once when used.
+  warp: 0,
+  coinrain: 0,
 } as const;
+/** Every this many hops, cars and trains get faster. */
+export const STEPS_PER_SPEEDUP = 1000;
+export const SPEEDUP_STEP = 0.2;
+export const MAX_SPEED_SCALE = 3;
+export const WARP_ROWS = 6;
+export const COIN_RAIN_ROWS = 12;
 export const MAGNET_RADIUS = 2;
 /** World speed while slowmo is active; the chicken keeps hopping at full speed. */
 export const SLOWMO_SCALE = 0.35;

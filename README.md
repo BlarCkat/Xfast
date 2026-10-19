@@ -35,6 +35,15 @@ Open http://localhost:3000.
 - **Freeze (4s):** all traffic and trains stop where they are (a parked car still blocks you).
 - **Wings (6s):** hover over water; you drop in if the wings run out while over open water.
 - **Scarecrow (10s):** the eagle stays away, so standing still or falling behind is safe.
+- **Ghost (6s):** cars and trains pass straight through you.
+- **Tiny (8s):** you shrink, so traffic has to come closer to hit you.
+- **Lumberjack (8s):** hop into trees to chop them down.
+- **Warp (instant):** jump at least 6 rows ahead to open grass.
+- **Coin rain (instant):** coins drop on the next 12 lanes.
+
+## Getting faster
+
+Every 1,000 hops in a run, cars, trucks and trains speed up by 20% (up to 3x). The HUD shows the current speed once it rises.
 
 ## Code layout
 
@@ -45,4 +54,4 @@ Open http://localhost:3000.
 
 - Coins sit on grass and road lanes. They are saved in your browser as soon as you pick them up, even if you die.
 - Open the **Store** from the start or game over screen to unlock characters (Duck 50, Frog 100, Penguin 150, Robot 250) and buy power-ups (Foresight 30, Slowmo 30, Rock 40, Extra life 60).
-- Bought power-ups appear as buttons in the bottom right during a run, or use keys 1 to 0 in store order. Bought extra lives are added when your next run starts.
+- Bought power-ups appear as buttons in the bottom right during a run, or use keys 1 to 0 for the first ten power-ups in store order. Bought extra lives are added when your next run starts.

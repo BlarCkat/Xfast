@@ -24,11 +24,20 @@ function Ground({ color, top = 0, depth = 0.6 }: { color: string; top?: number; 
 }
 
 function GrassLane({ lane }: { lane: Lane }) {
+  const [trees] = useState(lane.trees);
+  const refs = useRef<(Group | null)[]>([]);
+  // Hide trees a lumberjack has chopped down.
+  useFrame(() => {
+    trees.forEach((t, i) => {
+      const g = refs.current[i];
+      if (g) g.visible = lane.trees.includes(t);
+    });
+  });
   return (
     <>
       <Ground color={GRASS[((lane.row % 2) + 2) % 2]} />
-      {lane.trees.map((t) => (
-        <group key={t.x} position={[t.x, 0, 0]}>
+      {trees.map((t, i) => (
+        <group key={t.x} ref={(g) => void (refs.current[i] = g)} position={[t.x, 0, 0]}>
           <Tree height={t.height} />
         </group>
       ))}
@@ -166,14 +175,15 @@ function ForesightGhosts({ lane, engine }: { lane: Lane; engine: Engine }) {
         if (isRail) {
           const t = lane.train;
           let x: number | null = null;
-          if (t.active) x = t.x + dir * TRAIN_SPEED * step;
-          else if (t.timer < step) x = -dir * (WRAP + len / 2) + dir * TRAIN_SPEED * (step - t.timer);
+          const speed = TRAIN_SPEED * engine.speedScale;
+          if (t.active) x = t.x + dir * speed * step;
+          else if (t.timer < step) x = -dir * (WRAP + len / 2) + dir * speed * (step - t.timer);
           mesh.visible = x !== null && Math.abs(x) < WRAP + len;
           if (x !== null) mesh.position.x = x;
         } else {
           const m = lane.movers[i];
           mesh.visible = m.wrecked === null;
-          mesh.position.x = wrap(m.x + lane.speed * step);
+          mesh.position.x = wrap(m.x + lane.speed * step * (lane.type === "road" ? engine.speedScale : 1));
         }
       }
     });
@@ -227,16 +237,16 @@ function PickupView({ lane }: { lane: Lane }) {
 
 function CoinView({ lane }: { lane: Lane }) {
   const ref = useRef<Group>(null);
-  const [x] = useState(lane.coin);
+  // Coins can appear later (coin rain), so read the lane every frame.
   useFrame(({ clock }) => {
     const g = ref.current;
     if (!g) return;
     g.visible = lane.coin !== null;
+    if (lane.coin !== null) g.position.x = lane.coin;
     g.rotation.y = clock.elapsedTime * 3 + lane.row;
   });
-  if (x === null) return null;
   return (
-    <group ref={ref} position={[x, 0.35, 0]}>
+    <group ref={ref} position={[0, 0.35, 0]} visible={false}>
       <Coin />
     </group>
   );
@@ -247,7 +257,7 @@ export const LaneView = memo(function LaneView({ lane, engine }: { lane: Lane; e
     <group position={[0, 0, -lane.row]}>
       {lane.type !== "grass" && <ForesightGhosts lane={lane} engine={engine} />}
       {lane.pickup && <PickupView lane={lane} />}
-      {lane.coin !== null && <CoinView lane={lane} />}
+      {(lane.type === "grass" || lane.type === "road") && <CoinView lane={lane} />}
       {lane.type === "grass" && <GrassLane lane={lane} />}
       {lane.type === "road" && <RoadLane lane={lane} />}
       {lane.type === "river" && <RiverLane lane={lane} />}

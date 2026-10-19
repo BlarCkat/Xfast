@@ -120,6 +120,7 @@ export default function Game() {
         </div>
         <div className="hud-stats">
           <span>TOP {ui.best}</span>
+          {engine.speedScale > 1 && <span className="hud-speed">SPEED ×{engine.speedScale.toFixed(1)}</span>}
           <span className="hud-coins">
             <Icon id="coin" size={14} /> {w.coins}
           </span>
@@ -155,7 +156,7 @@ export default function Game() {
               <button
                 key={key}
                 className="use-power"
-                aria-label={`Use ${label} (key ${hotkeyFor(i).slice(-1)})`}
+                aria-label={`Use ${label}${hotkeyFor(i) ? ` (key ${hotkeyFor(i)!.slice(-1)})` : ""}`}
                 onPointerDown={stop}
                 onPointerUp={(e) => {
                   e.stopPropagation();
@@ -166,7 +167,7 @@ export default function Game() {
                 <Hex tone={ui.effects[key] > 0 ? "teal" : "white"} size={54}>
                   <Icon id={key} size={22} />
                 </Hex>
-                <kbd>{hotkeyFor(i).slice(-1)}</kbd>
+                {hotkeyFor(i) && <kbd>{hotkeyFor(i)!.slice(-1)}</kbd>}
               </button>
             ) : null,
           )}

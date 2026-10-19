@@ -659,3 +659,7 @@ kbd {
     transition: none;
   }
 }
+
+.hud-speed {
+  color: #ff8a65;
+}

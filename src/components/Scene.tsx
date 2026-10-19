@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import type { DirectionalLight, Group, OrthographicCamera } from "three";
+import type { DirectionalLight, Group, Material, Mesh, OrthographicCamera } from "three";
 import { COLS, HOP_HEIGHT, ROWS_AHEAD, ROWS_BEHIND } from "@/game/config";
 import type { Engine } from "@/game/engine";
 import { LaneView } from "./Lanes";
@@ -18,6 +18,7 @@ function Player({ engine }: { engine: Engine }) {
   const chicken = useRef<Group>(null);
   const rock = useRef<Group>(null);
   const bubble = useRef<Group>(null);
+  const wasGhost = useRef(false);
   const wings = useRef<Group>(null);
   useFrame((_, dt) => {
     const p = engine.player;
@@ -80,6 +81,21 @@ function Player({ engine }: { engine: Engine }) {
     }
 
     g.position.set(x, y, z);
+    // Tiny shrinks the model; ghost fades it.
+    const small = engine.effects.tiny > 0 && !death ? 0.55 : 1;
+    sx *= small;
+    sy *= small;
+    sz *= small;
+    const ghost = engine.effects.ghost > 0 && !death;
+    if (ghost !== wasGhost.current) {
+      wasGhost.current = ghost;
+      b.traverse((o) => {
+        const m = (o as Mesh).material as Material | undefined;
+        if (!m) return;
+        m.transparent = ghost;
+        m.opacity = ghost ? 0.4 : 1;
+      });
+    }
     b.scale.set(sx, sy, sz);
     // Turn towards the facing direction along the shortest arc.
     let diff = p.facing - g.rotation.y;

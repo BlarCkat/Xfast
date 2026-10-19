@@ -27,6 +27,18 @@ const PATHS: Record<IconId, React.ReactNode> = {
   freeze: <path d="M11 1h2v4.3l2.6-2.6 1.4 1.4-4 4V11h2.9l4-4 1.4 1.4-2.6 2.6H23v2h-4.3l2.6 2.6-1.4 1.4-4-4H13v2.9l4 4-1.4 1.4-2.6-2.6V23h-2v-4.3l-2.6 2.6L7 19.9l4-4V13H8.1l-4 4-1.4-1.4L5.3 13H1v-2h4.3L2.7 8.4 4.1 7l4 4H11V8.1l-4-4 1.4-1.4L11 5.3Z" />,
   wings: <path d="M12 9c-2-4-6-6-11-6 0 7 3 12 9 13l2 3 2-3c6-1 9-6 9-13-5 0-9 2-11 6Z" />,
   scarecrow: <path d="M8 2h8l1 4h4v2H3V6h4Zm-1 8h10v3l-3 1v2h7v2h-7v5h-4v-5H3v-2h7v-2l-3-1Z" />,
+  ghost: <path d="M12 2a8 8 0 0 1 8 8v12l-2.7-2-2.6 2L12 20l-2.7 2-2.6-2L4 22V10a8 8 0 0 1 8-8Zm-3 7v3h2V9Zm4 0v3h2V9Z" />,
+  tiny: <path d="M3 3h6v2H6.4l3.3 3.3-1.4 1.4L5 6.4V9H3Zm18 0v6h-2V6.4l-3.3 3.3-1.4-1.4L17.6 5H15V3ZM3 21v-6h2v2.6l3.3-3.3 1.4 1.4L6.4 19H9v2Zm18 0h-6v-2h2.6l-3.3-3.3 1.4-1.4 3.3 3.3V15h2Z" />,
+  lumberjack: <path d="M13 2h5l1 3c2 .5 3 2.2 3 4.5-1.4-.9-2.9-1.3-4.5-1.1l-1.5.2V22h-3V8.6l-1.5-.2C9.9 8.2 8.4 8.6 7 9.5 7 7.2 8 5.5 10 5Z" />,
+  warp: <path d="M12 2a10 10 0 1 1-7.1 17.1l2.1-2.1A7 7 0 1 0 12 5V2Zm0 5a5 5 0 1 1-3.5 8.5l2.1-2.1A2 2 0 1 0 12 10V7ZM2 12h4l-2 3Zm0 0" />,
+  coinrain: (
+    <>
+      <circle cx="6" cy="6" r="3.5" />
+      <circle cx="17" cy="9" r="3.5" />
+      <circle cx="9" cy="17" r="3.5" />
+      <path d="M17 15v6M20 17v3M3 10v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </>
+  ),
   chicken: <path d="M10 2h4v2h-2v2h3v3h4l-2 3h2v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-4l3-2V6h3Zm1 6v2h2V8Z" />,
   duck: <path d="M9 3h5a4 4 0 0 1 4 4v1h4l-3 3h-1v1a7 7 0 0 1 3 5.5V18a4 4 0 0 1-4 4H7a5 5 0 0 1-5-5v-1l4 1a3 3 0 0 0 3-3v-3a4 4 0 0 1-3-4V7a4 4 0 0 1 3-4Zm2 3v2h2V6Z" />,
   frog: <path d="M5 4a3 3 0 0 1 6 0v1h2V4a3 3 0 0 1 6 0v2.5a8 8 0 0 1 4 6.5c0 5-5 8-11 8S1 18 1 13a8 8 0 0 1 4-6.5Zm2-1v2h2V3Zm8 0v2h2V3ZM6 14v2c3 2 9 2 12 0v-2c-3 2-9 2-12 0Z" />,

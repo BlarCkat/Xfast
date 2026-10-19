@@ -3,6 +3,11 @@ import {
   HOP_DURATION,
   IDLE_LIMIT,
   MAGNET_RADIUS,
+  MAX_SPEED_SCALE,
+  COIN_RAIN_ROWS,
+  SPEEDUP_STEP,
+  STEPS_PER_SPEEDUP,
+  WARP_ROWS,
   MAX_ROWS_BEHIND_CAMERA,
   POWERUP_DURATION,
   RESPAWN_DELAY,
@@ -16,7 +21,7 @@ import {
   WRAP,
 } from "./config";
 import { Lane, LaneGenerator, Mover, PickupKind, trainLength } from "./lanes";
-import { POWERUPS, noEffects, type Effects, type PowerUp } from "./powerups";
+import { POWERUPS, isInstant, noEffects, type Effects, type PowerUp } from "./powerups";
 import { type CharacterId, wallet } from "./wallet";
 
 export type { Effects, PowerUp };
@@ -72,6 +77,8 @@ export interface UiSnapshot {
   score: number;
   best: number;
   lives: number;
+  /** Hops taken this run; traffic speeds up every STEPS_PER_SPEEDUP. */
+  steps: number;
   /** Coins picked up this run (they are banked in the wallet straight away). */
   coins: number;
   /** Whole seconds left on each power-up (0 = inactive); only changes once a second. */
@@ -111,6 +118,8 @@ export class Engine {
   /** Exact seconds left on each power-up. */
   effects: Effects = noEffects();
   private toastId = 0;
+  /** Multiplier on car, truck and train speed, raised every STEPS_PER_SPEEDUP hops. */
+  speedScale = 1;
 
   player: PlayerState = {
     row: 0,
@@ -140,6 +149,7 @@ export class Engine {
       score: 0,
       best: readBest(),
       lives: START_LIVES,
+      steps: 0,
       coins: 0,
       effects: noEffects(),
       toast: null,
@@ -196,7 +206,9 @@ export class Engine {
     const drift = riding ? this.lanes.get(p.row)!.speed : 0;
     const open = (row: number) => {
       const lane = this.lanes.get(row);
-      return !!lane && !(lane.type === "grass" && lane.blocked.has(Math.round(toX)));
+      if (!lane) return false;
+      // Lumberjack walks through trees (they're chopped on landing).
+      return !(lane.type === "grass" && lane.blocked.has(Math.round(toX)) && this.effects.lumberjack <= 0);
     };
 
     if (Math.abs(toX) > COLS + 0.01) return;
@@ -212,6 +224,7 @@ export class Engine {
     p.row = toRow;
     p.ride = null;
 
+    this.countStep();
     if (toRow > this.ui.score) {
       this.setUi({ score: toRow });
       this.ensureLanes();
@@ -235,6 +248,7 @@ export class Engine {
       }
     }
 
+    if (lane?.type === "grass" && lane.blocked.has(Math.round(p.x))) this.chop(lane, Math.round(p.x));
     if (lane?.pickup && Math.round(p.x) === lane.pickup.x) this.collect(lane);
     if (lane && lane.coin !== null && Math.round(p.x) === lane.coin) this.collectCoin(lane);
 
@@ -266,11 +280,23 @@ export class Engine {
     this.setUi({ coins: this.ui.coins + n });
   }
 
+  private countStep() {
+    const steps = this.ui.steps + 1;
+    const tier = Math.floor(steps / STEPS_PER_SPEEDUP);
+    const scale = Math.min(MAX_SPEED_SCALE, 1 + tier * SPEEDUP_STEP);
+    if (scale > this.speedScale) {
+      this.speedScale = scale;
+      this.setUi({ steps, toast: { text: "SPEED UP!", id: ++this.toastId } });
+    } else {
+      this.setUi({ steps });
+    }
+  }
+
   private collect(lane: Lane) {
     const kind = lane.pickup!.kind;
     lane.pickup = null;
     if (kind === "life") this.setUi({ lives: this.ui.lives + 1 });
-    else this.effects[kind] = POWERUP_DURATION[kind];
+    else this.apply(kind);
     this.syncEffects(true);
     this.setUi({ toast: { text: PICKUP_LABEL[kind], id: ++this.toastId } });
   }
@@ -279,10 +305,61 @@ export class Engine {
   activate(kind: PowerUp) {
     if (this.ui.status !== "playing" || this.player.death) return false;
     if (!wallet.use(kind)) return false;
-    this.effects[kind] = POWERUP_DURATION[kind];
+    this.apply(kind);
     this.syncEffects(true);
     this.setUi({ toast: { text: PICKUP_LABEL[kind], id: ++this.toastId } });
     return true;
+  }
+
+  private apply(kind: PowerUp) {
+    if (!isInstant(kind)) {
+      this.effects[kind] = POWERUP_DURATION[kind];
+      return;
+    }
+    if (kind === "warp") this.warp();
+    if (kind === "coinrain") this.coinRain();
+  }
+
+  /** Jump to the first open grass at least WARP_ROWS ahead. */
+  private warp() {
+    const p = this.player;
+    const want = Math.max(-COLS, Math.min(COLS, Math.round(p.x)));
+    for (let row = p.row + WARP_ROWS; row < p.row + WARP_ROWS + 15; row++) {
+      const lane = this.lanes.get(row);
+      if (lane?.type !== "grass") continue;
+      const x = this.freeColumn(lane, want);
+      if (x === null) continue;
+      Object.assign(p, { row, x, z: row, y: 0, hop: null, queued: null, ride: null });
+      p.shield = Math.max(p.shield, 1);
+      this.idle = 0;
+      if (row > this.ui.score) this.setUi({ score: row });
+      this.ensureLanes();
+      return;
+    }
+  }
+
+  private coinRain() {
+    const p = this.player;
+    for (let row = p.row + 1; row <= p.row + COIN_RAIN_ROWS; row++) {
+      const lane = this.lanes.get(row);
+      if (!lane || lane.coin !== null || (lane.type !== "grass" && lane.type !== "road")) continue;
+      lane.coin = this.freeColumn(lane, Math.floor(Math.random() * (COLS * 2 + 1)) - COLS);
+    }
+  }
+
+  /** Nearest column to `want` with no tree on it. */
+  private freeColumn(lane: Lane, want: number) {
+    for (let d = 0; d <= COLS * 2; d++) {
+      for (const x of [want + d, want - d]) {
+        if (Math.abs(x) <= COLS && !lane.blocked.has(x)) return x;
+      }
+    }
+    return null;
+  }
+
+  private chop(lane: Lane, x: number) {
+    lane.blocked.delete(x);
+    lane.trees = lane.trees.filter((t) => t.x !== x);
   }
 
   /** Push whole-second effect timers to the HUD when they change. */
@@ -442,7 +519,7 @@ export class Engine {
           m.wrecked += dt;
           continue;
         }
-        m.x += lane.speed * dt;
+        m.x += lane.speed * dt * (lane.type === "road" ? this.speedScale : 1);
         // A fixed period keeps the spacing between movers constant forever.
         if (m.x > WRAP) m.x -= WRAP * 2;
         if (m.x < -WRAP) m.x += WRAP * 2;
@@ -452,7 +529,7 @@ export class Engine {
       const len = trainLength(lane);
       const dir = Math.sign(lane.speed);
       if (train.active) {
-        train.x += dir * TRAIN_SPEED * dt;
+        train.x += dir * TRAIN_SPEED * this.speedScale * dt;
         if (Math.abs(train.x) > WRAP + len) {
           train.active = false;
           train.warning = false;
@@ -475,9 +552,11 @@ export class Engine {
     if (!lane) return;
     // Mid-hop between lanes the chicken only counts as being in its target lane once past halfway.
     if (p.hop && p.hop.t < 0.5) return;
+    // Tiny chickens are harder to hit.
+    const margin = this.effects.tiny > 0 ? 0.08 : 0.3;
     if (lane.type === "road") {
       for (const m of lane.movers) {
-        if (m.wrecked !== null || Math.abs(p.x - m.x) >= m.length / 2 + 0.3) continue;
+        if (m.wrecked !== null || this.effects.ghost > 0 || Math.abs(p.x - m.x) >= m.length / 2 + margin) continue;
         // A rock chicken wrecks whatever drives into it.
         if (this.effects.rock > 0) m.wrecked = 0;
         else if (p.shield <= 0 && !this.popShield()) {
@@ -487,7 +566,7 @@ export class Engine {
       }
     } else if (lane.type === "rail" && lane.train.active && p.shield <= 0) {
       const len = trainLength(lane);
-      if (Math.abs(p.x - lane.train.x) < len / 2 + 0.3 && !this.popShield()) {
+      if (this.effects.ghost <= 0 && Math.abs(p.x - lane.train.x) < len / 2 + margin && !this.popShield()) {
         this.die("train", Math.sign(lane.speed));
       }
     }

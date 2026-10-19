@@ -246,6 +246,65 @@ export function PickupModel({ kind }: { kind: PickupKind }) {
       </group>
     );
   }
+  if (kind === "ghost") {
+    return (
+      <group>
+        <Box size={[0.4, 0.42, 0.3]} position={[0, 0.02, 0]} color="#f3efff" />
+        <Box size={[0.3, 0.12, 0.3]} position={[0, 0.28, 0]} color="#f3efff" />
+        <Box size={[0.1, 0.1, 0.12]} position={[-0.2, -0.24, 0]} color="#f3efff" />
+        <Box size={[0.1, 0.1, 0.12]} position={[0.02, -0.24, 0]} color="#f3efff" />
+        <Box size={[0.06, 0.1, 0.04]} position={[-0.08, 0.08, -0.16]} color="#2b1b4f" cast={false} />
+        <Box size={[0.06, 0.1, 0.04]} position={[0.08, 0.08, -0.16]} color="#2b1b4f" cast={false} />
+      </group>
+    );
+  }
+  if (kind === "tiny") {
+    return (
+      <group>
+        <Box size={[0.16, 0.16, 0.16]} position={[0, 0, 0]} color="#f28fb1" />
+        {[-1, 1].map((sx) =>
+          [-1, 1].map((sy) => (
+            <Box key={`${sx}${sy}`} size={[0.1, 0.1, 0.1]} position={[sx * 0.2, sy * 0.2, 0]} color="#ffffff" />
+          )),
+        )}
+      </group>
+    );
+  }
+  if (kind === "lumberjack") {
+    return (
+      <group rotation={[0, 0, -0.5]}>
+        <Box size={[0.08, 0.56, 0.08]} position={[0, -0.04, 0]} color="#8b5a2b" />
+        <Box size={[0.26, 0.18, 0.06]} position={[0.1, 0.18, 0]} color="#c9ccd1" />
+        <Box size={[0.06, 0.18, 0.07]} position={[0.22, 0.18, 0]} color="#eef2f6" />
+      </group>
+    );
+  }
+  if (kind === "warp") {
+    return (
+      <group>
+        <Box size={[0.44, 0.08, 0.1]} position={[0, 0.2, 0]} color="#3f51b5" />
+        <Box size={[0.44, 0.08, 0.1]} position={[0, -0.2, 0]} color="#3f51b5" />
+        <Box size={[0.08, 0.44, 0.1]} position={[0.2, 0, 0]} color="#3f51b5" />
+        <Box size={[0.08, 0.44, 0.1]} position={[-0.2, 0, 0]} color="#3f51b5" />
+        <Box size={[0.24, 0.24, 0.06]} position={[0, 0, 0]} color="#9fa8ff" cast={false} />
+      </group>
+    );
+  }
+  if (kind === "coinrain") {
+    return (
+      <group scale={0.75}>
+        <group position={[-0.22, 0.12, 0]}>
+          <Coin />
+        </group>
+        <group position={[0.22, 0.18, 0]}>
+          <Coin />
+        </group>
+        <group position={[0, -0.18, 0]}>
+          <Coin />
+        </group>
+      </group>
+    );
+  }
   if (kind === "slowmo") {
     return (
       <group>

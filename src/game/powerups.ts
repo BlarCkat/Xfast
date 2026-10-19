@@ -11,7 +11,7 @@ export interface PowerUpInfo {
   description: string;
 }
 
-/** Every power-up, in store and hotkey order (keys 1-9 then 0). */
+/** Every power-up, in store order; the first ten get hotkeys 1-9 then 0. */
 export const POWERUPS: PowerUpInfo[] = [
   { key: "foresight", label: "FORESIGHT", color: "#8e5cf7", price: 30, description: "See traffic a moment ahead for 5s." },
   { key: "slowmo", label: "SLOWMO", color: "#2f6fb5", price: 30, description: "Slow the world for 5s while you hop at full speed." },
@@ -23,6 +23,11 @@ export const POWERUPS: PowerUpInfo[] = [
   { key: "freeze", label: "FREEZE", color: "#5bc0eb", price: 40, description: "Stop all traffic and trains for 4s." },
   { key: "wings", label: "WINGS", color: "#9aa5b1", price: 35, description: "Hover over water without drowning for 6s." },
   { key: "scarecrow", label: "SCARECROW", color: "#a0692e", price: 30, description: "Keep the eagle away for 10s, however slow you go." },
+  { key: "ghost", label: "GHOST", color: "#b9a7e8", price: 50, description: "Cars and trains pass straight through you for 6s." },
+  { key: "tiny", label: "TINY", color: "#f28fb1", price: 30, description: "Shrink for 8s so traffic has to miss by less." },
+  { key: "lumberjack", label: "LUMBERJACK", color: "#7a4b2a", price: 25, description: "Chop through trees in your way for 8s." },
+  { key: "warp", label: "WARP", color: "#3f51b5", price: 45, description: "Instantly jump at least 6 rows ahead to safe grass." },
+  { key: "coinrain", label: "COIN RAIN", color: "#e0a800", price: 20, description: "Instantly drop coins on the next 12 lanes." },
 ];
 
 export const POWERUP_KEYS = POWERUPS.map((p) => p.key);
@@ -30,4 +35,6 @@ export const POWERUP_KEYS = POWERUPS.map((p) => p.key);
 export const noEffects = (): Effects =>
   Object.fromEntries(POWERUP_KEYS.map((k) => [k, 0])) as Effects;
 
-export const hotkeyFor = (i: number) => `Digit${(i + 1) % 10}`;
+export const hotkeyFor = (i: number) => (i < 10 ? `Digit${(i + 1) % 10}` : null);
+
+export const isInstant = (k: PowerUp) => POWERUP_DURATION[k] === 0;

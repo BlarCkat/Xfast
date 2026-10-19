@@ -33,7 +33,12 @@ const cellsFor = (tab: Tab): Cell[] =>
         id: i.id,
         name: i.name,
         price: i.price,
-        kind: i.id === "life" ? "Extra life" : `Power-up · ${POWERUP_DURATION[i.id]}s`,
+        kind:
+          i.id === "life"
+            ? "Extra life"
+            : POWERUP_DURATION[i.id] === 0
+              ? "Power-up · instant"
+              : `Power-up · ${POWERUP_DURATION[i.id]}s`,
         description: i.description,
       }));
 
