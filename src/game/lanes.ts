@@ -1,4 +1,5 @@
 import { COLS, TRAIN_CAR_LENGTH, WRAP } from "./config";
+import { BIOMES, biomeAt, type BiomeId } from "./biomes";
 import { POWERUP_KEYS, type PowerUp } from "./powerups";
 
 export type LaneType = "grass" | "road" | "river" | "rail";
@@ -27,6 +28,8 @@ export interface Tree {
 export interface Lane {
   row: number;
   type: LaneType;
+  /** Which themed biome this lane belongs to (visual only). */
+  biome: BiomeId;
   /** Blocked integer columns on grass (playable area only). */
   blocked: Set<number>;
   trees: Tree[];
@@ -56,17 +59,15 @@ export function mulberry32(seed: number): Rng {
   };
 }
 
-const CAR_COLORS = ["#e94f37", "#f6c90e", "#3f88c5", "#44bba4", "#f49d37", "#a663cc", "#ffffff"];
-const TRUCK_COLORS = ["#3f88c5", "#e94f37", "#44bba4", "#f6f6f6"];
-
 const range = (rng: Rng, min: number, max: number) => min + rng() * (max - min);
 const pick = <T,>(rng: Rng, items: T[]) => items[Math.floor(rng() * items.length)];
 const randInt = (rng: Rng, min: number, max: number) => Math.floor(range(rng, min, max + 1));
 
-function emptyLane(row: number, type: LaneType): Lane {
+function emptyLane(row: number, type: LaneType, biome: BiomeId): Lane {
   return {
     row,
     type,
+    biome,
     blocked: new Set(),
     trees: [],
     movers: [],
@@ -102,6 +103,7 @@ export class LaneGenerator {
   private pathCol = 0;
   private lastRiverDir = 1;
   private lastType: LaneType = "grass";
+  private biome: BiomeId = biomeAt(0);
 
   constructor(seed: number) {
     this.rng = mulberry32(seed);
@@ -119,7 +121,17 @@ export class LaneGenerator {
       return this.grass(row, 0.12);
     }
 
-    if (this.groupLeft <= 0) this.pickGroup(row);
+    if (this.groupLeft <= 0) {
+      const biome = biomeAt(row);
+      if (biome !== this.biome) {
+        // Enter a new biome on a short strip of grass so roads and rivers never change mid-group.
+        this.biome = biome;
+        this.groupType = "grass";
+        this.groupLeft = 2;
+      } else {
+        this.pickGroup(row);
+      }
+    }
     this.groupLeft--;
 
     const difficulty = difficultyAt(row);
@@ -185,7 +197,7 @@ export class LaneGenerator {
 
   private grass(row: number, density: number): Lane {
     const rng = this.rng;
-    const lane = emptyLane(row, "grass");
+    const lane = emptyLane(row, "grass", this.biome);
     const prevPath = this.pathCol;
     // Keep the opening rows straight ahead clear, then let the guaranteed path wander.
     if (row > 2) this.pathCol = Math.max(-COLS, Math.min(COLS, this.pathCol + randInt(rng, -1, 1)));
@@ -206,7 +218,7 @@ export class LaneGenerator {
 
   private road(row: number, difficulty: number): Lane {
     const rng = this.rng;
-    const lane = emptyLane(row, "road");
+    const lane = emptyLane(row, "road", this.biome);
     const truck = rng() < 0.3;
     const dir = rng() < 0.5 ? -1 : 1;
     const base = truck ? range(rng, 1.4, 2.4) : range(rng, 1.8, 3.6);
@@ -214,14 +226,14 @@ export class LaneGenerator {
     const length = truck ? 2.6 : 1.5;
     const count = randInt(rng, 3, 4) + Math.round(difficulty * 2);
     const spacing = (WRAP * 2) / count;
-    const color = truck ? pick(rng, TRUCK_COLORS) : null;
+    const color = truck ? pick(rng, BIOMES[this.biome].truckColors) : null;
     const jitterMax = Math.max(0, (spacing - length - 2.2) / 2);
     for (let i = 0; i < count; i++) {
       lane.movers.push({
         x: -WRAP + spacing * i + range(rng, -jitterMax, jitterMax),
         length,
         kind: truck ? "truck" : "car",
-        color: color ?? pick(rng, CAR_COLORS),
+        color: color ?? pick(rng, BIOMES[this.biome].carColors),
         wrecked: null,
       });
     }
@@ -230,7 +242,7 @@ export class LaneGenerator {
 
   private river(row: number, difficulty: number): Lane {
     const rng = this.rng;
-    const lane = emptyLane(row, "river");
+    const lane = emptyLane(row, "river", this.biome);
     const dir = this.lastType === "river" ? -this.lastRiverDir : rng() < 0.5 ? -1 : 1;
     this.lastRiverDir = dir;
     lane.speed = dir * range(rng, 1.1, 2.2) * (1 + difficulty * 0.5);
@@ -246,7 +258,7 @@ export class LaneGenerator {
 
   private rail(row: number): Lane {
     const rng = this.rng;
-    const lane = emptyLane(row, "rail");
+    const lane = emptyLane(row, "rail", this.biome);
     lane.speed = (rng() < 0.5 ? -1 : 1) * 1;
     lane.train.timer = range(rng, 1.5, 6);
     lane.train.cars = randInt(rng, 3, 5);

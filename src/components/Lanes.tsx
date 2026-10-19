@@ -7,12 +7,9 @@ import { COLS, FORESIGHT_STEPS, LANE_WIDTH, TRAIN_SPEED, WRAP } from "@/game/con
 import type { Engine } from "@/game/engine";
 import type { Lane } from "@/game/lanes";
 import { trainLength } from "@/game/lanes";
-import { Box, Car, Coin, Log, PickupModel, Train, Tree, Truck } from "./models";
-
-const GRASS = ["#a6e35f", "#9ad653"];
-const ROAD = "#575c66";
-const WATER = "#5fc6f0";
-const RAIL_BED = "#8a7b6c";
+import { BIOMES } from "@/game/biomes";
+import { Floater, Obstacle, Vehicle } from "./biomeModels";
+import { Box, Coin, PickupModel, Train } from "./models";
 
 function Ground({ color, top = 0, depth = 0.6 }: { color: string; top?: number; depth?: number }) {
   return (
@@ -35,10 +32,10 @@ function GrassLane({ lane }: { lane: Lane }) {
   });
   return (
     <>
-      <Ground color={GRASS[((lane.row % 2) + 2) % 2]} />
+      <Ground color={BIOMES[lane.biome].grass[((lane.row % 2) + 2) % 2]} />
       {trees.map((t, i) => (
         <group key={t.x} ref={(g) => void (refs.current[i] = g)} position={[t.x, 0, 0]}>
-          <Tree height={t.height} />
+          <Obstacle biome={lane.biome} height={t.height} variant={Math.abs(t.x + lane.row)} />
         </group>
       ))}
     </>
@@ -70,24 +67,28 @@ function RoadLane({ lane }: { lane: Lane }) {
   const dir = Math.sign(lane.speed);
   return (
     <>
-      <Ground color={ROAD} top={-0.02} />
+      <Ground color={BIOMES[lane.biome].road} top={-0.02} />
       {lane.continued &&
         Array.from({ length: Math.floor(LANE_WIDTH / 2) }, (_, i) => (
           <Box
             key={i}
             size={[0.7, 0.02, 0.08]}
             position={[-LANE_WIDTH / 2 + i * 2 + 1, -0.01, 0.5]}
-            color="#e8e8e8"
+            color={BIOMES[lane.biome].marking}
             cast={false}
           />
         ))}
-      {lane.movers.map((m, i) =>
-        m.kind === "truck" ? (
-          <Truck key={i} ref={(g) => void (refs.current[i] = g)} color={m.color} length={m.length} dir={dir} />
-        ) : (
-          <Car key={i} ref={(g) => void (refs.current[i] = g)} color={m.color} length={m.length} dir={dir} />
-        ),
-      )}
+      {lane.movers.map((m, i) => (
+        <Vehicle
+          key={i}
+          ref={(g) => void (refs.current[i] = g)}
+          biome={lane.biome}
+          kind={m.kind}
+          color={m.color}
+          length={m.length}
+          dir={dir}
+        />
+      ))}
     </>
   );
 }
@@ -100,10 +101,10 @@ function RiverLane({ lane }: { lane: Lane }) {
   });
   return (
     <>
-      <Ground color={WATER} top={-0.28} depth={0.4} />
+      <Ground color={BIOMES[lane.biome].water} top={-0.28} depth={0.4} />
       <group ref={bob}>
         {lane.movers.map((m, i) => (
-          <Log key={i} ref={(g) => void (refs.current[i] = g)} length={m.length} />
+          <Floater key={i} ref={(g) => void (refs.current[i] = g)} biome={lane.biome} length={m.length} />
         ))}
       </group>
     </>
@@ -127,7 +128,7 @@ function RailLane({ lane }: { lane: Lane }) {
   });
   return (
     <>
-      <Ground color={RAIL_BED} top={-0.02} />
+      <Ground color={BIOMES[lane.biome].railBed} top={-0.02} />
       {Array.from({ length: Math.floor(LANE_WIDTH / 0.8) }, (_, i) => (
         <Box
           key={i}
@@ -148,7 +149,7 @@ function RailLane({ lane }: { lane: Lane }) {
           <meshBasicMaterial color="#5a1d1d" />
         </mesh>
       </group>
-      <Train ref={train} cars={lane.train.cars} dir={dir} />
+      <Train ref={train} cars={lane.train.cars} dir={dir} colors={BIOMES[lane.biome].trainColors} />
     </>
   );
 }

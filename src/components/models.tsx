@@ -117,14 +117,17 @@ export const Log = forwardRef<Group, { length: number }>(function Log({ length }
 
 const TRAIN_COLORS = ["#d64545", "#3a7bd5", "#f2b134", "#4caf50"];
 
-export const Train = forwardRef<Group, { cars: number; dir: number }>(function Train({ cars, dir }, ref) {
+export const Train = forwardRef<Group, { cars: number; dir: number; colors?: string[] }>(function Train(
+  { cars, dir, colors = TRAIN_COLORS },
+  ref,
+) {
   const total = cars * TRAIN_CAR_LENGTH;
   return (
     <group ref={ref}>
       <group scale={[dir, 1, 1]}>
         {Array.from({ length: cars }, (_, i) => {
           const x = total / 2 - TRAIN_CAR_LENGTH * (i + 0.5);
-          const color = i === 0 ? "#d64545" : TRAIN_COLORS[(i % (TRAIN_COLORS.length - 1)) + 1];
+          const color = i === 0 ? colors[0] : colors[(i % (colors.length - 1)) + 1];
           return (
             <group key={i} position={[x, 0, 0]}>
               <Box size={[TRAIN_CAR_LENGTH - 0.2, 1.1, 0.9]} position={[0, 0.7, 0]} color={color} />

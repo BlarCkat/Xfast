@@ -1,3 +1,4 @@
+import { BIOMES, biomeAt, type BiomeId } from "./biomes";
 import {
   COLS,
   HOP_DURATION,
@@ -118,6 +119,8 @@ export class Engine {
   /** Exact seconds left on each power-up. */
   effects: Effects = noEffects();
   private toastId = 0;
+  /** Biome the player is currently in, announced when it changes. */
+  biome: BiomeId = biomeAt(0);
   /** Multiplier on car, truck and train speed, raised every STEPS_PER_SPEEDUP hops. */
   speedScale = 1;
 
@@ -248,6 +251,10 @@ export class Engine {
       }
     }
 
+    if (lane && lane.biome !== this.biome) {
+      this.biome = lane.biome;
+      this.setUi({ toast: { text: BIOMES[lane.biome].label.toUpperCase(), id: ++this.toastId } });
+    }
     if (lane?.type === "grass" && lane.blocked.has(Math.round(p.x))) this.chop(lane, Math.round(p.x));
     if (lane?.pickup && Math.round(p.x) === lane.pickup.x) this.collect(lane);
     if (lane && lane.coin !== null && Math.round(p.x) === lane.coin) this.collectCoin(lane);

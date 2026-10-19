@@ -47,10 +47,23 @@ Every 1,000 hops in a run, cars, trucks and trains speed up by 20% (up to 3x). T
 
 Lanes stay at their starting density until score 500. From there roads gradually get more cars, longer stretches of road and faster base traffic, rivers get shorter logs with wider gaps, and grass gets more trees, all reaching full difficulty at score 1,000.
 
+## Biomes
+
+Every 50 rows the world changes theme, then the cycle repeats after the sixth. A new biome always starts on a strip of grass, and its name pops up as you enter it. Biomes change the look only; every lane plays the same.
+
+| Biome | Obstacles | Road traffic | River |
+| --- | --- | --- | --- |
+| Meadow | Trees | Cars and trucks | Logs |
+| Farm | Hay bales, corn, apple trees | Tractors and hay wagons | Logs |
+| Safari | Bushes, boulders, baobabs | Safari jeeps and rhinos | Logs |
+| Savannah | Dry grass, termite mounds, acacias | Zebras and elephants | Logs |
+| City | Hydrants, planters, buildings | Taxis, cars and buses | Logs |
+| North Pole | Snowmen, presents, snowy pines | Snowmobiles and Santa's sleigh | Ice floes |
+
 ## Code layout
 
-- `src/game/` holds the rules with no rendering: `lanes.ts` generates lanes, `engine.ts` runs hopping, collisions, the camera focus and scoring.
-- `src/components/` renders it: `Scene.tsx` (camera, lights, player, eagle), `Lanes.tsx` (each lane type), `models.tsx` (voxel models), `Game.tsx` (HUD and input).
+- `src/game/` holds the rules with no rendering: `lanes.ts` generates lanes, `biomes.ts` defines the themes, `engine.ts` runs hopping, collisions, the camera focus and scoring.
+- `src/components/` renders it: `Scene.tsx` (camera, lights, player, eagle), `Lanes.tsx` (each lane type), `models.tsx` and `biomeModels.tsx` (voxel models), `Game.tsx` (HUD and input).
 
 ## Coins and the store
 
