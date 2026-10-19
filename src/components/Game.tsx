@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Engine, type Direction } from "@/game/engine";
+import { POWERUP_DURATION } from "@/game/config";
 import { POWERUPS, hotkeyFor } from "@/game/powerups";
 import { wallet } from "@/game/wallet";
 import { Scene } from "./Scene";
+import { Hex, Icon } from "./icons";
 import Store, { useWallet } from "./Store";
 
 const KEYS: Record<string, Direction> = {
@@ -52,6 +54,10 @@ export default function Game() {
       if (e.repeat) return;
       if (storeOpen) {
         if (e.code === "Escape") setStoreOpen(false);
+        return;
+      }
+      if (e.code === "KeyS" && engine.status !== "playing") {
+        setStoreOpen(true);
         return;
       }
       const power = POWERUPS.find((_, i) => hotkeyFor(i) === e.code);
@@ -109,17 +115,24 @@ export default function Game() {
       {ui.effects.freeze > 0 && <div className="tint tint-freeze" />}
 
       <div className="hud">
-        <div className="score">{ui.score}</div>
-        <div className="best">TOP {ui.best}</div>
-        <div className="coins">
-          <span className="coin-icon" /> {w.coins}
+        <div className="score" aria-label={`Score ${ui.score}`}>
+          {ui.score}
+        </div>
+        <div className="hud-stats">
+          <span>TOP {ui.best}</span>
+          <span className="hud-coins">
+            <Icon id="coin" size={14} /> {w.coins}
+          </span>
         </div>
         <div className="effects">
           {POWERUPS.map(
-            ({ key, label, color }) =>
+            ({ key, label }) =>
               ui.effects[key] > 0 && (
-                <div key={key} className="effect" style={{ background: color }}>
-                  {label} {ui.effects[key]}s
+                <div key={key} className="effect" title={label}>
+                  <Hex tone="teal" size={40} ring={ui.effects[key] / POWERUP_DURATION[key]}>
+                    <Icon id={key} size={17} />
+                  </Hex>
+                  <span>{ui.effects[key]}s</span>
                 </div>
               ),
           )}
@@ -127,25 +140,33 @@ export default function Game() {
       </div>
 
       <div className="lives" aria-label={`${ui.lives} extra lives`}>
-        <span className="heart">♥</span> × {ui.lives}
+        <Hex tone="white" size={40}>
+          <span className="heart">
+            <Icon id="life" size={18} />
+          </span>
+        </Hex>
+        <span>×{ui.lives}</span>
       </div>
 
       {ui.status === "playing" && (
         <div className="inventory">
-          {POWERUPS.map(({ key, label, color }, i) =>
+          {POWERUPS.map(({ key, label }, i) =>
             w.inventory[key] > 0 ? (
               <button
                 key={key}
                 className="use-power"
-                style={{ background: color }}
+                aria-label={`Use ${label} (key ${hotkeyFor(i).slice(-1)})`}
                 onPointerDown={stop}
                 onPointerUp={(e) => {
                   e.stopPropagation();
                   engine.activate(key);
                 }}
               >
-                {label} ×{w.inventory[key]}
-                <small>key {hotkeyFor(i).slice(-1)}</small>
+                <span className="cell-badge">{w.inventory[key]}</span>
+                <Hex tone={ui.effects[key] > 0 ? "teal" : "white"} size={54}>
+                  <Icon id={key} size={22} />
+                </Hex>
+                <kbd>{hotkeyFor(i).slice(-1)}</kbd>
               </button>
             ) : null,
           )}
@@ -162,48 +183,51 @@ export default function Game() {
         <div className="overlay">
           <h1 className="title">XFAST</h1>
           <p className="hint">Tap or press ↑ to hop</p>
-          <p className="sub">Swipe or use arrows / WASD to move</p>
-          <p className="sub">Grab coins, ♥ extra lives and power-ups</p>
-          <button
-            className="play store-button"
-            onPointerDown={stop}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              setStoreOpen(true);
-            }}
-          >
-            STORE
-          </button>
-        </div>
-      )}
-
-      {ui.status === "dead" && (
-        <div className="overlay">
-          <div className="panel">
-            <p className="panel-label">SCORE</p>
-            <p className="panel-score">{ui.score}</p>
-            <p className="panel-best">{ui.score >= ui.best && ui.score > 0 ? "NEW TOP SCORE!" : `TOP ${ui.best}`}</p>
-            <p className="panel-coins">
-              +{ui.coins} <span className="coin-icon" />
-            </p>
+          <p className="sub">Swipe or use arrows / WASD. Grab coins, hearts and power-ups.</p>
+          <div className="menu-hints overlay-hints">
             <button
-              className="play"
-              onPointerUp={(e) => {
-                e.stopPropagation();
-                restart();
-              }}
-            >
-              PLAY AGAIN
-            </button>
-            <button
-              className="play secondary"
+              className="primary"
               onPointerDown={stop}
               onPointerUp={(e) => {
                 e.stopPropagation();
                 setStoreOpen(true);
               }}
             >
-              STORE
+              <kbd>S</kbd> Store
+            </button>
+          </div>
+        </div>
+      )}
+
+      {ui.status === "dead" && (
+        <div className="overlay">
+          <div className="panel">
+            <p className="menu-kind">SCORE</p>
+            <p className="panel-score">{ui.score}</p>
+            <p className="panel-best">{ui.score >= ui.best && ui.score > 0 ? "NEW TOP SCORE" : `TOP ${ui.best}`}</p>
+            <p className="panel-coins">
+              <Icon id="coin" size={16} /> +{ui.coins}
+            </p>
+          </div>
+          <div className="menu-hints overlay-hints">
+            <button
+              onPointerDown={stop}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                setStoreOpen(true);
+              }}
+            >
+              <kbd>S</kbd> Store
+            </button>
+            <button
+              className="primary"
+              onPointerDown={stop}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                restart();
+              }}
+            >
+              <kbd>↵</kbd> Play again
             </button>
           </div>
         </div>
