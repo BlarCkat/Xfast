@@ -167,7 +167,7 @@ function EdgeShade({ engine }: { engine: Engine }) {
   );
 }
 
-function CameraRig({ engine }: { engine: Engine }) {
+function CameraRig({ engine, tier }: { engine: Engine; tier: Tier }) {
   const camera = useThree((s) => s.camera) as OrthographicCamera;
   const size = useThree((s) => s.size);
   const light = useRef<DirectionalLight>(null);
@@ -196,8 +196,8 @@ function CameraRig({ engine }: { engine: Engine }) {
     <directionalLight
       ref={light}
       intensity={2.2}
-      castShadow
-      shadow-mapSize={[2048, 2048]}
+      castShadow={tier > 0}
+      shadow-mapSize={tier === 2 ? [2048, 2048] : [1024, 1024]}
       shadow-camera-left={-16}
       shadow-camera-right={16}
       shadow-camera-top={16}
@@ -209,7 +209,49 @@ function CameraRig({ engine }: { engine: Engine }) {
   );
 }
 
+/**
+ * Rendering quality: 2 = full effects at up to 2x pixel density, 1 = bloom only at 1.5x (phones
+ * start here), 0 = no post-processing or shadows at 1x. Drops a tier while the frame rate is low.
+ */
+type Tier = 0 | 1 | 2;
+const DPR: Record<Tier, number> = { 0: 1, 1: 1.5, 2: 2 };
+const MIN_FPS = 45;
+
+function startTier(): Tier {
+  if (typeof window === "undefined") return 2;
+  const phone = window.matchMedia("(pointer: coarse)").matches || Math.min(window.innerWidth, window.innerHeight) < 600;
+  return phone ? 1 : 2;
+}
+
+function useQuality() {
+  const [tier, setTier] = useState<Tier>(startTier);
+  const setDpr = useThree((s) => s.setDpr);
+  useEffect(() => {
+    setDpr(Math.min(window.devicePixelRatio || 1, DPR[tier]));
+  }, [tier, setDpr]);
+  const sample = useRef({ warmup: 0, time: 0, frames: 0 });
+  useFrame((_, dt) => {
+    const s = sample.current;
+    // Skip shader compilation after a change and long pauses such as a backgrounded tab.
+    if (dt > 0.25 || s.warmup < 2) {
+      s.warmup += Math.min(dt, 0.25);
+      return;
+    }
+    s.time += dt;
+    s.frames++;
+    if (s.time < 2) return;
+    const fps = s.frames / s.time;
+    s.time = s.frames = 0;
+    if (fps < MIN_FPS && tier > 0) {
+      s.warmup = 0;
+      setTier((tier - 1) as Tier);
+    }
+  });
+  return tier;
+}
+
 export function Scene({ engine, fx }: { engine: Engine; fx: boolean }) {
+  const tier = useQuality();
   const [, setVersion] = useState(0);
   const seen = useRef(engine.laneVersion);
   // Re-render the lane list only when lanes are added or dropped.
@@ -225,14 +267,14 @@ export function Scene({ engine, fx }: { engine: Engine; fx: boolean }) {
     <>
       <color attach="background" args={["#7fd0f5"]} />
       <hemisphereLight args={["#ffffff", "#9bbf7a", 1.4]} />
-      <CameraRig engine={engine} />
+      <CameraRig engine={engine} tier={tier} />
       {lanes.map((lane) => (
         <LaneView key={lane.row} lane={lane} engine={engine} />
       ))}
       <EdgeShade engine={engine} />
       <Player engine={engine} />
       <EagleView engine={engine} />
-      {fx && <Effects />}
+      {fx && tier > 0 && <Effects full={tier === 2} />}
     </>
   );
 }

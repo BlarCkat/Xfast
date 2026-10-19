@@ -64,6 +64,8 @@ Every 50 rows the world changes theme, then the cycle repeats after the sixth. A
 
 Every block has bevelled edges so light rolls over the corners. The default **Realistic** mode adds post-processing: soft ambient occlusion where blocks meet the ground, HDR bloom on bright things (headlights, coins, lit city windows, the flashing rail light, sunlit snow), filmic tone mapping and a light vignette. Press **B** or use the button on the start screen to switch to **Classic**, which skips the post-processing and runs lighter on slow devices. The choice is saved in your browser.
 
+Performance: every car, train, log, coin and lane of trees is merged into one mesh when it appears, so a frame costs a couple of hundred draw calls instead of about two thousand. Phones start on a lighter tier (bloom at half resolution, no ambient occlusion or anti-aliasing, 1.5x pixel density, smaller shadow map). If the frame rate stays under 45 fps the game steps down again, ending at no post-processing, no shadows and 1x pixel density.
+
 ## Code layout
 
 - `src/game/` holds the rules with no rendering: `lanes.ts` generates lanes, `biomes.ts` defines the themes, `engine.ts` runs hopping, collisions, the camera focus and scoring.

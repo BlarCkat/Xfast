@@ -9,7 +9,7 @@ import type { Lane } from "@/game/lanes";
 import { trainLength } from "@/game/lanes";
 import { BIOMES } from "@/game/biomes";
 import { Floater, Obstacle, Vehicle } from "./biomeModels";
-import { Box, Coin, PickupModel, Train } from "./models";
+import { Baked, Box, Coin, PickupModel, Train } from "./models";
 
 function Ground({ color, top = 0, depth = 0.6 }: { color: string; top?: number; depth?: number }) {
   return (
@@ -21,23 +21,21 @@ function Ground({ color, top = 0, depth = 0.6 }: { color: string; top?: number; 
 }
 
 function GrassLane({ lane }: { lane: Lane }) {
-  const [trees] = useState(lane.trees);
-  const refs = useRef<(Group | null)[]>([]);
-  // Hide trees a lumberjack has chopped down.
+  // Re-bake when a lumberjack chops a tree down.
+  const [count, setCount] = useState(lane.trees.length);
   useFrame(() => {
-    trees.forEach((t, i) => {
-      const g = refs.current[i];
-      if (g) g.visible = lane.trees.includes(t);
-    });
+    if (lane.trees.length !== count) setCount(lane.trees.length);
   });
   return (
     <>
       <Ground color={BIOMES[lane.biome].grass[((lane.row % 2) + 2) % 2]} />
-      {trees.map((t, i) => (
-        <group key={t.x} ref={(g) => void (refs.current[i] = g)} position={[t.x, 0, 0]}>
-          <Obstacle biome={lane.biome} height={t.height} variant={Math.abs(t.x + lane.row)} />
-        </group>
-      ))}
+      <Baked version={count}>
+        {lane.trees.map((t) => (
+          <group key={t.x} position={[t.x, 0, 0]}>
+            <Obstacle biome={lane.biome} height={t.height} variant={Math.abs(t.x + lane.row)} />
+          </group>
+        ))}
+      </Baked>
     </>
   );
 }
@@ -68,26 +66,25 @@ function RoadLane({ lane }: { lane: Lane }) {
   return (
     <>
       <Ground color={BIOMES[lane.biome].road} top={-0.02} />
-      {lane.continued &&
-        Array.from({ length: Math.floor(LANE_WIDTH / 2) }, (_, i) => (
-          <Box
-            key={i}
-            size={[0.7, 0.02, 0.08]}
-            position={[-LANE_WIDTH / 2 + i * 2 + 1, -0.01, 0.5]}
-            color={BIOMES[lane.biome].marking}
-            cast={false}
-          />
-        ))}
+      {lane.continued && (
+        <Baked shadows={false}>
+          {Array.from({ length: Math.floor(LANE_WIDTH / 2) }, (_, i) => (
+            <Box
+              key={i}
+              size={[0.7, 0.02, 0.08]}
+              position={[-LANE_WIDTH / 2 + i * 2 + 1, -0.01, 0.5]}
+              color={BIOMES[lane.biome].marking}
+              cast={false}
+            />
+          ))}
+        </Baked>
+      )}
       {lane.movers.map((m, i) => (
-        <Vehicle
-          key={i}
-          ref={(g) => void (refs.current[i] = g)}
-          biome={lane.biome}
-          kind={m.kind}
-          color={m.color}
-          length={m.length}
-          dir={dir}
-        />
+        <group key={i} ref={(g) => void (refs.current[i] = g)}>
+          <Baked>
+            <Vehicle biome={lane.biome} kind={m.kind} color={m.color} length={m.length} dir={dir} />
+          </Baked>
+        </group>
       ))}
     </>
   );
@@ -104,7 +101,11 @@ function RiverLane({ lane }: { lane: Lane }) {
       <Ground color={BIOMES[lane.biome].water} top={-0.28} depth={0.4} />
       <group ref={bob}>
         {lane.movers.map((m, i) => (
-          <Floater key={i} ref={(g) => void (refs.current[i] = g)} biome={lane.biome} length={m.length} />
+          <group key={i} ref={(g) => void (refs.current[i] = g)}>
+            <Baked>
+              <Floater biome={lane.biome} length={m.length} />
+            </Baked>
+          </group>
         ))}
       </group>
     </>
@@ -132,21 +133,24 @@ function RailLane({ lane }: { lane: Lane }) {
   return (
     <>
       <Ground color={BIOMES[lane.biome].railBed} top={-0.02} />
-      {Array.from({ length: Math.floor(LANE_WIDTH / 0.8) }, (_, i) => (
-        <Box
-          key={i}
-          size={[0.22, 0.05, 0.86]}
-          position={[-LANE_WIDTH / 2 + i * 0.8 + 0.4, 0.0, 0]}
-          color="#6b4a2f"
-          cast={false}
-          receive
-        />
-      ))}
-      <Box size={[LANE_WIDTH, 0.08, 0.08]} position={[0, 0.06, 0.26]} color="#c9ccd1" cast={false} />
-      <Box size={[LANE_WIDTH, 0.08, 0.08]} position={[0, 0.06, -0.26]} color="#c9ccd1" cast={false} />
+      <Baked shadows={false}>
+        {Array.from({ length: Math.floor(LANE_WIDTH / 0.8) }, (_, i) => (
+          <Box
+            key={i}
+            size={[0.22, 0.05, 0.86]}
+            position={[-LANE_WIDTH / 2 + i * 0.8 + 0.4, 0.0, 0]}
+            color="#6b4a2f"
+            cast={false}
+          />
+        ))}
+        <Box size={[LANE_WIDTH, 0.08, 0.08]} position={[0, 0.06, 0.26]} color="#c9ccd1" cast={false} />
+        <Box size={[LANE_WIDTH, 0.08, 0.08]} position={[0, 0.06, -0.26]} color="#c9ccd1" cast={false} />
+      </Baked>
       <group position={[-(COLS + 1.4) * dir, 0, -0.42]}>
-        <Box size={[0.12, 1.4, 0.12]} position={[0, 0.7, 0]} color="#d0d0d0" />
-        <Box size={[0.36, 0.3, 0.2]} position={[0, 1.45, 0]} color="#222" />
+        <Baked>
+          <Box size={[0.12, 1.4, 0.12]} position={[0, 0.7, 0]} color="#d0d0d0" />
+          <Box size={[0.36, 0.3, 0.2]} position={[0, 1.45, 0]} color="#222" />
+        </Baked>
         <mesh ref={light} position={[0, 1.45, 0.11]}>
           <boxGeometry args={[0.18, 0.18, 0.04]} />
           <meshBasicMaterial color="#5a1d1d" toneMapped={false} />
@@ -234,7 +238,9 @@ function PickupView({ lane }: { lane: Lane }) {
   if (!pickup) return null;
   return (
     <group ref={ref} position={[pickup.x, 0.45, 0]}>
-      <PickupModel kind={pickup.kind} />
+      <Baked>
+        <PickupModel kind={pickup.kind} />
+      </Baked>
     </group>
   );
 }
@@ -251,7 +257,9 @@ function CoinView({ lane }: { lane: Lane }) {
   });
   return (
     <group ref={ref} position={[0, 0.35, 0]} visible={false}>
-      <Coin />
+      <Baked>
+        <Coin />
+      </Baked>
     </group>
   );
 }

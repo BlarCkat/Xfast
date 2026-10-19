@@ -1,16 +1,30 @@
 "use client";
 
-import { forwardRef } from "react";
-import type { Group } from "three";
+import { createContext, forwardRef, useContext, useLayoutEffect, useRef, useState } from "react";
+import {
+  BoxGeometry,
+  BufferAttribute,
+  BufferGeometry,
+  Color,
+  Matrix4,
+  Mesh,
+  MeshBasicMaterial,
+  MeshLambertMaterial,
+  type Group,
+  type Object3D,
+} from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { TRAIN_CAR_LENGTH } from "@/game/config";
 import type { PickupKind } from "@/game/lanes";
 import type { CharacterId } from "@/game/wallet";
 
 // Small voxel models built from boxes. Everything uses flat Lambert shading for the toy look.
 
+type Size = [number, number, number];
+
 type BoxProps = {
-  size: [number, number, number];
+  size: Size;
   position?: [number, number, number];
   color: string;
   cast?: boolean;
@@ -20,19 +34,30 @@ type BoxProps = {
 };
 
 // Bevelled boxes soften the voxel edges so light rolls over them. Geometry is shared per size.
-const geometries = new Map<string, RoundedBoxGeometry>();
-function roundedBox([w, h, d]: [number, number, number]) {
+// Very thin parts (windows, stripes, markings) stay square, since a bevel there would not show.
+const geometries = new Map<string, BufferGeometry>();
+function roundedBox([w, h, d]: Size) {
   const key = `${w},${h},${d}`;
   let g = geometries.get(key);
   if (!g) {
-    const radius = Math.min(0.07, Math.min(w, h, d) * 0.3);
-    g = new RoundedBoxGeometry(w, h, d, 2, radius);
+    const thinnest = Math.min(w, h, d);
+    g =
+      thinnest < 0.09
+        ? new BoxGeometry(w, h, d)
+        : new RoundedBoxGeometry(w, h, d, 1, Math.min(0.07, thinnest * 0.3));
+    // Keep every box non-indexed so any mix of them can be merged.
+    if (g.index) g = g.toNonIndexed();
     geometries.set(key, g);
   }
   return g;
 }
 
+// Inside <Baked>, boxes are only markers; Baked merges them into a single mesh.
+const BakeContext = createContext(false);
+
 export function Box({ size, position = [0, 0, 0], color, cast = true, receive = false, glow }: BoxProps) {
+  const baking = useContext(BakeContext);
+  if (baking) return <object3D position={position} userData={{ box: size, color, glow }} />;
   return (
     <mesh position={position} castShadow={cast} receiveShadow={receive} geometry={roundedBox(size)}>
       {glow ? (
@@ -41,6 +66,82 @@ export function Box({ size, position = [0, 0, 0], color, cast = true, receive = 
         <meshLambertMaterial color={color} />
       )}
     </mesh>
+  );
+}
+
+const litMaterial = new MeshLambertMaterial({ vertexColors: true });
+// Glowing parts skip lighting and tone mapping so their over-bright colours feed the bloom.
+const glowMaterial = new MeshBasicMaterial({ vertexColors: true, toneMapped: false });
+const scratch = new Matrix4();
+const tint = new Color();
+
+function bake(source: Object3D) {
+  source.updateWorldMatrix(true, true);
+  const toLocal = new Matrix4().copy(source.matrixWorld).invert();
+  const lit: BufferGeometry[] = [];
+  const glowing: BufferGeometry[] = [];
+  const visit = (o: Object3D) => {
+    o.children.forEach((c) => c.visible && visit(c));
+    const { box, color, glow } = o.userData as { box?: Size; color?: string; glow?: number };
+    if (!box || !color) return;
+    const g = roundedBox(box).clone();
+    g.applyMatrix4(scratch.multiplyMatrices(toLocal, o.matrixWorld));
+    tint.set(color);
+    if (glow) tint.multiplyScalar(0.8 + glow);
+    const count = g.getAttribute("position").count;
+    const colors = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) tint.toArray(colors, i * 3);
+    g.setAttribute("color", new BufferAttribute(colors, 3));
+    (glow ? glowing : lit).push(g);
+  };
+  visit(source);
+  const parts = [lit, glowing].filter((list) => list.length > 0);
+  const geometry = parts.length ? mergeGeometries(parts.map((list) => mergeGeometries(list)), true) : null;
+  const materials = parts.map((list) => (list === lit ? litMaterial : glowMaterial));
+  [...lit, ...glowing].forEach((g) => g.dispose());
+  return { geometry, materials };
+}
+
+/**
+ * Collapses every <Box> inside it into one mesh (two when some boxes glow), so a whole car or a
+ * lane of trees costs one draw call instead of dozens. Bump `version` when the contents change.
+ */
+export function Baked({
+  children,
+  version = 0,
+  shadows = true,
+}: {
+  children: React.ReactNode;
+  version?: number;
+  shadows?: boolean;
+}) {
+  const source = useRef<Group>(null);
+  const [mesh] = useState(() => {
+    const m = new Mesh();
+    m.castShadow = shadows;
+    return m;
+  });
+  useLayoutEffect(() => {
+    const src = source.current;
+    if (!src) return;
+    const { geometry, materials } = bake(src);
+    // The markers are only needed while baking; keep them out of rendering and matrix updates.
+    src.visible = false;
+    src.matrixWorldAutoUpdate = false;
+    mesh.visible = geometry !== null;
+    if (geometry) {
+      mesh.geometry = geometry;
+      mesh.material = materials.length === 1 ? materials[0] : materials;
+    }
+    return () => geometry?.dispose();
+  }, [mesh, version]);
+  return (
+    <>
+      <primitive object={mesh} />
+      <group ref={source}>
+        <BakeContext.Provider value={true}>{children}</BakeContext.Provider>
+      </group>
+    </>
   );
 }
 
@@ -143,6 +244,7 @@ export const Train = forwardRef<Group, { cars: number; dir: number; colors?: str
   const total = cars * TRAIN_CAR_LENGTH;
   return (
     <group ref={ref}>
+      <Baked>
       <group scale={[dir, 1, 1]}>
         {Array.from({ length: cars }, (_, i) => {
           const x = total / 2 - TRAIN_CAR_LENGTH * (i + 0.5);
@@ -162,6 +264,7 @@ export const Train = forwardRef<Group, { cars: number; dir: number; colors?: str
           );
         })}
       </group>
+      </Baked>
     </group>
   );
 });
