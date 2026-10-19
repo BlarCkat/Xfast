@@ -13,7 +13,7 @@ export interface Character {
 
 export const CHARACTERS: Character[] = [
   { id: "chicken", name: "Chicken", price: 0, trait: "Power-ups last 50% longer." },
-  { id: "duck", name: "Duck", price: 50, trait: "Swims: falling in the water is safe, just paddle on." },
+  { id: "duck", name: "Duck", price: 50, trait: "Saves power-ups it picks up to use whenever you like, for the rest of the run." },
   { id: "frog", name: "Frog", price: 100, trait: "Never drowns: always lands on the nearest log ahead." },
   { id: "penguin", name: "Penguin", price: 150, trait: "Starts every run with a shield." },
   { id: "cat", name: "Cat", price: 200, trait: "Nine lives, and regrows lost ones: half a life every 20 hops, twice as slow after each life spent." },

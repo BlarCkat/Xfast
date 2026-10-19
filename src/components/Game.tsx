@@ -179,7 +179,7 @@ export default function Game() {
       {ui.status === "playing" && (
         <div className="inventory">
           {POWERUPS.map(({ key, label }, i) =>
-            w.inventory[key] > 0 ? (
+            w.inventory[key] + ui.stash[key] > 0 ? (
               <button
                 key={key}
                 className="use-power"
@@ -190,7 +190,7 @@ export default function Game() {
                   engine.activate(key);
                 }}
               >
-                <span className="cell-badge">{w.inventory[key]}</span>
+                <span className="cell-badge">{w.inventory[key] + ui.stash[key]}</span>
                 <Hex tone={ui.effects[key] > 0 ? "teal" : "white"} size={54}>
                   <Icon id={key} size={22} />
                 </Hex>

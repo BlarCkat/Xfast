@@ -100,6 +100,8 @@ export interface UiSnapshot {
   toast: null | { text: string; id: number };
   /** Cat only: progress (0-1) towards regrowing the next life, or null for other characters. */
   refill: number | null;
+  /** Duck only: power-ups picked up this run and saved for later. */
+  stash: Effects;
 }
 
 const BEST_KEY = "xfast-best";
@@ -172,6 +174,7 @@ export class Engine {
       effects: noEffects(),
       toast: null,
       refill: character === "cat" ? 0 : null,
+      stash: noEffects(),
     };
     this.ensureLanes();
   }
@@ -273,8 +276,8 @@ export class Engine {
       if (slot !== null) p.x = slot;
     }
     if (lane?.type === "river" && !this.boardLog(lane)) {
-      // Wings let the chicken hover over open water, and the duck simply swims.
-      if (this.effects.wings <= 0 && this.character !== "duck") {
+      // Wings let the chicken hover over open water.
+      if (this.effects.wings <= 0) {
         this.die("water");
         return;
       }
@@ -315,12 +318,6 @@ export class Engine {
   /** Luigi can't be hit in the Spooky biome. */
   private untouchable(lane: Lane) {
     return this.effects.ghost > 0 || (this.character === "luigi" && lane.biome === "spooky");
-  }
-
-  /** The duck paddling in open water rather than riding a log. */
-  get swimming() {
-    const p = this.player;
-    return this.character === "duck" && !p.ride && !p.hop && !p.death && this.lanes.get(p.row)?.type === "river";
   }
 
   /** Closest spot on a log in this lane, inside the playable columns, `ahead` seconds from now. */
@@ -424,7 +421,14 @@ export class Engine {
     const kind = lane.pickup!.kind;
     lane.pickup = null;
     if (kind === "life") this.setUi({ lives: this.ui.lives + 1 });
-    else this.apply(kind);
+    else if (this.character === "duck") {
+      // The duck pockets power-ups for later in the run instead of using them straight away.
+      this.setUi({
+        stash: { ...this.ui.stash, [kind]: this.ui.stash[kind] + 1 },
+        toast: { text: `${PICKUP_LABEL[kind]} SAVED`, id: ++this.toastId },
+      });
+      return;
+    } else this.apply(kind);
     this.syncEffects(true);
     this.setUi({ toast: { text: PICKUP_LABEL[kind], id: ++this.toastId } });
   }
@@ -432,7 +436,9 @@ export class Engine {
   /** Use a power-up bought in the store. */
   activate(kind: PowerUp) {
     if (this.ui.status !== "playing" || this.player.death) return false;
-    if (!wallet.use(kind)) return false;
+    // Spend what the duck saved this run before anything bought in the store.
+    if (this.ui.stash[kind] > 0) this.setUi({ stash: { ...this.ui.stash, [kind]: this.ui.stash[kind] - 1 } });
+    else if (!wallet.use(kind)) return false;
     this.apply(kind);
     this.syncEffects(true);
     this.setUi({ toast: { text: PICKUP_LABEL[kind], id: ++this.toastId } });
@@ -623,10 +629,6 @@ export class Engine {
         if (slot !== null && lane) {
           p.x = slot;
           this.boardLog(lane);
-        } else if (this.character === "duck") {
-          // The duck slips off the log and swims at the edge.
-          p.ride = null;
-          p.x = Math.sign(p.x) * COLS;
         } else {
           this.die("water");
         }
@@ -641,8 +643,7 @@ export class Engine {
       !p.hop &&
       !p.death &&
       !this.boardLog(here) &&
-      this.effects.wings <= 0 &&
-      this.character !== "duck"
+      this.effects.wings <= 0
     ) {
       this.die("water");
     }

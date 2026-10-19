@@ -83,7 +83,7 @@ Each character has its own trait, shown on the start screen and in the store.
 | Character | Price | Trait |
 | --- | --- | --- |
 | Chicken | Free | Power-ups last 50% longer. |
-| Duck | 50 | Swims: landing in open water (or slipping off a log at the edge) is safe; it paddles in place until it hops on. |
+| Duck | 50 | Saves power-ups it picks up instead of using them; tap one in the HUD (or press its number) to use it any time that run. Saved power-ups are lost when the run ends. |
 | Frog | 100 | Never drowns: hops aim for the nearest log in the river ahead, and when a log drifts off the edge it leaps to the nearest log still in play. |
 | Penguin | 150 | Starts every run with a 20s shield. |
 | Cat | 200 | Starts every run with nine lives (eight extra on the HUD) and regrows lost ones: half a life every 20 hops after the first life is spent, doubling to 40, 80, and so on with each further life spent. A pink ring on the heart shows progress. |

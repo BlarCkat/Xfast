@@ -20,7 +20,7 @@ interface Cell {
 
 const CHARACTER_BLURB: Record<CharacterId, string> = {
   chicken: "The original road crosser. Fearless, flightless, and very fond of the other side.",
-  duck: "Waddles like the chicken, but keeps its cool around water. Mostly.",
+  duck: "Waddles like the chicken, but never wastes a good find. Squirrels things away for later.",
   frog: "Built for hopping. Has strong opinions about logs.",
   penguin: "Dressed for a formal event, crossing roads anyway.",
   cat: "Lands on its feet. Usually. Nine times, at least.",
