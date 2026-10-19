@@ -44,6 +44,8 @@ const PATHS: Record<IconId, React.ReactNode> = {
   frog: <path d="M5 4a3 3 0 0 1 6 0v1h2V4a3 3 0 0 1 6 0v2.5a8 8 0 0 1 4 6.5c0 5-5 8-11 8S1 18 1 13a8 8 0 0 1 4-6.5Zm2-1v2h2V3Zm8 0v2h2V3ZM6 14v2c3 2 9 2 12 0v-2c-3 2-9 2-12 0Z" />,
   penguin: <path d="M12 1a6 6 0 0 1 6 6v3l3 5-3-.5V19l2 3H4l2-3v-4.5L3 15l3-5V7a6 6 0 0 1 6-6Zm-2 5v2h1V6Zm3 0v2h1V6Zm-1 4-2 1 2 1 2-1Zm0 3c-2 0-3 1.5-3 4v2h6v-2c0-2.5-1-4-3-4Z" />,
   cat: <path d="M3 2l5 4h8l5-4v9a9 9 0 0 1-18 0Zm5 9v2h2v-2Zm6 0v2h2v-2Zm-3 4 1 1 1-1Z" />,
+  sparrow: <path d="M14 3a4 4 0 0 1 4 3l4 1-4 2v2a8 8 0 0 1-8 8H6l-4 3 2-5 4-3 2-6a4 4 0 0 1 4-5Zm1 3v2h2V6Z" />,
+  snail: <path d="M11 4a7 7 0 0 1 7 7 7 7 0 0 1-.6 2.9L18 14V6l1-3 1 3v2l2-3 1 1-3 5v7a2 2 0 0 1-2 2H2v-2l3-1a7 7 0 0 1 6-12Zm0 4a3 3 0 1 0 3 3 3 3 0 0 0-3-3Zm0 2a1 1 0 1 1-1 1 1 1 0 0 1 1-1Z" />,
   robot: <path d="M11 1h2v3h4a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-2v2h3v4H6v-4h3v-2H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Zm-3 7v3h3V8Zm5 0v3h3V8ZM1 8h2v5H1Zm20 0h2v5h-2Z" />,
   coin: (
     <>

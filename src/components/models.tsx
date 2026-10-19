@@ -611,6 +611,42 @@ export function Cat() {
   );
 }
 
+export function Sparrow() {
+  const brown = "#8d6e4f";
+  return (
+    <group>
+      <Box size={[0.46, 0.4, 0.56]} position={[0, 0.36, 0.04]} color={brown} />
+      <Box size={[0.36, 0.26, 0.36]} position={[0, 0.3, -0.12]} color="#e8d9c0" />
+      <Box size={[0.36, 0.32, 0.34]} position={[0, 0.7, -0.12]} color="#a47552" />
+      <Box size={[0.3, 0.1, 0.3]} position={[0, 0.9, -0.12]} color="#6d4c33" />
+      <Box size={[0.1, 0.08, 0.14]} position={[0, 0.66, -0.34]} color="#3b3b3b" />
+      <Box size={[0.06, 0.07, 0.04]} position={[0.13, 0.74, -0.29]} color="#111111" />
+      <Box size={[0.06, 0.07, 0.04]} position={[-0.13, 0.74, -0.29]} color="#111111" />
+      <Box size={[0.08, 0.26, 0.38]} position={[0.26, 0.4, 0.08]} color="#6d4c33" />
+      <Box size={[0.08, 0.26, 0.38]} position={[-0.26, 0.4, 0.08]} color="#6d4c33" />
+      <Box size={[0.24, 0.08, 0.26]} position={[0, 0.46, 0.42]} color="#6d4c33" />
+      <Box size={[0.06, 0.16, 0.06]} position={[0.1, 0.08, 0]} color="#d4a373" />
+      <Box size={[0.06, 0.16, 0.06]} position={[-0.1, 0.08, 0]} color="#d4a373" />
+    </group>
+  );
+}
+
+export function Snail() {
+  return (
+    <group>
+      <Box size={[0.4, 0.2, 0.84]} position={[0, 0.1, 0]} color="#c9b48a" />
+      <Box size={[0.32, 0.36, 0.24]} position={[0, 0.3, -0.34]} color="#c9b48a" />
+      <Box size={[0.05, 0.22, 0.05]} position={[0.1, 0.56, -0.4]} color="#b39d72" />
+      <Box size={[0.05, 0.22, 0.05]} position={[-0.1, 0.56, -0.4]} color="#b39d72" />
+      <Box size={[0.08, 0.08, 0.08]} position={[0.1, 0.69, -0.4]} color="#222222" />
+      <Box size={[0.08, 0.08, 0.08]} position={[-0.1, 0.69, -0.4]} color="#222222" />
+      <Box size={[0.5, 0.56, 0.56]} position={[0, 0.48, 0.12]} color="#d9773b" />
+      <Box size={[0.52, 0.36, 0.36]} position={[0, 0.48, 0.12]} color="#f2b56b" />
+      <Box size={[0.54, 0.16, 0.16]} position={[0, 0.48, 0.12]} color="#a8532a" />
+    </group>
+  );
+}
+
 export function Penguin() {
   return (
     <group>
@@ -656,6 +692,10 @@ export function CharacterModel({ id }: { id: CharacterId }) {
       return <Frog />;
     case "penguin":
       return <Penguin />;
+    case "sparrow":
+      return <Sparrow />;
+    case "snail":
+      return <Snail />;
     case "cat":
       return <Cat />;
     case "robot":

@@ -17,7 +17,7 @@ import {
   START_LIVES,
   CAT_LIVES,
   CHICKEN_POWERUP_BONUS,
-  ROBOT_MAGNET_RADIUS,
+  TIME_TRAIT_HOPS,
   ROWS_AHEAD,
   ROWS_BEHIND,
   TRAIN_SPEED,
@@ -260,8 +260,8 @@ export class Engine {
       if (slot !== null) p.x = slot;
     }
     if (lane?.type === "river" && !this.boardLog(lane)) {
-      // Wings let the chicken hover over open water.
-      if (this.effects.wings <= 0) {
+      // Wings let the chicken hover over open water, and the duck simply swims.
+      if (this.effects.wings <= 0 && this.character !== "duck") {
         this.die("water");
         return;
       }
@@ -280,6 +280,17 @@ export class Engine {
       p.queued = null;
       this.startHop(next);
     }
+  }
+
+  /** Foresight ghosts show while the power-up runs, and always for the robot. */
+  get foresight() {
+    return this.effects.foresight > 0 || (this.character === "robot" && !this.player.death);
+  }
+
+  /** The duck paddling in open water rather than riding a log. */
+  get swimming() {
+    const p = this.player;
+    return this.character === "duck" && !p.ride && !p.hop && !p.death && this.lanes.get(p.row)?.type === "river";
   }
 
   /** Closest spot on a log in this lane, inside the playable columns, `ahead` seconds from now. */
@@ -313,13 +324,20 @@ export class Engine {
 
   private collectCoin(lane: Lane) {
     lane.coin = null;
-    const n = (this.effects.double > 0 ? 2 : 1) * (this.character === "duck" ? 2 : 1);
+    const n = this.effects.double > 0 ? 2 : 1;
     wallet.addCoins(n);
     this.setUi({ coins: this.ui.coins + n });
   }
 
   private countStep() {
     const steps = this.ui.steps + 1;
+    // Sparrow and snail bend time every so many hops.
+    const timeTrait = this.character === "sparrow" ? "freeze" : this.character === "snail" ? "slowmo" : null;
+    if (timeTrait && steps % TIME_TRAIT_HOPS === 0) {
+      this.apply(timeTrait);
+      this.syncEffects(true);
+      this.setUi({ toast: { text: PICKUP_LABEL[timeTrait], id: ++this.toastId } });
+    }
     const tier = Math.floor(steps / STEPS_PER_SPEEDUP);
     const scale = Math.min(MAX_SPEED_SCALE, 1 + tier * SPEEDUP_STEP);
     if (scale > this.speedScale) {
@@ -511,6 +529,10 @@ export class Engine {
         if (slot !== null && lane) {
           p.x = slot;
           this.boardLog(lane);
+        } else if (this.character === "duck") {
+          // The duck slips off the log and swims at the edge.
+          p.ride = null;
+          p.x = Math.sign(p.x) * COLS;
         } else {
           this.die("water");
         }
@@ -519,15 +541,22 @@ export class Engine {
 
     // Hovering over water on wings: grab a log that drifts underneath, or fall in once the wings run out.
     const here = this.lanes.get(p.row);
-    if (here?.type === "river" && !p.ride && !p.hop && !p.death && !this.boardLog(here) && this.effects.wings <= 0) {
+    if (
+      here?.type === "river" &&
+      !p.ride &&
+      !p.hop &&
+      !p.death &&
+      !this.boardLog(here) &&
+      this.effects.wings <= 0 &&
+      this.character !== "duck"
+    ) {
       this.die("water");
     }
 
-    const reach = this.effects.magnet > 0 ? MAGNET_RADIUS : this.character === "robot" ? ROBOT_MAGNET_RADIUS : 0;
-    if (reach > 0 && !p.death) {
-      for (let r = p.row - reach; r <= p.row + reach; r++) {
+    if (this.effects.magnet > 0 && !p.death) {
+      for (let r = p.row - MAGNET_RADIUS; r <= p.row + MAGNET_RADIUS; r++) {
         const lane = this.lanes.get(r);
-        if (lane && lane.coin !== null && Math.abs(lane.coin - p.x) <= reach + 0.5) this.collectCoin(lane);
+        if (lane && lane.coin !== null && Math.abs(lane.coin - p.x) <= MAGNET_RADIUS + 0.5) this.collectCoin(lane);
       }
     }
 

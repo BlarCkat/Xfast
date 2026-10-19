@@ -27,8 +27,8 @@ export const START_LIVES = 1;
 export const CAT_LIVES = 8;
 /** Power-up durations are stretched by this much for the chicken. */
 export const CHICKEN_POWERUP_BONUS = 1.5;
-/** Coin reach of the robot's always-on magnet, in columns. */
-export const ROBOT_MAGNET_RADIUS = 1;
+/** The sparrow stops time and the snail slows it every this many hops. */
+export const TIME_TRAIT_HOPS = 100;
 export const RESPAWN_DELAY = 1.2;
 export const RESPAWN_SHIELD = 2;
 export const POWERUP_DURATION = {

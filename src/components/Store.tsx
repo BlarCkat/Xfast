@@ -24,6 +24,8 @@ const CHARACTER_BLURB: Record<CharacterId, string> = {
   frog: "Built for hopping. Has strong opinions about logs.",
   penguin: "Dressed for a formal event, crossing roads anyway.",
   cat: "Lands on its feet. Usually. Nine times, at least.",
+  sparrow: "Small, quick, and somehow on first-name terms with time itself.",
+  snail: "Takes its time. Occasionally takes everyone else's too.",
   robot: "Hop module v2. Runs on coins and optimism.",
 };
 

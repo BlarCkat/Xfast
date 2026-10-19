@@ -193,7 +193,7 @@ function ForesightGhosts({ lane, engine }: { lane: Lane; engine: Engine }) {
   const dir = Math.sign(lane.speed);
 
   useFrame(() => {
-    const on = engine.effects.foresight > 0;
+    const on = engine.foresight;
     if (root.current) root.current.visible = on;
     if (!on) return;
     FORESIGHT_STEPS.forEach((step, s) => {
