@@ -12,7 +12,8 @@ export type BiomeId =
   | "city"
   | "spooky"
   | "volcano"
-  | "northpole";
+  | "northpole"
+  | "underwater";
 
 export interface Biome {
   id: BiomeId;
@@ -161,6 +162,19 @@ export const BIOMES: Record<BiomeId, Biome> = {
     carColors: ["#e94f37", "#3f88c5", "#2f9e5a", "#f6c90e"],
     truckColors: ["#c0392b"],
     trainColors: ["#c0392b", "#2f7d4a", "#f2f2f2", "#d4af37"],
+  },
+  // Only reached by the duck diving into a river; never part of the regular cycle.
+  underwater: {
+    id: "underwater",
+    label: "Underwater",
+    grass: ["#7fb3b0", "#76aaa7"],
+    road: "#2a6f93",
+    marking: "#5fa8c9",
+    water: "#2a6f93",
+    railBed: "#5d7f86",
+    carColors: ["#ff8c42", "#b05cc5", "#f4a6d7", "#5d9e5a", "#ffd166"],
+    truckColors: ["#7d8b99"],
+    trainColors: ["#4a5d6b"],
   },
 };
 

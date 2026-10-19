@@ -64,6 +64,7 @@ Every 50 rows the world changes theme, then the cycle repeats after the eleventh
 | Spooky | Pumpkins, gravestones, dead trees | Ghosts and hearses | Coffins |
 | Volcano | Lava rocks, obsidian spikes, mini volcanoes | Lava rovers and dump trucks | Basalt slabs on glowing lava |
 | North Pole | Snowmen, presents, snowy pines | Snowmobiles and Santa's sleigh | Ice floes |
+| Underwater (duck only) | Coral, kelp, rocks, treasure chests | Sharks, fish, octopi, jellyfish and turtles | None; it ends at the river where the duck surfaces |
 
 ## Rendering
 
@@ -83,7 +84,7 @@ Each character has its own trait, shown on the start screen and in the store.
 | Character | Price | Trait |
 | --- | --- | --- |
 | Chicken | Free | Power-ups last 50% longer. |
-| Duck | 50 | Saves power-ups it picks up instead of using them; tap one in the HUD (or press its number) to use it any time that run. Saved power-ups are lost when the run ends. |
+| Duck | 50 | Saves power-ups it picks up instead of using them; tap one in the HUD (or press its number) to use it any time that run. Falling in water dives to the seabed: 30 rows of coral, kelp and rocks with lanes of sharks, fish, octopi, jellyfish and turtles, ending at a river where it surfaces and paddles back to land. |
 | Frog | 100 | Never drowns: hops aim for the nearest log in the river ahead, and when a log drifts off the edge it leaps to the nearest log still in play. |
 | Penguin | 150 | Starts every run with a 20s shield. |
 | Cat | 200 | Starts every run with nine lives (eight extra on the HUD) and regrows lost ones: half a life every 20 hops after the first life is spent, doubling to 40, 80, and so on with each further life spent. A pink ring on the heart shows progress. |

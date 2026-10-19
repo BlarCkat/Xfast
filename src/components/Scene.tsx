@@ -82,6 +82,8 @@ function Player({ engine }: { engine: Engine }) {
       wings.current.visible = flying;
       wings.current.rotation.z = Math.sin(engine.time * 18) * 0.25;
     }
+    // Paddle low in the water where the duck surfaced.
+    if (engine.swimming) y = -0.22 + Math.sin(engine.time * 4) * 0.03;
     // Hover a little above the water while flying.
     if (flying && !p.hop && !p.ride) y = 0.35 + Math.sin(engine.time * 6) * 0.05;
     if (chicken.current) chicken.current.visible = !isRock;
@@ -293,7 +295,7 @@ export function Scene({ engine, fx }: { engine: Engine; fx: boolean }) {
       <hemisphereLight args={[SKY_COLOR, GROUND_COLOR, HEMI_INTENSITY]} />
       <CameraRig engine={engine} tier={tier} />
       {lanes.map((lane) => (
-        <LaneView key={lane.row} lane={lane} engine={engine} />
+        <LaneView key={`${lane.row}:${lane.biome}:${lane.type}`} lane={lane} engine={engine} />
       ))}
       <EdgeShade engine={engine} />
       <Player engine={engine} />

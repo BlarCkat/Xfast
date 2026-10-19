@@ -277,10 +277,7 @@ export class Engine {
     }
     if (lane?.type === "river" && !this.boardLog(lane)) {
       // Wings let the chicken hover over open water.
-      if (this.effects.wings <= 0) {
-        this.die("water");
-        return;
-      }
+      if (this.effects.wings <= 0 && this.splash(lane)) return;
     }
 
     if (lane && lane.biome !== this.biome) {
@@ -303,6 +300,42 @@ export class Engine {
   /** Foresight ghosts show while the power-up runs, and always for the robot. */
   get foresight() {
     return this.effects.foresight > 0 || (this.character === "robot" && !this.player.death);
+  }
+
+  /** The duck paddling in the river where it surfaced. */
+  get swimming() {
+    const p = this.player;
+    return !p.ride && !p.hop && !p.death && this.lanes.get(p.row)?.exit === true;
+  }
+
+  /**
+   * In open water: the river a dive surfaces in is safe to paddle in, the duck dives
+   * to the seabed, and everyone else drowns. False when the player is safe.
+   */
+  private splash(lane: Lane) {
+    const p = this.player;
+    if (lane.exit) {
+      p.ride = null;
+      p.x = Math.max(-COLS, Math.min(COLS, p.x));
+      return false;
+    }
+    if (this.character === "duck") this.dive();
+    else this.die("water");
+    return true;
+  }
+
+  /** Replace the world ahead with the seabed, from the river the duck fell into. */
+  private dive() {
+    const p = this.player;
+    const x = Math.max(-COLS, Math.min(COLS, Math.round(p.x)));
+    for (let row = p.row; row <= this.maxRow; row++) this.lanes.delete(row);
+    this.maxRow = p.row - 1;
+    this.generator.dive(p.row, x);
+    this.ensureLanes();
+    Object.assign(p, { x, y: 0, hop: null, queued: null, ride: null });
+    p.shield = Math.max(p.shield, 1);
+    this.biome = "underwater";
+    this.setUi({ toast: { text: "DIVE!", id: ++this.toastId } });
   }
 
   /** Lumberjack, and Bowser always, go straight through trees and rocks. */
@@ -629,6 +662,8 @@ export class Engine {
         if (slot !== null && lane) {
           p.x = slot;
           this.boardLog(lane);
+        } else if (lane) {
+          this.splash(lane);
         } else {
           this.die("water");
         }
@@ -645,7 +680,7 @@ export class Engine {
       !this.boardLog(here) &&
       this.effects.wings <= 0
     ) {
-      this.die("water");
+      this.splash(here);
     }
 
     if ((this.effects.magnet > 0 || this.character === "luigi") && !p.death) {

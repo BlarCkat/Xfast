@@ -3,7 +3,7 @@
 import { memo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Group, Mesh, MeshBasicMaterial } from "three";
-import { Color } from "three";
+import { Color, MeshBasicMaterial as BasicMaterial, PlaneGeometry } from "three";
 import { COLS, FORESIGHT_STEPS, LANE_WIDTH, TRAIN_SPEED, WRAP } from "@/game/config";
 import type { Engine } from "@/game/engine";
 import type { Lane } from "@/game/lanes";
@@ -51,6 +51,7 @@ const GRASS_TEXTURE: Record<BiomeId, GroundTexture> = {
   spooky: "grass",
   volcano: "ash",
   northpole: "snow",
+  underwater: "sand",
 };
 
 function GrassLane({ lane }: { lane: Lane }) {
@@ -297,6 +298,10 @@ function CoinView({ lane }: { lane: Lane }) {
   );
 }
 
+// A sheet of sea water over every underwater lane tints the seabed and everything on it.
+const seaGeometry = new PlaneGeometry(LANE_WIDTH, 1).rotateX(-Math.PI / 2);
+const seaMaterial = new BasicMaterial({ color: "#1d6fa5", transparent: true, opacity: 0.32, depthWrite: false });
+
 export const LaneView = memo(function LaneView({ lane, engine }: { lane: Lane; engine: Engine }) {
   return (
     <group position={[0, 0, -lane.row]}>
@@ -307,6 +312,7 @@ export const LaneView = memo(function LaneView({ lane, engine }: { lane: Lane; e
       {lane.type === "road" && <RoadLane lane={lane} />}
       {lane.type === "river" && <RiverLane lane={lane} />}
       {lane.type === "rail" && <RailLane lane={lane} />}
+      {lane.biome === "underwater" && <mesh geometry={seaGeometry} material={seaMaterial} position={[0, 1.9, 0]} renderOrder={2} />}
     </group>
   );
 });

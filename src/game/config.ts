@@ -36,6 +36,8 @@ export const MARIO_COINS_PER_LIFE = 100;
 /** Bowser breathes fire every this many hops, wrecking traffic on the next few road lanes. */
 export const BOWSER_FIRE_HOPS = 50;
 export const BOWSER_FIRE_ROWS = 4;
+/** Rows of seabed the duck crosses after diving, before the river where it surfaces. */
+export const UNDERWATER_ROWS = 30;
 export const RESPAWN_DELAY = 1.2;
 export const RESPAWN_SHIELD = 2;
 export const POWERUP_DURATION = {

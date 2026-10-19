@@ -1,4 +1,4 @@
-import { COLS, TRAIN_CAR_LENGTH, WRAP } from "./config";
+import { COLS, TRAIN_CAR_LENGTH, UNDERWATER_ROWS, WRAP } from "./config";
 import { BIOMES, biomeAt, type BiomeId } from "./biomes";
 import { POWERUP_KEYS, type PowerUp } from "./powerups";
 
@@ -44,6 +44,8 @@ export interface Lane {
   pickup: Pickup | null;
   /** Column of a coin on this lane, or null. */
   coin: number | null;
+  /** The river where a diving duck comes back up; its open water is safe to paddle in. */
+  exit?: boolean;
 }
 
 export type Rng = () => number;
@@ -104,13 +106,29 @@ export class LaneGenerator {
   private lastRiverDir = 1;
   private lastType: LaneType = "grass";
   private biome: BiomeId = biomeAt(0);
+  /** Rows of the duck's current dive: seabed from `from`, surfacing in the river at `exit`. */
+  private underwater: { from: number; exit: number } | null = null;
 
   constructor(seed: number) {
     this.rng = mulberry32(seed);
   }
 
+  /**
+   * Swap the world ahead for the seabed, starting at `row` with column `col` clear.
+   * The caller drops every lane from `row` on and requests them again.
+   */
+  dive(row: number, col: number) {
+    this.underwater = { from: row, exit: row + UNDERWATER_ROWS };
+    this.biome = "underwater";
+    this.pathCol = col;
+    this.groupType = "grass";
+    this.groupLeft = 0;
+    this.lastType = "grass";
+  }
+
   /** Rows must be requested in increasing order starting from the first row behind the start. */
   next(row: number): Lane {
+    if (this.underwater) return this.nextUnderwater(row, this.underwater);
     if (row <= 0) {
       const lane = this.grass(row, row <= -3 ? 1 : row < 0 ? 0.35 : 0);
       this.lastType = "grass";
@@ -152,6 +170,43 @@ export class LaneGenerator {
     lane.continued = lane.type === this.lastType;
     this.lastType = lane.type;
     this.placePickup(lane);
+    return lane;
+  }
+
+  private nextUnderwater(row: number, dive: { from: number; exit: number }): Lane {
+    const difficulty = difficultyAt(row);
+    let lane: Lane;
+    if (row === dive.from) {
+      // Land on open seabed.
+      lane = this.grass(row, 0);
+    } else if (row === dive.exit) {
+      // Come back up in a river of whichever biome the run has reached, then carry on over land.
+      this.underwater = null;
+      this.biome = biomeAt(row);
+      lane = this.river(row, difficulty);
+      lane.exit = true;
+      this.groupType = "grass";
+      this.groupLeft = 2;
+    } else {
+      if (this.groupLeft <= 0) {
+        // Seabed strips between shoals of sea creatures; no rivers or rails down here.
+        const rng = this.rng;
+        if (this.groupType === "road" || rng() < 0.3) {
+          this.groupType = "grass";
+          this.groupLeft = randInt(rng, 1, 2);
+        } else {
+          this.groupType = "road";
+          this.groupLeft = randInt(rng, 1, 3 + Math.round(difficulty * 2));
+        }
+      }
+      this.groupLeft--;
+      lane = this.groupType === "road" ? this.road(row, difficulty) : this.grass(row, 0.2 + difficulty * 0.15);
+      // Always finish on seabed so the surfacing hop starts from solid ground.
+      if (row === dive.exit - 1 && lane.type !== "grass") lane = this.grass(row, 0.2);
+    }
+    lane.continued = lane.type === this.lastType;
+    this.lastType = lane.type;
+    if (!lane.exit) this.placePickup(lane);
     return lane;
   }
 

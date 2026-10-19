@@ -926,6 +926,168 @@ const Coffin = forwardRef<Group, { length: number }>(function Coffin({ length },
 // ---- Biome lookups for the newer biomes ------------------------------------------------
 
 /** Obstacles for the biomes added after the first six. */
+// ---- Underwater (the duck's dive) ------------------------------------------------
+
+function Coral({ variant }: { variant: number }) {
+  const color = ["#ff6f91", "#ff9671", "#c77dff"][variant % 3];
+  return (
+    <group>
+      <Box size={[0.5, 0.16, 0.5]} position={[0, 0.08, 0]} color="#8d9b9b" />
+      <Box size={[0.14, 0.7, 0.14]} position={[0, 0.5, 0]} color={color} />
+      <Box size={[0.12, 0.42, 0.12]} position={[0.2, 0.46, 0.06]} color={color} />
+      <Box size={[0.12, 0.5, 0.12]} position={[-0.18, 0.5, -0.08]} color={color} />
+      <Box size={[0.22, 0.08, 0.08]} position={[0.1, 0.66, 0.06]} color={color} />
+      <Box size={[0.1, 0.1, 0.1]} position={[0, 0.9, 0]} color="#ffd6e0" />
+    </group>
+  );
+}
+
+function SeaRock() {
+  return (
+    <group>
+      <Box size={[0.8, 0.42, 0.7]} position={[0, 0.21, 0]} color="#5f7a80" />
+      <Box size={[0.5, 0.26, 0.46]} position={[0.08, 0.54, -0.04]} color="#6d8a90" />
+      <Box size={[0.3, 0.06, 0.3]} position={[-0.18, 0.45, 0.16]} color="#4caf7d" cast={false} />
+      <Box size={[0.16, 0.12, 0.16]} position={[0.26, 0.48, 0.24]} color="#f4a6d7" />
+    </group>
+  );
+}
+
+function Kelp({ variant }: { variant: number }) {
+  return (
+    <group>
+      {[-0.18, 0.16].map((x, i) => (
+        <group key={x} position={[x, 0, i ? 0.12 : -0.1]}>
+          {[0, 1, 2, 3, 4].map((k) => (
+            <Box
+              key={k}
+              size={[0.14, 0.34, 0.1]}
+              position={[Math.sin(k * 1.3 + variant + i) * 0.07, 0.17 + k * 0.32, 0]}
+              color={k % 2 ? "#3f8f4f" : "#4fa35d"}
+            />
+          ))}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function TreasureChest() {
+  return (
+    <group>
+      <Box size={[0.7, 0.36, 0.48]} position={[0, 0.18, 0]} color="#8b5a2b" />
+      <Box size={[0.72, 0.2, 0.5]} position={[0, 0.48, 0]} color="#a0692e" />
+      <Box size={[0.74, 0.06, 0.52]} position={[0, 0.37, 0]} color="#f2c14e" />
+      <Box size={[0.1, 0.14, 0.04]} position={[0, 0.34, -0.26]} color="#f2c14e" />
+      <Box size={[0.5, 0.06, 0.3]} position={[0, 0.61, 0]} color="#ffd54f" glow={1.6} cast={false} />
+    </group>
+  );
+}
+
+function Shark({ length }: VehicleProps) {
+  const grey = "#7d8b99";
+  return (
+    <group position={[0, 0.25, 0]}>
+      <Box size={[length * 0.62, 0.46, 0.5]} position={[0, 0.4, 0]} color={grey} />
+      <Box size={[length * 0.6, 0.16, 0.44]} position={[0, 0.2, 0]} color="#e8eef2" />
+      <Box size={[length * 0.2, 0.32, 0.4]} position={[length * 0.38, 0.36, 0]} color={grey} />
+      <Box size={[0.12, 0.06, 0.3]} position={[length * 0.44, 0.24, 0]} color="#ffffff" cast={false} />
+      <Box size={[0.08, 0.08, 0.04]} position={[length * 0.4, 0.44, 0.21]} color="#111" cast={false} />
+      <Box size={[0.08, 0.08, 0.04]} position={[length * 0.4, 0.44, -0.21]} color="#111" cast={false} />
+      <Box size={[0.36, 0.42, 0.08]} position={[-length * 0.02, 0.8, 0]} color={grey} />
+      <Box size={[0.4, 0.08, 0.3]} position={[length * 0.08, 0.24, 0.36]} color={grey} />
+      <Box size={[0.4, 0.08, 0.3]} position={[length * 0.08, 0.24, -0.36]} color={grey} />
+      <Box size={[length * 0.2, 0.24, 0.24]} position={[-length * 0.38, 0.4, 0]} color={grey} />
+      <Box size={[0.14, 0.62, 0.1]} position={[-length * 0.5, 0.44, 0]} color={grey} />
+    </group>
+  );
+}
+
+function FishSchool({ color, length }: VehicleProps) {
+  return (
+    <group>
+      {[
+        [-0.35, 0.5, -0.18],
+        [0.2, 0.75, 0.14],
+        [0.35, 0.38, -0.08],
+      ].map(([x, y, z], i) => (
+        <group key={i} position={[x * length, y, z]}>
+          <Box size={[0.42, 0.26, 0.16]} position={[0, 0, 0]} color={color} />
+          <Box size={[0.08, 0.27, 0.17]} position={[0.02, 0, 0]} color="#ffffff" cast={false} />
+          <Box size={[0.14, 0.3, 0.06]} position={[-0.26, 0, 0]} color={color} />
+          <Box size={[0.05, 0.05, 0.18]} position={[0.14, 0.05, 0]} color="#111" cast={false} />
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function Octopus({ color, length }: VehicleProps) {
+  return (
+    <group>
+      <Box size={[0.62, 0.56, 0.6]} position={[length * 0.05, 0.86, 0]} color={color} />
+      <Box size={[0.5, 0.2, 0.5]} position={[length * 0.05, 1.2, 0]} color={color} />
+      <Box size={[0.12, 0.14, 0.06]} position={[length * 0.05 + 0.32, 0.86, 0.14]} color="#ffffff" cast={false} />
+      <Box size={[0.12, 0.14, 0.06]} position={[length * 0.05 + 0.32, 0.86, -0.14]} color="#ffffff" cast={false} />
+      <Box size={[0.06, 0.08, 0.04]} position={[length * 0.05 + 0.35, 0.85, 0.14]} color="#111" cast={false} />
+      <Box size={[0.06, 0.08, 0.04]} position={[length * 0.05 + 0.35, 0.85, -0.14]} color="#111" cast={false} />
+      {[-0.22, 0, 0.22].map((x) =>
+        [-0.2, 0.2].map((z) => (
+          <Box key={`${x}${z}`} size={[0.12, 0.5, 0.12]} position={[length * 0.05 + x, 0.36 + Math.abs(x) * 0.4, z]} color={color} />
+        )),
+      )}
+      <Box size={[0.5, 0.1, 0.12]} position={[length * 0.05 - 0.42, 0.16, 0]} color={color} />
+    </group>
+  );
+}
+
+function Jellyfish({ color }: VehicleProps) {
+  return (
+    <group>
+      <Box size={[0.6, 0.3, 0.6]} position={[0, 1.1, 0]} color={color} glow={1.2} />
+      <Box size={[0.44, 0.14, 0.44]} position={[0, 1.3, 0]} color={color} glow={1.2} />
+      {[-0.18, 0, 0.18].map((x) =>
+        [-0.16, 0.16].map((z) => (
+          <Box key={`${x}${z}`} size={[0.05, 0.56, 0.05]} position={[x, 0.68 - Math.abs(x), z]} color="#ffe0f0" cast={false} />
+        )),
+      )}
+    </group>
+  );
+}
+
+function SeaTurtle({ color, length }: VehicleProps) {
+  return (
+    <group position={[0, 0.3, 0]}>
+      <Box size={[length * 0.5, 0.3, 0.7]} position={[0, 0.36, 0]} color={color} />
+      <Box size={[length * 0.4, 0.12, 0.56]} position={[0, 0.56, 0]} color="#3d7a3e" />
+      <Box size={[length * 0.48, 0.1, 0.66]} position={[0, 0.2, 0]} color="#e8d9a0" />
+      <Box size={[0.28, 0.22, 0.24]} position={[length * 0.33, 0.36, 0]} color="#9ccc65" />
+      <Box size={[0.05, 0.06, 0.04]} position={[length * 0.4, 0.42, 0.11]} color="#111" cast={false} />
+      <Box size={[0.05, 0.06, 0.04]} position={[length * 0.4, 0.42, -0.11]} color="#111" cast={false} />
+      {[-1, 1].map((sz) => (
+        <group key={sz}>
+          <Box size={[0.36, 0.06, 0.24]} position={[length * 0.14, 0.3, sz * 0.44]} color="#9ccc65" />
+          <Box size={[0.2, 0.06, 0.16]} position={[-length * 0.18, 0.3, sz * 0.38]} color="#9ccc65" />
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/** The underwater biome's small swimmers, picked by the colour the lane generator gave them. */
+function SeaCritter(props: VehicleProps) {
+  switch (props.color) {
+    case "#b05cc5":
+      return <Octopus {...props} />;
+    case "#f4a6d7":
+      return <Jellyfish {...props} />;
+    case "#5d9e5a":
+      return <SeaTurtle {...props} />;
+    default:
+      return <FishSchool {...props} />;
+  }
+}
+
 export function extraObstacle(biome: BiomeId, height: number, variant: number): React.ReactNode | null {
   switch (biome) {
     case "desert":
@@ -938,6 +1100,9 @@ export function extraObstacle(biome: BiomeId, height: number, variant: number): 
       return height === 1 ? <LavaRock /> : height === 2 ? <ObsidianSpikes /> : <MiniVolcano />;
     case "spooky":
       return height === 1 ? <Pumpkin /> : height === 2 ? <Gravestone /> : <DeadTree />;
+    case "underwater":
+      if (variant % 11 === 0) return <TreasureChest />;
+      return height === 1 ? <SeaRock /> : height === 2 ? <Coral variant={variant} /> : <Kelp variant={variant} />;
     default:
       return null;
   }
@@ -955,6 +1120,8 @@ export function extraVehicle(biome: BiomeId, big: boolean, props: VehicleProps):
       return big ? <DumpTruck {...props} /> : <LavaRover {...props} />;
     case "spooky":
       return big ? <Hearse {...props} /> : <Ghost {...props} />;
+    case "underwater":
+      return big ? <Shark {...props} /> : <SeaCritter {...props} />;
     default:
       return null;
   }
