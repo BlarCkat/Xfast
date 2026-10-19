@@ -149,7 +149,7 @@ function Building({ variant }: { variant: number }) {
       <Box size={[0.94, 0.08, 0.94]} position={[0, 1.62, 0]} color="#5b5f66" />
       {[0.5, 0.95, 1.4].map((y) =>
         [-0.22, 0.22].map((x) => (
-          <Box key={`${x}${y}`} size={[0.2, 0.22, 0.02]} position={[x, y, 0.46]} color="#cfe8ff" cast={false} />
+          <Box key={`${x}${y}`} size={[0.2, 0.22, 0.02]} position={[x, y, 0.46]} color="#ffe7a8" cast={false} glow={0.9} />
         )),
       )}
     </group>
@@ -269,8 +269,8 @@ function SafariJeep({ color, length }: VehicleProps) {
       ))}
       <Box size={[0.06, 0.06, 0.82]} position={[-length * 0.25, 1.0, 0]} color="#3a3a3a" />
       <Box size={[0.12, 0.34, 0.34]} position={[-length / 2 - 0.05, 0.45, 0]} color="#222" />
-      <Box size={[0.06, 0.12, 0.18]} position={[length / 2, 0.45, 0.25]} color="#fff6b0" />
-      <Box size={[0.06, 0.12, 0.18]} position={[length / 2, 0.45, -0.25]} color="#fff6b0" />
+      <Box size={[0.06, 0.12, 0.18]} position={[length / 2, 0.45, 0.25]} color="#fff6b0" glow={2.5} />
+      <Box size={[0.06, 0.12, 0.18]} position={[length / 2, 0.45, -0.25]} color="#fff6b0" glow={2.5} />
       {[-1, 1].map((sx) =>
         [-1, 1].map((sz) => (
           <Box key={`${sx}${sz}`} size={[0.34, 0.32, 0.12]} position={[sx * length * 0.3, 0.16, sz * 0.42]} color="#222" />

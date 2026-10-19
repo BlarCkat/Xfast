@@ -60,6 +60,10 @@ Every 50 rows the world changes theme, then the cycle repeats after the sixth. A
 | City | Hydrants, planters, buildings | Taxis, cars and buses | Logs |
 | North Pole | Snowmen, presents, snowy pines | Snowmobiles and Santa's sleigh | Ice floes |
 
+## Rendering
+
+Every block has bevelled edges so light rolls over the corners. The default **Realistic** mode adds post-processing: soft ambient occlusion where blocks meet the ground, HDR bloom on bright things (headlights, coins, lit city windows, the flashing rail light, sunlit snow), filmic tone mapping and a light vignette. Press **B** or use the button on the start screen to switch to **Classic**, which skips the post-processing and runs lighter on slow devices. The choice is saved in your browser.
+
 ## Code layout
 
 - `src/game/` holds the rules with no rendering: `lanes.ts` generates lanes, `biomes.ts` defines the themes, `engine.ts` runs hopping, collisions, the camera focus and scoring.

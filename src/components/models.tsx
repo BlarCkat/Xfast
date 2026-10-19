@@ -2,6 +2,7 @@
 
 import { forwardRef } from "react";
 import type { Group } from "three";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { TRAIN_CAR_LENGTH } from "@/game/config";
 import type { PickupKind } from "@/game/lanes";
 import type { CharacterId } from "@/game/wallet";
@@ -14,13 +15,31 @@ type BoxProps = {
   color: string;
   cast?: boolean;
   receive?: boolean;
+  /** Emissive strength; above 1 it is bright enough to bloom. */
+  glow?: number;
 };
 
-export function Box({ size, position = [0, 0, 0], color, cast = true, receive = false }: BoxProps) {
+// Bevelled boxes soften the voxel edges so light rolls over them. Geometry is shared per size.
+const geometries = new Map<string, RoundedBoxGeometry>();
+function roundedBox([w, h, d]: [number, number, number]) {
+  const key = `${w},${h},${d}`;
+  let g = geometries.get(key);
+  if (!g) {
+    const radius = Math.min(0.07, Math.min(w, h, d) * 0.3);
+    g = new RoundedBoxGeometry(w, h, d, 2, radius);
+    geometries.set(key, g);
+  }
+  return g;
+}
+
+export function Box({ size, position = [0, 0, 0], color, cast = true, receive = false, glow }: BoxProps) {
   return (
-    <mesh position={position} castShadow={cast} receiveShadow={receive}>
-      <boxGeometry args={size} />
-      <meshLambertMaterial color={color} />
+    <mesh position={position} castShadow={cast} receiveShadow={receive} geometry={roundedBox(size)}>
+      {glow ? (
+        <meshLambertMaterial color={color} emissive={color} emissiveIntensity={glow} toneMapped={false} />
+      ) : (
+        <meshLambertMaterial color={color} />
+      )}
     </mesh>
   );
 }
@@ -66,8 +85,8 @@ export const Car = forwardRef<Group, { color: string; length: number; dir: numbe
         <Box size={[length, 0.42, 0.82]} position={[0, 0.33, 0]} color={color} />
         <Box size={[length * 0.55, 0.32, 0.72]} position={[-length * 0.08, 0.7, 0]} color="#f4f4f4" />
         <Box size={[length * 0.5, 0.22, 0.74]} position={[-length * 0.08, 0.7, 0]} color="#2c3e50" />
-        <Box size={[0.06, 0.12, 0.18]} position={[length / 2, 0.38, 0.25]} color="#fff6b0" />
-        <Box size={[0.06, 0.12, 0.18]} position={[length / 2, 0.38, -0.25]} color="#fff6b0" />
+        <Box size={[0.06, 0.12, 0.18]} position={[length / 2, 0.38, 0.25]} color="#fff6b0" glow={2.5} />
+        <Box size={[0.06, 0.12, 0.18]} position={[length / 2, 0.38, -0.25]} color="#fff6b0" glow={2.5} />
         {[-1, 1].map((sx) =>
           [-1, 1].map((sz) => (
             <Box
@@ -136,7 +155,7 @@ export const Train = forwardRef<Group, { cars: number; dir: number; colors?: str
               {i === 0 && (
                 <>
                   <Box size={[0.08, 0.3, 0.6]} position={[TRAIN_CAR_LENGTH / 2 - 0.12, 0.9, 0]} color="#2c3e50" />
-                  <Box size={[0.08, 0.14, 0.2]} position={[TRAIN_CAR_LENGTH / 2 - 0.1, 0.45, 0]} color="#fff6b0" />
+                  <Box size={[0.08, 0.14, 0.2]} position={[TRAIN_CAR_LENGTH / 2 - 0.1, 0.45, 0]} color="#fff6b0" glow={2.5} />
                 </>
               )}
             </group>
@@ -433,8 +452,8 @@ export function CharacterModel({ id }: { id: CharacterId }) {
 export function Coin() {
   return (
     <group>
-      <Box size={[0.38, 0.38, 0.08]} position={[0, 0, 0]} color="#ffc928" />
-      <Box size={[0.26, 0.26, 0.1]} position={[0, 0, 0]} color="#ffe27a" cast={false} />
+      <Box size={[0.38, 0.38, 0.08]} position={[0, 0, 0]} color="#ffc928" glow={0.6} />
+      <Box size={[0.26, 0.26, 0.1]} position={[0, 0, 0]} color="#ffe27a" cast={false} glow={1.2} />
       <Box size={[0.06, 0.16, 0.11]} position={[0, 0, 0]} color="#e0a800" cast={false} />
     </group>
   );

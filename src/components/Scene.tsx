@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import type { DirectionalLight, Group, Material, Mesh, OrthographicCamera } from "three";
 import { COLS, HOP_HEIGHT, ROWS_AHEAD, ROWS_BEHIND } from "@/game/config";
 import type { Engine } from "@/game/engine";
+import { Effects } from "./Effects";
 import { LaneView } from "./Lanes";
 import { CharacterModel, Eagle, RockShell, ShieldBubble, Wings } from "./models";
 
@@ -208,7 +209,7 @@ function CameraRig({ engine }: { engine: Engine }) {
   );
 }
 
-export function Scene({ engine }: { engine: Engine }) {
+export function Scene({ engine, fx }: { engine: Engine; fx: boolean }) {
   const [, setVersion] = useState(0);
   const seen = useRef(engine.laneVersion);
   // Re-render the lane list only when lanes are added or dropped.
@@ -231,6 +232,7 @@ export function Scene({ engine }: { engine: Engine }) {
       <EdgeShade engine={engine} />
       <Player engine={engine} />
       <EagleView engine={engine} />
+      {fx && <Effects />}
     </>
   );
 }

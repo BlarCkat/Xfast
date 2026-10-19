@@ -27,11 +27,30 @@ const stop = (e: React.PointerEvent) => e.stopPropagation();
 // Ignore input for a moment after dying so a held key doesn't skip the score screen.
 const RESTART_DELAY = 600;
 
+const FX_KEY = "xfast-fx";
+/** Realistic rendering (bloom, ambient occlusion) is on unless the player switched it off. */
+function readFx() {
+  try {
+    return localStorage.getItem(FX_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
 export default function Game() {
   const [engine, setEngine] = useState(() => new Engine(wallet.get().selected));
   const ui = useSyncExternalStore(engine.subscribe, engine.getSnapshot, engine.getSnapshot);
   const w = useWallet();
   const [storeOpen, setStoreOpen] = useState(false);
+  const [fx, setFx] = useState(readFx);
+  const toggleFx = useCallback(() => {
+    setFx((on) => {
+      try {
+        localStorage.setItem(FX_KEY, on ? "off" : "on");
+      } catch {}
+      return !on;
+    });
+  }, []);
   const diedAt = useRef(0);
 
   // Show a newly picked character straight away on the start screen.
@@ -56,6 +75,10 @@ export default function Game() {
         if (e.code === "Escape") setStoreOpen(false);
         return;
       }
+      if (e.code === "KeyB") {
+        toggleFx();
+        return;
+      }
       if (e.code === "KeyS" && engine.status !== "playing") {
         setStoreOpen(true);
         return;
@@ -77,7 +100,7 @@ export default function Game() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [engine, restart, storeOpen]);
+  }, [engine, restart, storeOpen, toggleFx]);
 
   // Tap to hop forward, swipe to hop in any direction.
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -107,7 +130,7 @@ export default function Game() {
         dpr={[1, 2]}
         camera={{ position: [3, 11, 7.5], zoom: 50, near: -50, far: 200 }}
       >
-        <Scene key={engine.id} engine={engine} />
+        <Scene key={engine.id} engine={engine} fx={fx} />
       </Canvas>
 
       {ui.effects.slowmo > 0 && <div className="tint tint-slowmo" />}
@@ -195,6 +218,15 @@ export default function Game() {
               }}
             >
               <kbd>S</kbd> Store
+            </button>
+            <button
+              onPointerDown={stop}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                toggleFx();
+              }}
+            >
+              <kbd>B</kbd> {fx ? "Realistic" : "Classic"}
             </button>
           </div>
         </div>

@@ -123,7 +123,10 @@ function RailLane({ lane }: { lane: Lane }) {
     }
     if (light.current) {
       const on = t.warning && Math.floor(clock.elapsedTime * 6) % 2 === 0;
-      (light.current.material as MeshBasicMaterial).color.set(on ? "#ff3b30" : "#5a1d1d");
+      // Over-bright red while flashing so the warning light blooms.
+      const m = light.current.material as MeshBasicMaterial;
+      if (on) m.color.setRGB(4, 0.35, 0.25);
+      else m.color.set("#5a1d1d");
     }
   });
   return (
@@ -146,7 +149,7 @@ function RailLane({ lane }: { lane: Lane }) {
         <Box size={[0.36, 0.3, 0.2]} position={[0, 1.45, 0]} color="#222" />
         <mesh ref={light} position={[0, 1.45, 0.11]}>
           <boxGeometry args={[0.18, 0.18, 0.04]} />
-          <meshBasicMaterial color="#5a1d1d" />
+          <meshBasicMaterial color="#5a1d1d" toneMapped={false} />
         </mesh>
       </group>
       <Train ref={train} cars={lane.train.cars} dir={dir} colors={BIOMES[lane.biome].trainColors} />
