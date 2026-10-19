@@ -16,6 +16,9 @@ import {
   CAT_REFILL_HOPS,
   CHICKEN_POWERUP_BONUS,
   TIME_TRAIT_HOPS,
+  MARIO_COINS_PER_LIFE,
+  BOWSER_FIRE_HOPS,
+  BOWSER_FIRE_ROWS,
   ROWS_AHEAD,
   ROWS_BEHIND,
   TRAIN_SPEED,
@@ -227,8 +230,8 @@ export class Engine {
     const open = (row: number) => {
       const lane = this.lanes.get(row);
       if (!lane) return false;
-      // Lumberjack walks through trees (they're chopped on landing).
-      return !(lane.type === "grass" && lane.blocked.has(Math.round(toX)) && this.effects.lumberjack <= 0);
+      // Lumberjack and Bowser walk through trees (they're cleared on landing).
+      return !(lane.type === "grass" && lane.blocked.has(Math.round(toX)) && !this.smashes);
     };
 
     if (Math.abs(toX) > COLS + 0.01) return;
@@ -280,6 +283,8 @@ export class Engine {
     if (lane && lane.biome !== this.biome) {
       this.biome = lane.biome;
       this.setUi({ toast: { text: BIOMES[lane.biome].label.toUpperCase(), id: ++this.toastId } });
+      // Mario finds a fresh Super Mushroom in every new biome.
+      if (this.character === "mario") this.big = true;
     }
     if (lane?.type === "grass" && lane.blocked.has(Math.round(p.x))) this.chop(lane, Math.round(p.x));
     if (lane?.pickup && Math.round(p.x) === lane.pickup.x) this.collect(lane);
@@ -295,6 +300,21 @@ export class Engine {
   /** Foresight ghosts show while the power-up runs, and always for the robot. */
   get foresight() {
     return this.effects.foresight > 0 || (this.character === "robot" && !this.player.death);
+  }
+
+  /** Lumberjack, and Bowser always, go straight through trees and rocks. */
+  private get smashes() {
+    return this.effects.lumberjack > 0 || this.character === "bowser";
+  }
+
+  /** Mario at full size, with a hit to spare. */
+  get marioBig() {
+    return this.character === "mario" && this.big;
+  }
+
+  /** Luigi can't be hit in the Spooky biome. */
+  private untouchable(lane: Lane) {
+    return this.effects.ghost > 0 || (this.character === "luigi" && lane.biome === "spooky");
   }
 
   /** The duck paddling in open water rather than riding a log. */
@@ -337,9 +357,20 @@ export class Engine {
     const n = this.effects.double > 0 ? 2 : 1;
     wallet.addCoins(n);
     this.setUi({ coins: this.ui.coins + n });
+    if (this.character === "mario") {
+      this.marioCoins += n;
+      if (this.marioCoins >= MARIO_COINS_PER_LIFE) {
+        this.marioCoins -= MARIO_COINS_PER_LIFE;
+        this.setUi({ lives: this.ui.lives + 1, toast: { text: "1-UP", id: ++this.toastId } });
+      }
+    }
   }
 
   // Cat life refill: half a life every `catRefillHops` hops, doubling with each life spent.
+  private big = true;
+  private marioCoins = 0;
+  /** Seconds left on Bowser's fire breath animation. */
+  fire = 0;
   private catLivesSpent = 0;
   private catHops = 0;
   private catHalves = 0;
@@ -373,6 +404,7 @@ export class Engine {
     const steps = this.ui.steps + 1;
     // Sparrow and snail bend time every so many hops.
     const timeTrait = this.character === "sparrow" ? "freeze" : this.character === "snail" ? "slowmo" : null;
+    if (this.character === "bowser" && steps % BOWSER_FIRE_HOPS === 0) this.breatheFire();
     if (timeTrait && steps % TIME_TRAIT_HOPS === 0) {
       this.apply(timeTrait);
       this.syncEffects(true);
@@ -453,6 +485,18 @@ export class Engine {
       }
     }
     return null;
+  }
+
+  /** Wreck every vehicle in view on the next few road lanes. */
+  private breatheFire() {
+    const p = this.player;
+    for (let row = p.row + 1; row <= p.row + BOWSER_FIRE_ROWS; row++) {
+      const lane = this.lanes.get(row);
+      if (lane?.type !== "road") continue;
+      for (const m of lane.movers) if (m.wrecked === null && Math.abs(m.x) < COLS + 3) m.wrecked = 0;
+    }
+    this.fire = 0.7;
+    this.setUi({ toast: { text: "FIRE BREATH!", id: ++this.toastId } });
   }
 
   private chop(lane: Lane, x: number) {
@@ -554,6 +598,7 @@ export class Engine {
 
     for (const k of Object.keys(this.effects) as PowerUp[]) this.effects[k] = Math.max(0, this.effects[k] - dt);
     p.shield = Math.max(0, p.shield - dt);
+    this.fire = Math.max(0, this.fire - dt);
     this.syncEffects();
 
     // Hop animation.
@@ -602,7 +647,7 @@ export class Engine {
       this.die("water");
     }
 
-    if (this.effects.magnet > 0 && !p.death) {
+    if ((this.effects.magnet > 0 || this.character === "luigi") && !p.death) {
       for (let r = p.row - MAGNET_RADIUS; r <= p.row + MAGNET_RADIUS; r++) {
         const lane = this.lanes.get(r);
         if (lane && lane.coin !== null && Math.abs(lane.coin - p.x) <= MAGNET_RADIUS + 0.5) this.collectCoin(lane);
@@ -683,17 +728,22 @@ export class Engine {
     const margin = this.effects.tiny > 0 ? 0.08 : 0.3;
     if (lane.type === "road") {
       for (const m of lane.movers) {
-        if (m.wrecked !== null || this.effects.ghost > 0 || Math.abs(p.x - m.x) >= m.length / 2 + margin) continue;
+        if (m.wrecked !== null || this.untouchable(lane) || Math.abs(p.x - m.x) >= m.length / 2 + margin) continue;
         // A rock chicken wrecks whatever drives into it.
         if (this.effects.rock > 0) m.wrecked = 0;
-        else if (p.shield <= 0 && !this.popShield()) {
+        else if (p.shield <= 0 && !this.popShield() && !this.shrink()) {
           this.die("car");
           return;
         }
       }
     } else if (lane.type === "rail" && lane.train.active && p.shield <= 0) {
       const len = trainLength(lane);
-      if (this.effects.ghost <= 0 && Math.abs(p.x - lane.train.x) < len / 2 + margin && !this.popShield()) {
+      if (
+        !this.untouchable(lane) &&
+        Math.abs(p.x - lane.train.x) < len / 2 + margin &&
+        !this.popShield() &&
+        !this.shrink()
+      ) {
         this.die("train", Math.sign(lane.speed));
       }
     }
@@ -706,6 +756,15 @@ export class Engine {
     this.player.shield = 1.5;
     this.syncEffects();
     this.setUi({ toast: { text: "SHIELD POPPED", id: ++this.toastId } });
+    return true;
+  }
+
+  /** Big Mario takes a hit by shrinking, with a moment to get clear. */
+  private shrink() {
+    if (!this.marioBig) return false;
+    this.big = false;
+    this.player.shield = 1.5;
+    this.setUi({ toast: { text: "SHRUNK!", id: ++this.toastId } });
     return true;
   }
 

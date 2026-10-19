@@ -1,6 +1,6 @@
 import { MAX_LEVEL, POWERUPS, noEffects, upgradeCost, type PowerUp } from "./powerups";
 
-export type CharacterId = "chicken" | "duck" | "frog" | "cat" | "penguin" | "robot" | "sparrow" | "snail";
+export type CharacterId = "chicken" | "duck" | "frog" | "cat" | "penguin" | "robot" | "sparrow" | "snail" | "mario" | "luigi" | "bowser";
 export type StoreItemId = PowerUp | "life";
 
 export interface Character {
@@ -20,6 +20,24 @@ export const CHARACTERS: Character[] = [
   { id: "robot", name: "Robot", price: 250, trait: "Foresight is always on." },
   { id: "sparrow", name: "Sparrow", price: 300, trait: "Stops time for a moment every 100 hops." },
   { id: "snail", name: "Snail", price: 350, trait: "Slows time for a moment every 100 hops." },
+  {
+    id: "mario",
+    name: "Mario",
+    price: 400,
+    trait: "Super Mushroom: the first car or train hit shrinks him instead of costing a life, and he grows back in each new biome. Every 100 coins is a 1-UP.",
+  },
+  {
+    id: "luigi",
+    name: "Luigi",
+    price: 450,
+    trait: "Poltergust: sucks up coins within 2 tiles. Ghost hunter: nothing can hit him in the Spooky biome.",
+  },
+  {
+    id: "bowser",
+    name: "Bowser",
+    price: 500,
+    trait: "Smashes through trees and rocks in his way, and breathes fire every 50 hops to wreck the traffic ahead.",
+  },
 ];
 
 export interface StoreItem {

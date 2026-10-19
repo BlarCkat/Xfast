@@ -684,6 +684,113 @@ export function Robot() {
   );
 }
 
+/** Cap, moustache and overalls; Mario and Luigi share the build and differ in colour and height. */
+function Plumber({ shirt, tall }: { shirt: string; tall: boolean }) {
+  const skin = "#f6c49a";
+  const blue = "#2c4fc4";
+  const lift = tall ? 0.1 : 0;
+  return (
+    <group>
+      {/* Boots and legs */}
+      <Box size={[0.16, 0.1, 0.24]} position={[0.12, 0.05, -0.03]} color="#6b3a1e" />
+      <Box size={[0.16, 0.1, 0.24]} position={[-0.12, 0.05, -0.03]} color="#6b3a1e" />
+      <Box size={[0.15, 0.14 + lift, 0.16]} position={[0.12, 0.17 + lift / 2, 0]} color={blue} />
+      <Box size={[0.15, 0.14 + lift, 0.16]} position={[-0.12, 0.17 + lift / 2, 0]} color={blue} />
+      {/* Overalls over the shirt */}
+      <Box size={[0.48, 0.24, 0.4]} position={[0, 0.34 + lift, 0]} color={blue} />
+      <Box size={[0.5, 0.2, 0.4]} position={[0, 0.54 + lift, 0]} color={shirt} />
+      <Box size={[0.3, 0.14, 0.06]} position={[0, 0.52 + lift, -0.2]} color={blue} cast={false} />
+      <Box size={[0.06, 0.06, 0.03]} position={[0.1, 0.56 + lift, -0.235]} color="#f6c90e" cast={false} />
+      <Box size={[0.06, 0.06, 0.03]} position={[-0.1, 0.56 + lift, -0.235]} color="#f6c90e" cast={false} />
+      {/* Arms and white gloves */}
+      <Box size={[0.12, 0.24, 0.14]} position={[0.31, 0.5 + lift, 0]} color={shirt} />
+      <Box size={[0.12, 0.24, 0.14]} position={[-0.31, 0.5 + lift, 0]} color={shirt} />
+      <Box size={[0.13, 0.11, 0.15]} position={[0.31, 0.34 + lift, 0]} color="#ffffff" />
+      <Box size={[0.13, 0.11, 0.15]} position={[-0.31, 0.34 + lift, 0]} color="#ffffff" />
+      {/* Head, nose, moustache and eyes */}
+      <Box size={[0.42, 0.34, 0.38]} position={[0, 0.81 + lift, 0]} color={skin} />
+      <Box size={[0.12, 0.1, 0.1]} position={[0, 0.78 + lift, -0.22]} color="#f0a77c" />
+      <Box size={[0.3, 0.06, 0.05]} position={[0, 0.71 + lift, -0.205]} color="#3b2414" cast={false} />
+      <Box size={[0.05, 0.08, 0.03]} position={[0.1, 0.87 + lift, -0.195]} color="#1f2a6b" cast={false} />
+      <Box size={[0.05, 0.08, 0.03]} position={[-0.1, 0.87 + lift, -0.195]} color="#1f2a6b" cast={false} />
+      <Box size={[0.44, 0.1, 0.12]} position={[0, 0.82 + lift, 0.18]} color="#3b2414" cast={false} />
+      {/* Cap with its brim and emblem */}
+      <Box size={[0.46, 0.14, 0.42]} position={[0, 1.04 + lift, 0.01]} color={shirt} />
+      <Box size={[0.44, 0.04, 0.16]} position={[0, 0.97 + lift, -0.26]} color={shirt} />
+      <Box size={[0.12, 0.1, 0.03]} position={[0, 1.04 + lift, -0.205]} color="#ffffff" cast={false} />
+    </group>
+  );
+}
+
+export function Mario() {
+  return <Plumber shirt="#e0312b" tall={false} />;
+}
+
+export function Luigi() {
+  return <Plumber shirt="#2ea043" tall />;
+}
+
+export function Bowser() {
+  const scale = "#7cb342";
+  const belly = "#f4d58d";
+  const horn = "#f5f0e1";
+  return (
+    <group>
+      {/* Feet and legs */}
+      <Box size={[0.2, 0.12, 0.26]} position={[0.16, 0.06, -0.04]} color={belly} />
+      <Box size={[0.2, 0.12, 0.26]} position={[-0.16, 0.06, -0.04]} color={belly} />
+      <Box size={[0.18, 0.14, 0.2]} position={[0.16, 0.18, 0.02]} color={scale} />
+      <Box size={[0.18, 0.14, 0.2]} position={[-0.16, 0.18, 0.02]} color={scale} />
+      {/* Body, belly plates and the spiked shell */}
+      <Box size={[0.56, 0.44, 0.46]} position={[0, 0.46, 0.02]} color={scale} />
+      <Box size={[0.4, 0.36, 0.06]} position={[0, 0.45, -0.22]} color={belly} />
+      <Box size={[0.42, 0.04, 0.03]} position={[0, 0.52, -0.255]} color="#d9b46a" cast={false} />
+      <Box size={[0.42, 0.04, 0.03]} position={[0, 0.4, -0.255]} color="#d9b46a" cast={false} />
+      <Box size={[0.62, 0.5, 0.2]} position={[0, 0.52, 0.3]} color="#2e7d32" />
+      <Box size={[0.66, 0.06, 0.24]} position={[0, 0.28, 0.3]} color={horn} />
+      {[-0.17, 0.17].map((x) =>
+        [0.38, 0.6].map((y) => (
+          <Box key={`${x}${y}`} size={[0.1, 0.1, 0.12]} position={[x, y, 0.45]} color={horn} />
+        )),
+      )}
+      <Box size={[0.12, 0.12, 0.2]} position={[0, 0.3, 0.52]} color={scale} />
+      {/* Arms with spiked cuffs */}
+      <Box size={[0.14, 0.26, 0.16]} position={[0.35, 0.48, -0.04]} color={scale} />
+      <Box size={[0.14, 0.26, 0.16]} position={[-0.35, 0.48, -0.04]} color={scale} />
+      <Box size={[0.17, 0.07, 0.19]} position={[0.35, 0.58, -0.04]} color="#2b2b2b" />
+      <Box size={[0.17, 0.07, 0.19]} position={[-0.35, 0.58, -0.04]} color="#2b2b2b" />
+      {/* Head, snout, fangs, eyes, brows, horns and red mane */}
+      <Box size={[0.44, 0.34, 0.38]} position={[0, 0.88, -0.06]} color={scale} />
+      <Box size={[0.36, 0.16, 0.16]} position={[0, 0.8, -0.3]} color={belly} />
+      <Box size={[0.05, 0.06, 0.04]} position={[0.1, 0.71, -0.36]} color={horn} cast={false} />
+      <Box size={[0.05, 0.06, 0.04]} position={[-0.1, 0.71, -0.36]} color={horn} cast={false} />
+      <Box size={[0.08, 0.04, 0.04]} position={[0.08, 0.86, -0.39]} color="#3b2414" cast={false} />
+      <Box size={[0.08, 0.04, 0.04]} position={[-0.08, 0.86, -0.39]} color="#3b2414" cast={false} />
+      <Box size={[0.09, 0.1, 0.04]} position={[0.12, 0.95, -0.255]} color="#ffffff" cast={false} />
+      <Box size={[0.09, 0.1, 0.04]} position={[-0.12, 0.95, -0.255]} color="#ffffff" cast={false} />
+      <Box size={[0.04, 0.07, 0.03]} position={[0.12, 0.94, -0.28]} color="#c62828" cast={false} />
+      <Box size={[0.04, 0.07, 0.03]} position={[-0.12, 0.94, -0.28]} color="#c62828" cast={false} />
+      <Box size={[0.16, 0.05, 0.05]} position={[0.12, 1.02, -0.26]} color="#e65100" cast={false} />
+      <Box size={[0.16, 0.05, 0.05]} position={[-0.12, 1.02, -0.26]} color="#e65100" cast={false} />
+      <Box size={[0.08, 0.16, 0.08]} position={[0.2, 1.1, -0.02]} color={horn} />
+      <Box size={[0.08, 0.16, 0.08]} position={[-0.2, 1.1, -0.02]} color={horn} />
+      <Box size={[0.3, 0.14, 0.26]} position={[0, 1.08, 0.08]} color="#e65100" />
+      <Box size={[0.2, 0.12, 0.14]} position={[0, 0.98, 0.2]} color="#e65100" />
+    </group>
+  );
+}
+
+/** Bowser's fire breath: a short glowing jet that rolls out in front of him. */
+export function FireBreath() {
+  return (
+    <group>
+      <Box size={[0.22, 0.22, 0.5]} position={[0, 0.8, -0.6]} color="#ffd54f" glow={2.4} cast={false} />
+      <Box size={[0.32, 0.32, 0.6]} position={[0, 0.8, -1.1]} color="#ff9800" glow={2.2} cast={false} />
+      <Box size={[0.44, 0.44, 0.7]} position={[0, 0.82, -1.7]} color="#ff5722" glow={2} cast={false} />
+    </group>
+  );
+}
+
 export function CharacterModel({ id }: { id: CharacterId }) {
   switch (id) {
     case "duck":
@@ -700,6 +807,12 @@ export function CharacterModel({ id }: { id: CharacterId }) {
       return <Cat />;
     case "robot":
       return <Robot />;
+    case "mario":
+      return <Mario />;
+    case "luigi":
+      return <Luigi />;
+    case "bowser":
+      return <Bowser />;
     default:
       return <Chicken />;
   }

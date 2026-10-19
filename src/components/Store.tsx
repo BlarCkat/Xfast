@@ -27,6 +27,9 @@ const CHARACTER_BLURB: Record<CharacterId, string> = {
   sparrow: "Small, quick, and somehow on first-name terms with time itself.",
   snail: "Takes its time. Occasionally takes everyone else's too.",
   robot: "Hop module v2. Runs on coins and optimism.",
+  mario: "Has crossed worse. Mostly pipes, lava and the occasional castle.",
+  luigi: "Jumps a little higher, worries a lot more.",
+  bowser: "King of the Koopas. Does not wait for the green man.",
 };
 
 const cellsFor = (tab: Tab, w: WalletState): Cell[] =>

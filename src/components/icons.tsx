@@ -47,6 +47,18 @@ const PATHS: Record<IconId, React.ReactNode> = {
   sparrow: <path d="M14 3a4 4 0 0 1 4 3l4 1-4 2v2a8 8 0 0 1-8 8H6l-4 3 2-5 4-3 2-6a4 4 0 0 1 4-5Zm1 3v2h2V6Z" />,
   snail: <path d="M11 4a7 7 0 0 1 7 7 7 7 0 0 1-.6 2.9L18 14V6l1-3 1 3v2l2-3 1 1-3 5v7a2 2 0 0 1-2 2H2v-2l3-1a7 7 0 0 1 6-12Zm0 4a3 3 0 1 0 3 3 3 3 0 0 0-3-3Zm0 2a1 1 0 1 1-1 1 1 1 0 0 1 1-1Z" />,
   robot: <path d="M11 1h2v3h4a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-2v2h3v4H6v-4h3v-2H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4Zm-3 7v3h3V8Zm5 0v3h3V8ZM1 8h2v5H1Zm20 0h2v5h-2Z" />,
+  // A plumber's cap with its letter cut out.
+  mario: (
+    <path
+      fillRule="evenodd"
+      d="M12 3a9 9 0 0 1 9 9v2h2v3H1v-3h2v-2a9 9 0 0 1 9-9Zm-4 4v6h2v-3l2 2 2-2v3h2V7h-2l-2 2.5L10 7Z"
+    />
+  ),
+  luigi: <path fillRule="evenodd" d="M12 3a9 9 0 0 1 9 9v2h2v3H1v-3h2v-2a9 9 0 0 1 9-9Zm-2 4v6h5v-2h-3V7Z" />,
+  // A spiked shell.
+  bowser: (
+    <path d="M12 2l2 3.2 3.6-1.2-.6 3.8 3.6 1.4-2.8 2.6L20 15h-3.4L16 19H8l-.6-4H4l2.2-3.2-2.8-2.6L7 7.8 6.4 4 10 5.2ZM6 20h12v2H6Z" />
+  ),
   coin: (
     <>
       <circle cx="12" cy="12" r="10" />

@@ -10,6 +10,7 @@ import { LaneView } from "./Lanes";
 import {
   CharacterModel,
   Eagle,
+  FireBreath,
   GROUND_COLOR,
   HEMI_INTENSITY,
   RockShell,
@@ -32,6 +33,9 @@ function Player({ engine }: { engine: Engine }) {
   const bubble = useRef<Group>(null);
   const wasGhost = useRef(false);
   const wings = useRef<Group>(null);
+  const fire = useRef<Group>(null);
+  // Mario eases between his big and small sizes.
+  const size = useRef(1);
   useFrame((_, dt) => {
     const p = engine.player;
     const g = root.current;
@@ -96,7 +100,8 @@ function Player({ engine }: { engine: Engine }) {
 
     g.position.set(x, y, z);
     // Tiny shrinks the model; ghost fades it.
-    const small = engine.effects.tiny > 0 && !death ? 0.55 : 1;
+    size.current += ((engine.character === "mario" && !engine.marioBig ? 0.7 : 1) - size.current) * Math.min(1, dt * 10);
+    const small = (engine.effects.tiny > 0 && !death ? 0.55 : 1) * size.current;
     sx *= small;
     sy *= small;
     sz *= small;
@@ -111,6 +116,11 @@ function Player({ engine }: { engine: Engine }) {
       });
     }
     b.scale.set(sx, sy, sz);
+    if (fire.current) {
+      fire.current.visible = engine.fire > 0;
+      const f = Math.sin((engine.fire / 0.7) * Math.PI);
+      fire.current.scale.set(0.6 + f * 0.6, 0.6 + f * 0.6, f * 1.6 + 0.01);
+    }
     // Turn towards the facing direction along the shortest arc.
     let diff = p.facing - g.rotation.y;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
@@ -128,6 +138,9 @@ function Player({ engine }: { engine: Engine }) {
         <group ref={wings} position={[0, 0.55, 0.1]} visible={false}>
           <Wings />
         </group>
+      </group>
+      <group ref={fire} visible={false}>
+        <FireBreath />
       </group>
       <group ref={bubble} visible={false}>
         <ShieldBubble />

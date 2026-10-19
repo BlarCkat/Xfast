@@ -31,6 +31,11 @@ export const CAT_REFILL_HOPS = 20;
 export const CHICKEN_POWERUP_BONUS = 1.5;
 /** The sparrow stops time and the snail slows it every this many hops. */
 export const TIME_TRAIT_HOPS = 100;
+/** Mario gets an extra life for every this many coins collected in a run. */
+export const MARIO_COINS_PER_LIFE = 100;
+/** Bowser breathes fire every this many hops, wrecking traffic on the next few road lanes. */
+export const BOWSER_FIRE_HOPS = 50;
+export const BOWSER_FIRE_ROWS = 4;
 export const RESPAWN_DELAY = 1.2;
 export const RESPAWN_SHIELD = 2;
 export const POWERUP_DURATION = {
