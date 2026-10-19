@@ -3,17 +3,31 @@ import {
   HOP_DURATION,
   IDLE_LIMIT,
   MAX_ROWS_BEHIND_CAMERA,
+  POWERUP_DURATION,
+  RESPAWN_DELAY,
+  RESPAWN_SHIELD,
+  SLOWMO_SCALE,
+  START_LIVES,
   ROWS_AHEAD,
   ROWS_BEHIND,
   TRAIN_SPEED,
   TRAIN_WARNING,
   WRAP,
 } from "./config";
-import { Lane, LaneGenerator, Mover, trainLength } from "./lanes";
+import { Lane, LaneGenerator, Mover, PickupKind, trainLength } from "./lanes";
 
 export type Direction = "up" | "down" | "left" | "right";
 export type Status = "ready" | "playing" | "dead";
 export type DeathKind = "car" | "train" | "water" | "eagle";
+export type PowerUp = keyof typeof POWERUP_DURATION;
+export type Effects = Record<PowerUp, number>;
+
+const PICKUP_LABEL: Record<PickupKind, string> = {
+  life: "+1 LIFE",
+  foresight: "FORESIGHT",
+  slowmo: "SLOWMO",
+  rock: "ROCK",
+};
 
 const FACING: Record<Direction, number> = {
   up: 0,
@@ -36,13 +50,20 @@ export interface PlayerState {
   queued: Direction | null;
   ride: Mover | null;
   rideOffset: number;
-  death: null | { kind: DeathKind; t: number; pushX: number };
+  /** A death that will end in a respawn (revive) or the game over screen. */
+  death: null | { kind: DeathKind; t: number; pushX: number; revive: boolean };
+  /** Seconds of post-respawn invulnerability left. */
+  shield: number;
 }
 
 export interface UiSnapshot {
   status: Status;
   score: number;
   best: number;
+  lives: number;
+  /** Whole seconds left on each power-up (0 = inactive); only changes once a second. */
+  effects: Effects;
+  toast: null | { text: string; id: number };
 }
 
 const BEST_KEY = "xfast-best";
@@ -74,6 +95,9 @@ export class Engine {
   /** Bumped whenever lanes are added or removed so React can re-render the list. */
   laneVersion = 0;
   eagle: null | { t: number; startZ: number } = null;
+  /** Exact seconds left on each power-up. */
+  effects: Effects = { foresight: 0, slowmo: 0, rock: 0 };
+  private toastId = 0;
 
   player: PlayerState = {
     row: 0,
@@ -86,6 +110,7 @@ export class Engine {
     ride: null,
     rideOffset: 0,
     death: null,
+    shield: 0,
   };
 
   private generator: LaneGenerator;
@@ -94,7 +119,14 @@ export class Engine {
 
   constructor(seed = Math.floor(Math.random() * 1e9)) {
     this.generator = new LaneGenerator(seed);
-    this.ui = { status: "ready", score: 0, best: readBest() };
+    this.ui = {
+      status: "ready",
+      score: 0,
+      best: readBest(),
+      lives: START_LIVES,
+      effects: { foresight: 0, slowmo: 0, rock: 0 },
+      toast: null,
+    };
     this.ensureLanes();
   }
 
@@ -122,6 +154,7 @@ export class Engine {
     if (this.ui.status === "dead") return;
     if (this.ui.status === "ready") this.setUi({ status: "playing" });
     const p = this.player;
+    if (p.death) return;
     if (p.hop) {
       p.queued = dir;
       return;
@@ -179,6 +212,8 @@ export class Engine {
       p.x = log.x + slot;
     }
 
+    if (lane?.pickup && Math.round(p.x) === lane.pickup.x) this.collect(lane);
+
     if (p.queued) {
       const next = p.queued;
       p.queued = null;
@@ -186,12 +221,41 @@ export class Engine {
     }
   }
 
+  private collect(lane: Lane) {
+    const kind = lane.pickup!.kind;
+    lane.pickup = null;
+    if (kind === "life") this.setUi({ lives: this.ui.lives + 1 });
+    else this.effects[kind] = POWERUP_DURATION[kind];
+    this.syncEffects(true);
+    this.setUi({ toast: { text: PICKUP_LABEL[kind], id: ++this.toastId } });
+  }
+
+  /** Push whole-second effect timers to the HUD when they change. */
+  private syncEffects(force = false) {
+    const next = {} as Effects;
+    let changed = force;
+    for (const k of Object.keys(this.effects) as PowerUp[]) {
+      next[k] = Math.ceil(this.effects[k]);
+      if (next[k] !== this.ui.effects[k]) changed = true;
+    }
+    if (changed) this.setUi({ effects: next });
+  }
+
   private die(kind: DeathKind, pushX = 0) {
     const p = this.player;
     if (p.death) return;
-    p.death = { kind, t: 0, pushX };
+    const revive = this.ui.lives > 0;
+    p.death = { kind, t: 0, pushX, revive };
     p.queued = null;
+    p.ride = null;
     if (kind !== "eagle") p.hop = null;
+    // Power-ups end with the life they were collected on.
+    this.effects = { foresight: 0, slowmo: 0, rock: 0 };
+    this.syncEffects();
+    if (revive) {
+      this.setUi({ lives: this.ui.lives - 1, toast: { text: "-1 LIFE", id: ++this.toastId } });
+      return;
+    }
     const best = Math.max(this.ui.best, this.ui.score);
     try {
       localStorage.setItem(BEST_KEY, String(best));
@@ -199,6 +263,25 @@ export class Engine {
       // Storage can be unavailable (private mode); the best score just won't persist.
     }
     this.setUi({ status: "dead", best });
+  }
+
+  /** Put the chicken back on the nearest safe grass at or behind where it died. */
+  private respawn() {
+    const p = this.player;
+    let row = p.row;
+    while (row > this.minRow && this.lanes.get(row)?.type !== "grass") row--;
+    const lane = this.lanes.get(row)!;
+    const want = Math.max(-COLS, Math.min(COLS, Math.round(p.x)));
+    let x = want;
+    for (let d = 0; d <= COLS * 2; d++) {
+      if (Math.abs(want + d) <= COLS && !lane.blocked.has(want + d)) { x = want + d; break; }
+      if (Math.abs(want - d) <= COLS && !lane.blocked.has(want - d)) { x = want - d; break; }
+    }
+    Object.assign(p, { row, x, z: row, y: 0, hop: null, queued: null, ride: null, death: null, facing: 0 });
+    p.shield = RESPAWN_SHIELD;
+    this.eagle = null;
+    this.idle = 0;
+    this.focus = Math.min(this.focus, row);
   }
 
   // ---- Simulation -----------------------------------------------------------
@@ -222,18 +305,24 @@ export class Engine {
 
   update(rawDt: number) {
     const dt = Math.min(rawDt, 1 / 20);
+    // Slowmo slows the world down; the chicken's own hops stay at full speed.
+    const worldDt = this.effects.slowmo > 0 ? dt * SLOWMO_SCALE : dt;
     this.time += dt;
     const playing = this.ui.status === "playing";
     const p = this.player;
 
-    for (const lane of this.lanes.values()) this.updateLane(lane, dt);
+    for (const lane of this.lanes.values()) this.updateLane(lane, worldDt);
+
+    for (const k of Object.keys(this.effects) as PowerUp[]) this.effects[k] = Math.max(0, this.effects[k] - dt);
+    p.shield = Math.max(0, p.shield - dt);
+    this.syncEffects();
 
     // Hop animation.
     if (p.hop) {
       const hop = p.hop;
       hop.t += dt / HOP_DURATION;
-      hop.fromX += hop.drift * dt;
-      hop.toX += hop.drift * dt;
+      hop.fromX += hop.drift * worldDt;
+      hop.toX += hop.drift * worldDt;
       const t = Math.min(1, hop.t);
       p.x = hop.fromX + (hop.toX - hop.fromX) * t;
       p.z = hop.fromZ + (hop.toZ - hop.fromZ) * t;
@@ -248,19 +337,23 @@ export class Engine {
 
     if (playing && !p.death) {
       this.checkCollisions();
-      this.idle += dt;
+      this.idle += worldDt;
       if (this.idle > IDLE_LIMIT || p.row < this.focus - MAX_ROWS_BEHIND_CAMERA) {
         this.die("eagle");
         this.eagle = { t: 0, startZ: p.z + 14 };
       }
     }
 
-    if (p.death) this.updateDeath(dt);
+    if (p.death) {
+      this.updateDeath(dt);
+      const delay = p.death.kind === "eagle" ? RESPAWN_DELAY + 0.6 : RESPAWN_DELAY;
+      if (p.death.revive && p.death.t > delay) this.respawn();
+    }
 
     // Camera focus: chase the player when ahead, otherwise creep forward.
     if (playing) {
       const creep = 0.28 + Math.min(0.5, this.ui.score / 400);
-      this.focus += creep * dt;
+      this.focus += creep * worldDt;
       if (p.z > this.focus) this.focus += (p.z - this.focus) * Math.min(1, dt * 4);
     }
     this.cameraX += (Math.max(-2, Math.min(2, p.x * 0.6)) - this.cameraX) * Math.min(1, dt * 3);
@@ -271,6 +364,10 @@ export class Engine {
   private updateLane(lane: Lane, dt: number) {
     if (lane.type === "road" || lane.type === "river") {
       for (const m of lane.movers) {
+        if (m.wrecked !== null) {
+          m.wrecked += dt;
+          continue;
+        }
         m.x += lane.speed * dt;
         // A fixed period keeps the spacing between movers constant forever.
         if (m.x > WRAP) m.x -= WRAP * 2;
@@ -306,12 +403,15 @@ export class Engine {
     if (p.hop && p.hop.t < 0.5) return;
     if (lane.type === "road") {
       for (const m of lane.movers) {
-        if (Math.abs(p.x - m.x) < m.length / 2 + 0.3) {
+        if (m.wrecked !== null || Math.abs(p.x - m.x) >= m.length / 2 + 0.3) continue;
+        // A rock chicken wrecks whatever drives into it.
+        if (this.effects.rock > 0) m.wrecked = 0;
+        else if (p.shield <= 0) {
           this.die("car");
           return;
         }
       }
-    } else if (lane.type === "rail" && lane.train.active) {
+    } else if (lane.type === "rail" && lane.train.active && p.shield <= 0) {
       const len = trainLength(lane);
       if (Math.abs(p.x - lane.train.x) < len / 2 + 0.3) {
         this.die("train", Math.sign(lane.speed));

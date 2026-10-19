@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas } from "@react-three/fiber";
-import { Engine, type Direction } from "@/game/engine";
+import { Engine, type Direction, type PowerUp } from "@/game/engine";
 import { Scene } from "./Scene";
 
 const KEYS: Record<string, Direction> = {
@@ -17,6 +17,12 @@ const KEYS: Record<string, Direction> = {
 };
 
 const SWIPE_MIN = 24;
+
+const POWERUPS: { key: PowerUp; label: string; color: string }[] = [
+  { key: "foresight", label: "FORESIGHT", color: "#8e5cf7" },
+  { key: "slowmo", label: "SLOWMO", color: "#2f6fb5" },
+  { key: "rock", label: "ROCK", color: "#6f7177" },
+];
 // Ignore input for a moment after dying so a held key doesn't skip the score screen.
 const RESTART_DELAY = 600;
 
@@ -82,16 +88,40 @@ export default function Game() {
         <Scene key={engine.id} engine={engine} />
       </Canvas>
 
+      {ui.effects.slowmo > 0 && <div className="tint tint-slowmo" />}
+      {ui.effects.foresight > 0 && <div className="tint tint-foresight" />}
+
       <div className="hud">
         <div className="score">{ui.score}</div>
         <div className="best">TOP {ui.best}</div>
+        <div className="effects">
+          {POWERUPS.map(
+            ({ key, label, color }) =>
+              ui.effects[key] > 0 && (
+                <div key={key} className="effect" style={{ background: color }}>
+                  {label} {ui.effects[key]}s
+                </div>
+              ),
+          )}
+        </div>
       </div>
+
+      <div className="lives" aria-label={`${ui.lives} extra lives`}>
+        <span className="heart">♥</span> × {ui.lives}
+      </div>
+
+      {ui.toast && (
+        <div key={ui.toast.id} className="toast">
+          {ui.toast.text}
+        </div>
+      )}
 
       {ui.status === "ready" && (
         <div className="overlay">
           <h1 className="title">XFAST</h1>
           <p className="hint">Tap or press ↑ to hop</p>
           <p className="sub">Swipe or use arrows / WASD to move</p>
+          <p className="sub">Grab ♥ for extra lives, plus foresight, slowmo and rock power-ups</p>
         </div>
       )}
 

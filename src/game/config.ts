@@ -20,3 +20,13 @@ export const IDLE_LIMIT = 8;
 export const TRAIN_SPEED = 32;
 export const TRAIN_CAR_LENGTH = 3.6;
 export const TRAIN_WARNING = 1.3;
+
+// Lives and power-ups.
+export const START_LIVES = 1;
+export const RESPAWN_DELAY = 1.2;
+export const RESPAWN_SHIELD = 2;
+export const POWERUP_DURATION = { foresight: 5, slowmo: 5, rock: 6 } as const;
+/** World speed while slowmo is active; the chicken keeps hopping at full speed. */
+export const SLOWMO_SCALE = 0.35;
+/** How far ahead (seconds) the foresight ghosts show traffic. */
+export const FORESIGHT_STEPS = [0.6, 1.2];

@@ -3,6 +3,7 @@
 import { forwardRef } from "react";
 import type { Group } from "three";
 import { TRAIN_CAR_LENGTH } from "@/game/config";
+import type { PickupKind } from "@/game/lanes";
 
 // Small voxel models built from boxes. Everything uses flat Lambert shading for the toy look.
 
@@ -150,6 +151,61 @@ export function Eagle() {
       <Box size={[0.14, 0.12, 0.2]} position={[0, 0.06, 0.88]} color="#f6c90e" />
       <Box size={[2.6, 0.08, 0.6]} position={[0, 0.12, 0]} color="#6d4626" />
       <Box size={[0.4, 0.06, 0.4]} position={[0, 0.02, -0.66]} color="#6d4626" />
+    </group>
+  );
+}
+
+/** Collectibles: a heart for lives, and one icon per power-up. */
+export function PickupModel({ kind }: { kind: PickupKind }) {
+  if (kind === "life") {
+    return (
+      <group scale={0.9}>
+        <Box size={[0.22, 0.22, 0.16]} position={[-0.12, 0.1, 0]} color="#ff4d6d" />
+        <Box size={[0.22, 0.22, 0.16]} position={[0.12, 0.1, 0]} color="#ff4d6d" />
+        <Box size={[0.36, 0.18, 0.16]} position={[0, -0.04, 0]} color="#ff4d6d" />
+        <Box size={[0.16, 0.12, 0.16]} position={[0, -0.16, 0]} color="#ff4d6d" />
+        <Box size={[0.08, 0.08, 0.17]} position={[-0.15, 0.15, 0]} color="#ffb3c1" cast={false} />
+      </group>
+    );
+  }
+  if (kind === "foresight") {
+    return (
+      <group>
+        <Box size={[0.46, 0.3, 0.16]} position={[0, 0, 0]} color="#8e5cf7" />
+        <Box size={[0.3, 0.2, 0.18]} position={[0, 0, 0]} color="#ffffff" cast={false} />
+        <Box size={[0.12, 0.12, 0.2]} position={[0, 0, 0]} color="#2b1b4f" cast={false} />
+      </group>
+    );
+  }
+  if (kind === "slowmo") {
+    return (
+      <group>
+        <Box size={[0.36, 0.06, 0.36]} position={[0, 0.22, 0]} color="#2f6fb5" />
+        <Box size={[0.36, 0.06, 0.36]} position={[0, -0.22, 0]} color="#2f6fb5" />
+        <Box size={[0.24, 0.14, 0.24]} position={[0, 0.12, 0]} color="#8fd3ff" />
+        <Box size={[0.08, 0.1, 0.08]} position={[0, 0, 0]} color="#8fd3ff" />
+        <Box size={[0.24, 0.14, 0.24]} position={[0, -0.12, 0]} color="#ffe08a" />
+      </group>
+    );
+  }
+  return (
+    <group>
+      <Box size={[0.42, 0.34, 0.38]} position={[0, -0.02, 0]} color="#8d8f94" />
+      <Box size={[0.26, 0.16, 0.26]} position={[0.04, 0.2, -0.02]} color="#a7a9ad" />
+      <Box size={[0.12, 0.1, 0.12]} position={[-0.14, 0.12, 0.12]} color="#6f7177" />
+    </group>
+  );
+}
+
+/** Stone shell the chicken wears while the rock power-up is active. */
+export function RockShell() {
+  return (
+    <group>
+      <Box size={[0.74, 0.62, 0.74]} position={[0, 0.36, 0.02]} color="#8d8f94" />
+      <Box size={[0.5, 0.36, 0.5]} position={[0.04, 0.82, -0.04]} color="#a7a9ad" />
+      <Box size={[0.24, 0.2, 0.24]} position={[-0.22, 0.6, 0.26]} color="#6f7177" />
+      <Box size={[0.06, 0.08, 0.06]} position={[0.14, 0.84, -0.3]} color="#222222" />
+      <Box size={[0.06, 0.08, 0.06]} position={[-0.06, 0.84, -0.3]} color="#222222" />
     </group>
   );
 }

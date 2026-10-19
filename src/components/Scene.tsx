@@ -6,7 +6,7 @@ import type { DirectionalLight, Group, OrthographicCamera } from "three";
 import { COLS, HOP_HEIGHT, ROWS_AHEAD, ROWS_BEHIND } from "@/game/config";
 import type { Engine } from "@/game/engine";
 import { LaneView } from "./Lanes";
-import { Chicken, Eagle } from "./models";
+import { Chicken, Eagle, RockShell } from "./models";
 
 // Camera sits behind, above and slightly to the right of the action, like the original.
 const CAMERA_OFFSET: [number, number, number] = [3.2, 11, 7.5];
@@ -15,6 +15,8 @@ const EAGLE_REACH = 0.7;
 function Player({ engine }: { engine: Engine }) {
   const root = useRef<Group>(null);
   const body = useRef<Group>(null);
+  const chicken = useRef<Group>(null);
+  const rock = useRef<Group>(null);
   useFrame((_, dt) => {
     const p = engine.player;
     const g = root.current;
@@ -54,6 +56,19 @@ function Player({ engine }: { engine: Engine }) {
       }
     }
 
+    const isRock = engine.effects.rock > 0 && !death;
+    if (chicken.current) chicken.current.visible = !isRock;
+    if (rock.current) rock.current.visible = isRock;
+    // Blink while the respawn shield is up; also flicker the last second of rock.
+    const fading = isRock && engine.effects.rock < 1;
+    g.visible = !((p.shield > 0 || fading) && Math.floor(engine.time * 12) % 2 === 0);
+    if (fading && rock.current && chicken.current) {
+      const showRock = Math.floor(engine.time * 8) % 2 === 0;
+      rock.current.visible = showRock;
+      chicken.current.visible = !showRock;
+      g.visible = true;
+    }
+
     g.position.set(x, y, z);
     b.scale.set(sx, sy, sz);
     // Turn towards the facing direction along the shortest arc.
@@ -64,7 +79,12 @@ function Player({ engine }: { engine: Engine }) {
   return (
     <group ref={root}>
       <group ref={body}>
-        <Chicken />
+        <group ref={chicken}>
+          <Chicken />
+        </group>
+        <group ref={rock} visible={false}>
+          <RockShell />
+        </group>
       </group>
     </group>
   );
@@ -174,7 +194,7 @@ export function Scene({ engine }: { engine: Engine }) {
       <hemisphereLight args={["#ffffff", "#9bbf7a", 1.4]} />
       <CameraRig engine={engine} />
       {lanes.map((lane) => (
-        <LaneView key={lane.row} lane={lane} />
+        <LaneView key={lane.row} lane={lane} engine={engine} />
       ))}
       <EdgeShade engine={engine} />
       <Player engine={engine} />

@@ -1,11 +1,13 @@
 "use client";
 
-import { memo, useRef } from "react";
+import { memo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Group, Mesh, MeshBasicMaterial } from "three";
-import { COLS, LANE_WIDTH } from "@/game/config";
+import { COLS, FORESIGHT_STEPS, LANE_WIDTH, TRAIN_SPEED, WRAP } from "@/game/config";
+import type { Engine } from "@/game/engine";
 import type { Lane } from "@/game/lanes";
-import { Box, Car, Log, Train, Tree, Truck } from "./models";
+import { trainLength } from "@/game/lanes";
+import { Box, Car, Log, PickupModel, Train, Tree, Truck } from "./models";
 
 const GRASS = ["#a6e35f", "#9ad653"];
 const ROAD = "#575c66";
@@ -39,7 +41,16 @@ function useMoverRefs(lane: Lane) {
   useFrame(() => {
     lane.movers.forEach((m, i) => {
       const g = refs.current[i];
-      if (g) g.position.x = m.x;
+      if (!g) return;
+      g.position.x = m.x;
+      if (m.wrecked !== null) {
+        // Crumple, hop up once, then disappear.
+        const t = m.wrecked;
+        g.scale.y = Math.max(0.3, 1 - t * 5);
+        g.position.y = Math.max(0, Math.sin(Math.min(1, t * 4) * Math.PI) * 0.6);
+        g.rotation.z = Math.min(0.35, t * 3);
+        g.visible = t < 2.5;
+      }
     });
   });
   return refs;
@@ -133,9 +144,92 @@ function RailLane({ lane }: { lane: Lane }) {
   );
 }
 
-export const LaneView = memo(function LaneView({ lane }: { lane: Lane }) {
+const wrap = (x: number) => ((((x + WRAP) % (WRAP * 2)) + WRAP * 2) % (WRAP * 2)) - WRAP;
+
+/** Translucent copies of traffic where it will be shortly, shown while foresight is active. */
+function ForesightGhosts({ lane, engine }: { lane: Lane; engine: Engine }) {
+  const root = useRef<Group>(null);
+  const refs = useRef<(Mesh | null)[]>([]);
+  const isRail = lane.type === "rail";
+  const count = isRail ? 1 : lane.movers.length;
+  const len = isRail ? trainLength(lane) : 0;
+  const dir = Math.sign(lane.speed);
+
+  useFrame(() => {
+    const on = engine.effects.foresight > 0;
+    if (root.current) root.current.visible = on;
+    if (!on) return;
+    FORESIGHT_STEPS.forEach((step, s) => {
+      for (let i = 0; i < count; i++) {
+        const mesh = refs.current[s * count + i];
+        if (!mesh) continue;
+        if (isRail) {
+          const t = lane.train;
+          let x: number | null = null;
+          if (t.active) x = t.x + dir * TRAIN_SPEED * step;
+          else if (t.timer < step) x = -dir * (WRAP + len / 2) + dir * TRAIN_SPEED * (step - t.timer);
+          mesh.visible = x !== null && Math.abs(x) < WRAP + len;
+          if (x !== null) mesh.position.x = x;
+        } else {
+          const m = lane.movers[i];
+          mesh.visible = m.wrecked === null;
+          mesh.position.x = wrap(m.x + lane.speed * step);
+        }
+      }
+    });
+  });
+
+  return (
+    <group ref={root} visible={false}>
+      {FORESIGHT_STEPS.map((_, s) =>
+        Array.from({ length: count }, (_, i) => {
+          const length = isRail ? len : lane.movers[i].length;
+          const river = lane.type === "river";
+          return (
+            <mesh
+              key={`${s}-${i}`}
+              ref={(m) => void (refs.current[s * count + i] = m)}
+              position={[0, river ? 0.02 : 0.45, 0]}
+            >
+              <boxGeometry args={[length, river ? 0.06 : 0.9, 0.8]} />
+              <meshBasicMaterial
+                color={river ? "#ffffff" : "#b388ff"}
+                transparent
+                opacity={s === 0 ? 0.45 : 0.22}
+                depthWrite={false}
+              />
+            </mesh>
+          );
+        }),
+      )}
+    </group>
+  );
+}
+
+function PickupView({ lane }: { lane: Lane }) {
+  const ref = useRef<Group>(null);
+  // Remember what was placed here; the lane's pickup is cleared once collected.
+  const [pickup] = useState(lane.pickup);
+  useFrame(({ clock }) => {
+    const g = ref.current;
+    if (!g) return;
+    g.visible = lane.pickup !== null;
+    g.rotation.y = clock.elapsedTime * 2;
+    g.position.y = 0.45 + Math.sin(clock.elapsedTime * 3 + lane.row) * 0.08;
+  });
+  if (!pickup) return null;
+  return (
+    <group ref={ref} position={[pickup.x, 0.45, 0]}>
+      <PickupModel kind={pickup.kind} />
+    </group>
+  );
+}
+
+export const LaneView = memo(function LaneView({ lane, engine }: { lane: Lane; engine: Engine }) {
   return (
     <group position={[0, 0, -lane.row]}>
+      {lane.type !== "grass" && <ForesightGhosts lane={lane} engine={engine} />}
+      {lane.pickup && <PickupView lane={lane} />}
       {lane.type === "grass" && <GrassLane lane={lane} />}
       {lane.type === "road" && <RoadLane lane={lane} />}
       {lane.type === "river" && <RiverLane lane={lane} />}

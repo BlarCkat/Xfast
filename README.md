@@ -21,6 +21,14 @@ Open http://localhost:3000.
 - The camera keeps creeping forward. Fall too far behind it, or stand still too long, and the eagle takes you.
 - Getting carried off the edge on a log drowns you.
 
+## Lives and power-ups
+
+- You start with 1 extra life (the heart counter, top right). Losing a life puts you back on the nearest grass with a short blinking shield.
+- Collectibles appear on some grass and road lanes. Each one has a 20% chance to be a ♥ extra life; otherwise it is one of the power-ups below. Power-ups end early if you lose a life.
+- **Foresight (5s):** ghost outlines show where cars, logs and trains will be over the next moment.
+- **Slowmo (5s):** the world slows to about a third of its speed while you keep hopping at full speed.
+- **Rock (6s):** you turn to stone and any car or truck that hits you is wrecked. Trains and water still get you.
+
 ## Code layout
 
 - `src/game/` holds the rules with no rendering: `lanes.ts` generates lanes, `engine.ts` runs hopping, collisions, the camera focus and scoring.

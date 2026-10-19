@@ -2,12 +2,20 @@ import { COLS, TRAIN_CAR_LENGTH, WRAP } from "./config";
 
 export type LaneType = "grass" | "road" | "river" | "rail";
 export type MoverKind = "car" | "truck" | "log";
+export type PickupKind = "life" | "foresight" | "slowmo" | "rock";
+
+export interface Pickup {
+  x: number;
+  kind: PickupKind;
+}
 
 export interface Mover {
   x: number;
   length: number;
   kind: MoverKind;
   color: string;
+  /** Seconds since a rock-powered chicken wrecked this vehicle; null while intact. */
+  wrecked: number | null;
 }
 
 export interface Tree {
@@ -28,6 +36,8 @@ export interface Lane {
   train: { x: number; active: boolean; timer: number; cars: number; warning: boolean };
   /** True when the previous lane is the same kind (draws lane markings). */
   continued: boolean;
+  /** A collectible sitting on this lane, removed once picked up. */
+  pickup: Pickup | null;
 }
 
 export type Rng = () => number;
@@ -60,8 +70,15 @@ function emptyLane(row: number, type: LaneType): Lane {
     speed: 0,
     train: { x: 0, active: false, timer: 0, cars: 0, warning: false },
     continued: false,
+    pickup: null,
   };
 }
+
+// Roughly one in seven grass or road lanes carries a collectible.
+const PICKUP_CHANCE = 1 / 7;
+// Of those collectibles, this share are extra lives; the rest are power-ups.
+export const LIFE_CHANCE = 0.2;
+const POWERUPS: PickupKind[] = ["foresight", "slowmo", "rock"];
 
 /**
  * Endless lane generator. Lanes come in groups of one type, getting faster and
@@ -112,7 +129,21 @@ export class LaneGenerator {
     }
     lane.continued = lane.type === this.lastType;
     this.lastType = lane.type;
+    this.placePickup(lane);
     return lane;
+  }
+
+  private placePickup(lane: Lane) {
+    const rng = this.rng;
+    if (lane.type !== "grass" && lane.type !== "road") return;
+    if (rng() >= PICKUP_CHANCE) return;
+    const free: number[] = [];
+    for (let x = -COLS; x <= COLS; x++) if (!lane.blocked.has(x)) free.push(x);
+    if (free.length === 0) return;
+    lane.pickup = {
+      x: pick(rng, free),
+      kind: rng() < LIFE_CHANCE ? "life" : pick(rng, POWERUPS),
+    };
   }
 
   private pickGroup(row: number) {
@@ -178,6 +209,7 @@ export class LaneGenerator {
         length,
         kind: truck ? "truck" : "car",
         color: color ?? pick(rng, CAR_COLORS),
+        wrecked: null,
       });
     }
     return lane;
@@ -193,7 +225,7 @@ export class LaneGenerator {
     while (true) {
       const length = randInt(rng, 2, 4 - Math.round(difficulty));
       if (x + length > WRAP - 1.2) break;
-      lane.movers.push({ x: x + length / 2, length, kind: "log", color: "#8b5a2b" });
+      lane.movers.push({ x: x + length / 2, length, kind: "log", color: "#8b5a2b", wrecked: null });
       x += length + range(rng, 1.2, 2.6 + difficulty * 1.5);
     }
     return lane;
