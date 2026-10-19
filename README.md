@@ -86,6 +86,10 @@ Each character has its own trait, shown on the start screen and in the store.
 | Sparrow | 300 | Stops time (Freeze) every 100 hops. |
 | Snail | 350 | Slows time (Slowmo) every 100 hops. |
 
+## Upgrades
+
+Every power-up can be upgraded in the store (select it on the Power-ups tab and press **U** or tap Upgrade), up to level 5. Each level adds a quarter of the base duration, so level 5 lasts twice as long. Warp jumps 2 more rows per level and Coin rain covers 4 more lanes per level. An upgrade costs four times the power-up's price times its current level (Foresight: 120, 240, 360, 480). Levels apply to power-ups you pick up on the road as well as ones bought in the store, and stack with the Chicken's 50% bonus.
+
 ## Coins and the store
 
 - Coins sit on grass and road lanes. They are saved in your browser as soon as you pick them up, even if you die.

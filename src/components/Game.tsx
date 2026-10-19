@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Engine, type Direction } from "@/game/engine";
-import { POWERUP_DURATION } from "@/game/config";
-import { POWERUPS, hotkeyFor } from "@/game/powerups";
+import { CHICKEN_POWERUP_BONUS } from "@/game/config";
+import { POWERUPS, durationAt, hotkeyFor, type PowerUp } from "@/game/powerups";
 import { CHARACTERS, wallet } from "@/game/wallet";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
@@ -52,6 +52,9 @@ export default function Game() {
     });
   }, []);
   const diedAt = useRef(0);
+  // Upgrades and the chicken's bonus stretch power-ups, so the HUD rings measure against the real length.
+  const fullDuration = (key: PowerUp) =>
+    durationAt(key, w.levels[key]) * (engine.character === "chicken" ? CHICKEN_POWERUP_BONUS : 1);
   const character = CHARACTERS.find((c) => c.id === engine.character) ?? CHARACTERS[0];
 
   // Show a newly picked character straight away on the start screen.
@@ -154,7 +157,7 @@ export default function Game() {
             ({ key, label }) =>
               ui.effects[key] > 0 && (
                 <div key={key} className="effect" title={label}>
-                  <Hex tone="teal" size={40} ring={ui.effects[key] / POWERUP_DURATION[key]}>
+                  <Hex tone="teal" size={40} ring={ui.effects[key] / fullDuration(key)}>
                     <Icon id={key} size={17} />
                   </Hex>
                   <span>{ui.effects[key]}s</span>

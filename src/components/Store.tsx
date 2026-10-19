@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import type { Group } from "three";
-import { POWERUP_DURATION } from "@/game/config";
+import { MAX_LEVEL, isInstant, strengthAt, upgradeCost, type PowerUp } from "@/game/powerups";
 import { CHARACTERS, STORE_ITEMS, wallet, type CharacterId, type StoreItemId, type WalletState } from "@/game/wallet";
 import { Hex, Icon } from "./icons";
 import { CharacterModel } from "./models";
@@ -29,7 +29,7 @@ const CHARACTER_BLURB: Record<CharacterId, string> = {
   robot: "Hop module v2. Runs on coins and optimism.",
 };
 
-const cellsFor = (tab: Tab): Cell[] =>
+const cellsFor = (tab: Tab, w: WalletState): Cell[] =>
   tab === "characters"
     ? CHARACTERS.map((c) => ({ id: c.id, name: c.name, price: c.price, kind: "Character", description: `${c.trait} ${CHARACTER_BLURB[c.id]}` }))
     : STORE_ITEMS.map((i) => ({
@@ -39,9 +39,7 @@ const cellsFor = (tab: Tab): Cell[] =>
         kind:
           i.id === "life"
             ? "Extra life"
-            : POWERUP_DURATION[i.id] === 0
-              ? "Power-up · instant"
-              : `Power-up · ${POWERUP_DURATION[i.id]}s`,
+            : `${isInstant(i.id) ? "Instant" : "Power-up"} · Level ${w.levels[i.id]}/${MAX_LEVEL} · ${strengthAt(i.id, w.levels[i.id])}`,
         description: i.description,
       }));
 
@@ -84,13 +82,28 @@ function action(tab: Tab, cell: Cell, w: WalletState) {
   return { label: `Buy · ${cell.price}`, run: w.coins >= cell.price ? () => wallet.buyItem(id) : null };
 }
 
+/** Upgrading a power-up: longer duration, or more rows for the instant ones. */
+function upgradeAction(tab: Tab, cell: Cell, w: WalletState) {
+  if (tab !== "powerups" || cell.id === "life") return null;
+  const id = cell.id as PowerUp;
+  const level = w.levels[id];
+  if (level >= MAX_LEVEL) return { label: "Max level", run: null, next: null };
+  const cost = upgradeCost(id, level);
+  return {
+    label: `Upgrade · ${cost}`,
+    next: strengthAt(id, level + 1),
+    run: w.coins >= cost ? () => wallet.upgrade(id) : null,
+  };
+}
+
 export default function Store({ onClose }: { onClose: () => void }) {
   const w = useWallet();
   const [tab, setTab] = useState<Tab>("characters");
-  const cells = cellsFor(tab);
+  const cells = cellsFor(tab, w);
   const [focus, setFocus] = useState(() => Math.max(0, CHARACTERS.findIndex((c) => c.id === w.selected)));
   const cell = cells[Math.min(focus, cells.length - 1)];
   const act = action(tab, cell, w);
+  const up = upgradeAction(tab, cell, w);
   const selected = CHARACTERS.find((c) => c.id === w.selected)!;
 
   const switchTab = (next: Tab) => {
@@ -99,11 +112,11 @@ export default function Store({ onClose }: { onClose: () => void }) {
   };
 
   // Keyboard: arrows move through the honeycomb, Enter buys or equips, Q/E switch tabs, Esc closes.
-  const latest = useRef({ act, cells, tab });
-  latest.current = { act, cells, tab };
+  const latest = useRef({ act, up, cells, tab });
+  latest.current = { act, up, cells, tab };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const { act, cells, tab } = latest.current;
+      const { act, up, cells, tab } = latest.current;
       const n = cells.length;
       const moves: Record<string, number> = { ArrowLeft: -2, ArrowRight: 2, ArrowUp: -1, ArrowDown: 1 };
       if (e.code in moves) {
@@ -112,6 +125,8 @@ export default function Store({ onClose }: { onClose: () => void }) {
       } else if (e.code === "Enter" || e.code === "Space") {
         e.preventDefault();
         act.run?.();
+      } else if (e.code === "KeyU") {
+        up?.run?.();
       } else if (e.code === "KeyQ" || e.code === "KeyE") {
         switchTab(tab === "characters" ? "powerups" : "characters");
       } else if (e.code === "Escape") {
@@ -179,6 +194,7 @@ export default function Store({ onClose }: { onClose: () => void }) {
                 const tone = equipped || count > 0 ? "teal" : owned || affordable ? "white" : "locked";
                 const focused = i === focus;
                 const showProgress = !owned && !equipped && !affordable;
+                const level = isChar || c.id === "life" ? 0 : w.levels[c.id as PowerUp];
                 return (
                   <button
                     key={c.id}
@@ -195,11 +211,13 @@ export default function Store({ onClose }: { onClose: () => void }) {
                       </span>
                     )}
                     {count > 0 && <span className="cell-badge">{count}</span>}
+                    {level > 1 && <span className="cell-level">Lv{level}</span>}
                     <Hex
                       tone={tone}
                       size={focused ? 112 : 96}
                       outline={focused}
-                      ring={showProgress ? w.coins / c.price : undefined}
+                      ring={showProgress ? w.coins / c.price : level > 1 ? level / MAX_LEVEL : undefined}
+                      ringColor={showProgress ? undefined : "var(--ui-gold)"}
                     >
                       <Icon id={c.id} size={focused ? 40 : 34} />
                     </Hex>
@@ -218,7 +236,10 @@ export default function Store({ onClose }: { onClose: () => void }) {
         {tab === "characters" && <Preview id={cell.id as CharacterId} />}
         <h2>{cell.name}</h2>
         <p className="menu-kind">{cell.kind.toUpperCase()}</p>
-        <p className="menu-desc">{cell.description}</p>
+        <p className="menu-desc">
+          {cell.description}
+          {up?.next && ` Next level: ${up.next}.`}
+        </p>
       </section>
 
       <footer className="menu-hints">
@@ -228,6 +249,11 @@ export default function Store({ onClose }: { onClose: () => void }) {
         <button className="primary" disabled={!act.run} onClick={() => act.run?.()}>
           <kbd>↵</kbd> {act.label}
         </button>
+        {up && (
+          <button disabled={!up.run} onClick={() => up.run?.()}>
+            <kbd>U</kbd> {up.label}
+          </button>
+        )}
         <button onClick={onClose}>
           Back <kbd>Esc</kbd>
         </button>

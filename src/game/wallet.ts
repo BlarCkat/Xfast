@@ -1,4 +1,4 @@
-import { POWERUPS, noEffects, type PowerUp } from "./powerups";
+import { MAX_LEVEL, POWERUPS, noEffects, upgradeCost, type PowerUp } from "./powerups";
 
 export type CharacterId = "chicken" | "duck" | "frog" | "cat" | "penguin" | "robot" | "sparrow" | "snail";
 export type StoreItemId = PowerUp | "life";
@@ -44,6 +44,8 @@ export interface WalletState {
   owned: CharacterId[];
   selected: CharacterId;
   inventory: Record<StoreItemId, number>;
+  /** Upgrade level of each power-up, 1 to MAX_LEVEL. */
+  levels: Record<PowerUp, number>;
 }
 
 const KEY = "xfast-wallet";
@@ -53,6 +55,7 @@ const fresh = (): WalletState => ({
   owned: ["chicken"],
   selected: "chicken",
   inventory: { life: 0, ...noEffects() },
+  levels: Object.fromEntries(POWERUPS.map((p) => [p.key, 1])) as Record<PowerUp, number>,
 });
 
 function load(): WalletState {
@@ -66,6 +69,7 @@ function load(): WalletState {
       owned: Array.isArray(saved.owned) ? Array.from(new Set(["chicken", ...saved.owned])) as CharacterId[] : base.owned,
       selected: saved.selected && saved.owned?.includes(saved.selected) ? saved.selected : "chicken",
       inventory: { ...base.inventory, ...saved.inventory },
+      levels: { ...base.levels, ...saved.levels },
     };
   } catch {
     return fresh();
@@ -120,6 +124,15 @@ class Wallet {
     const item = STORE_ITEMS.find((i) => i.id === id)!;
     if (s.coins < item.price) return false;
     this.set({ ...s, coins: s.coins - item.price, inventory: { ...s.inventory, [id]: s.inventory[id] + 1 } });
+    return true;
+  }
+
+  upgrade(id: PowerUp) {
+    const s = this.get();
+    const level = s.levels[id];
+    const cost = upgradeCost(id, level);
+    if (level >= MAX_LEVEL || s.coins < cost) return false;
+    this.set({ ...s, coins: s.coins - cost, levels: { ...s.levels, [id]: level + 1 } });
     return true;
   }
 

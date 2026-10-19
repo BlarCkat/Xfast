@@ -5,12 +5,9 @@ import {
   IDLE_LIMIT,
   MAGNET_RADIUS,
   MAX_SPEED_SCALE,
-  COIN_RAIN_ROWS,
   SPEEDUP_STEP,
   STEPS_PER_SPEEDUP,
-  WARP_ROWS,
   MAX_ROWS_BEHIND_CAMERA,
-  POWERUP_DURATION,
   RESPAWN_DELAY,
   RESPAWN_SHIELD,
   SLOWMO_SCALE,
@@ -26,7 +23,16 @@ import {
   WRAP,
 } from "./config";
 import { Lane, LaneGenerator, Mover, PickupKind, trainLength } from "./lanes";
-import { POWERUPS, isInstant, noEffects, type Effects, type PowerUp } from "./powerups";
+import {
+  POWERUPS,
+  coinRainRowsAt,
+  durationAt,
+  isInstant,
+  noEffects,
+  warpRowsAt,
+  type Effects,
+  type PowerUp,
+} from "./powerups";
 import { type CharacterId, wallet } from "./wallet";
 
 export type { Effects, PowerUp };
@@ -403,18 +409,20 @@ export class Engine {
 
   private apply(kind: PowerUp) {
     if (!isInstant(kind)) {
-      this.effects[kind] = POWERUP_DURATION[kind] * (this.character === "chicken" ? CHICKEN_POWERUP_BONUS : 1);
+      const level = wallet.get().levels[kind];
+      this.effects[kind] = durationAt(kind, level) * (this.character === "chicken" ? CHICKEN_POWERUP_BONUS : 1);
       return;
     }
     if (kind === "warp") this.warp();
     if (kind === "coinrain") this.coinRain();
   }
 
-  /** Jump to the first open grass at least WARP_ROWS ahead. */
+  /** Jump to the first open grass at least WARP_ROWS (more when upgraded) ahead. */
   private warp() {
     const p = this.player;
     const want = Math.max(-COLS, Math.min(COLS, Math.round(p.x)));
-    for (let row = p.row + WARP_ROWS; row < p.row + WARP_ROWS + 15; row++) {
+    const rows = warpRowsAt(wallet.get().levels.warp);
+    for (let row = p.row + rows; row < p.row + rows + 15; row++) {
       const lane = this.lanes.get(row);
       if (lane?.type !== "grass") continue;
       const x = this.freeColumn(lane, want);
@@ -430,7 +438,7 @@ export class Engine {
 
   private coinRain() {
     const p = this.player;
-    for (let row = p.row + 1; row <= p.row + COIN_RAIN_ROWS; row++) {
+    for (let row = p.row + 1; row <= p.row + coinRainRowsAt(wallet.get().levels.coinrain); row++) {
       const lane = this.lanes.get(row);
       if (!lane || lane.coin !== null || (lane.type !== "grass" && lane.type !== "road")) continue;
       lane.coin = this.freeColumn(lane, Math.floor(Math.random() * (COLS * 2 + 1)) - COLS);
