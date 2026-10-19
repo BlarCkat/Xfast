@@ -9,7 +9,7 @@ import {
   Matrix4,
   Mesh,
   MeshBasicMaterial,
-  MeshLambertMaterial,
+  Vector3,
   type Group,
   type Object3D,
 } from "three";
@@ -69,35 +69,117 @@ export function Box({ size, position = [0, 0, 0], color, cast = true, receive = 
   );
 }
 
-const litMaterial = new MeshLambertMaterial({ vertexColors: true });
+// Baked meshes carry their lighting in vertex colours, so they render unlit and cost almost
+// nothing to shade. The light matches Scene: a white/green hemisphere sky plus the sun.
+const litMaterial = new MeshBasicMaterial({ vertexColors: true });
 // Glowing parts skip lighting and tone mapping so their over-bright colours feed the bloom.
 const glowMaterial = new MeshBasicMaterial({ vertexColors: true, toneMapped: false });
+
+export const SKY_COLOR = "#ffffff";
+export const GROUND_COLOR = "#9bbf7a";
+export const HEMI_INTENSITY = 1.4;
+export const SUN_INTENSITY = 2.2;
+/** Direction towards the sun, matching the directional light's offset from its target. */
+export const SUN_OFFSET: [number, number, number] = [-4, 12, 6];
+
+const sun = new Vector3(...SUN_OFFSET).normalize();
+const sky = new Color(SKY_COLOR);
+const ground = new Color(GROUND_COLOR);
 const scratch = new Matrix4();
 const tint = new Color();
+const light = new Color();
+const n = new Vector3();
+
+const smoothstep = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
+/** Small stable per-box brightness wobble so neighbouring blocks don't look stamped out. */
+const jitter = (x: number, y: number, z: number) => {
+  const h = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453;
+  return 0.96 + (h - Math.floor(h)) * 0.08;
+};
+
+/** Mirrored boxes (scale -1 on x) come out inside out; swap two corners of every triangle. */
+function flipWinding(g: BufferGeometry) {
+  for (const name of ["position", "normal", "uv"]) {
+    const attr = g.getAttribute(name);
+    if (!attr) continue;
+    const a = attr.array as Float32Array;
+    const size = attr.itemSize;
+    for (let v = 0; v < attr.count; v += 3) {
+      for (let k = 0; k < size; k++) {
+        const i1 = (v + 1) * size + k;
+        const i2 = (v + 2) * size + k;
+        const t = a[i1];
+        a[i1] = a[i2];
+        a[i2] = t;
+      }
+    }
+  }
+}
+
+type Part = { geometry: BufferGeometry; color: string; glow?: number; center: Vector3 };
 
 function bake(source: Object3D) {
   source.updateWorldMatrix(true, true);
   const toLocal = new Matrix4().copy(source.matrixWorld).invert();
-  const lit: BufferGeometry[] = [];
-  const glowing: BufferGeometry[] = [];
+  const parts: Part[] = [];
   const visit = (o: Object3D) => {
     o.children.forEach((c) => c.visible && visit(c));
     const { box, color, glow } = o.userData as { box?: Size; color?: string; glow?: number };
     if (!box || !color) return;
-    const g = roundedBox(box).clone();
-    g.applyMatrix4(scratch.multiplyMatrices(toLocal, o.matrixWorld));
-    tint.set(color);
-    if (glow) tint.multiplyScalar(0.8 + glow);
-    const count = g.getAttribute("position").count;
-    const colors = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) tint.toArray(colors, i * 3);
-    g.setAttribute("color", new BufferAttribute(colors, 3));
-    (glow ? glowing : lit).push(g);
+    const geometry = roundedBox(box).clone();
+    scratch.multiplyMatrices(toLocal, o.matrixWorld);
+    geometry.applyMatrix4(scratch);
+    if (scratch.determinant() < 0) flipWinding(geometry);
+    parts.push({ geometry, color, glow, center: new Vector3().setFromMatrixPosition(scratch) });
   };
   visit(source);
-  const parts = [lit, glowing].filter((list) => list.length > 0);
-  const geometry = parts.length ? mergeGeometries(parts.map((list) => mergeGeometries(list)), true) : null;
-  const materials = parts.map((list) => (list === lit ? litMaterial : glowMaterial));
+  if (parts.length === 0) return { geometry: null, materials: [] };
+
+  // Darken towards the lowest point of the model: cheap baked ambient occlusion at the base.
+  let floor = Infinity;
+  for (const p of parts) {
+    const pos = p.geometry.getAttribute("position");
+    for (let i = 0; i < pos.count; i++) floor = Math.min(floor, pos.getY(i));
+  }
+
+  const lit: BufferGeometry[] = [];
+  const glowing: BufferGeometry[] = [];
+  for (const { geometry, color, glow, center } of parts) {
+    const pos = geometry.getAttribute("position");
+    const normal = geometry.getAttribute("normal");
+    const colors = new Float32Array(pos.count * 3);
+    tint.set(color);
+    if (glow) {
+      tint.multiplyScalar(0.8 + glow);
+      for (let i = 0; i < pos.count; i++) tint.toArray(colors, i * 3);
+    } else {
+      const wobble = jitter(center.x, center.y, center.z);
+      for (let i = 0; i < pos.count; i++) {
+        n.fromBufferAttribute(normal, i);
+        // Same terms as three's Lambert: (hemisphere + sun * N.L) / PI.
+        light.copy(ground).lerp(sky, n.y * 0.5 + 0.5).multiplyScalar(HEMI_INTENSITY);
+        light.addScalar(Math.max(0, n.dot(sun)) * SUN_INTENSITY);
+        light.multiplyScalar(1 / Math.PI);
+        const ao = 0.62 + 0.38 * smoothstep(0, 0.5, pos.getY(i) - floor);
+        // Bevel faces catch a little extra light, like a worn edge.
+        const edge = Math.max(Math.abs(n.x), Math.abs(n.y), Math.abs(n.z)) < 0.98 ? 1.07 : 1;
+        light.multiplyScalar(ao * edge * wobble);
+        colors[i * 3] = tint.r * light.r;
+        colors[i * 3 + 1] = tint.g * light.g;
+        colors[i * 3 + 2] = tint.b * light.b;
+      }
+    }
+    geometry.setAttribute("color", new BufferAttribute(colors, 3));
+    (glow ? glowing : lit).push(geometry);
+  }
+
+  const groups = [lit, glowing].filter((list) => list.length > 0);
+  const geometry = mergeGeometries(groups.map((list) => mergeGeometries(list)), true);
+  const materials = groups.map((list) => (list === lit ? litMaterial : glowMaterial));
   [...lit, ...glowing].forEach((g) => g.dispose());
   return { geometry, materials };
 }

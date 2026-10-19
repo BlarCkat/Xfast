@@ -7,7 +7,18 @@ import { COLS, HOP_HEIGHT, ROWS_AHEAD, ROWS_BEHIND } from "@/game/config";
 import type { Engine } from "@/game/engine";
 import { Effects } from "./Effects";
 import { LaneView } from "./Lanes";
-import { CharacterModel, Eagle, RockShell, ShieldBubble, Wings } from "./models";
+import {
+  CharacterModel,
+  Eagle,
+  GROUND_COLOR,
+  HEMI_INTENSITY,
+  RockShell,
+  ShieldBubble,
+  SKY_COLOR,
+  SUN_INTENSITY,
+  SUN_OFFSET,
+  Wings,
+} from "./models";
 
 // Camera sits behind, above and slightly to the right of the action, like the original.
 const CAMERA_OFFSET: [number, number, number] = [3.2, 11, 7.5];
@@ -186,7 +197,7 @@ function CameraRig({ engine, tier }: { engine: Engine; tier: Tier }) {
     camera.lookAt(fx, 0, fz);
     const l = light.current;
     if (l) {
-      l.position.set(fx - 4, 12, fz + 6);
+      l.position.set(fx + SUN_OFFSET[0], SUN_OFFSET[1], fz + SUN_OFFSET[2]);
       l.target.position.set(fx, 0, fz);
       l.target.updateMatrixWorld();
     }
@@ -195,7 +206,7 @@ function CameraRig({ engine, tier }: { engine: Engine; tier: Tier }) {
   return (
     <directionalLight
       ref={light}
-      intensity={2.2}
+      intensity={SUN_INTENSITY}
       castShadow={tier > 0}
       shadow-mapSize={tier === 2 ? [2048, 2048] : [1024, 1024]}
       shadow-camera-left={-16}
@@ -266,7 +277,7 @@ export function Scene({ engine, fx }: { engine: Engine; fx: boolean }) {
   return (
     <>
       <color attach="background" args={["#7fd0f5"]} />
-      <hemisphereLight args={["#ffffff", "#9bbf7a", 1.4]} />
+      <hemisphereLight args={[SKY_COLOR, GROUND_COLOR, HEMI_INTENSITY]} />
       <CameraRig engine={engine} tier={tier} />
       {lanes.map((lane) => (
         <LaneView key={lane.row} lane={lane} engine={engine} />

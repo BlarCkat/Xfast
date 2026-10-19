@@ -7,18 +7,38 @@ import { COLS, FORESIGHT_STEPS, LANE_WIDTH, TRAIN_SPEED, WRAP } from "@/game/con
 import type { Engine } from "@/game/engine";
 import type { Lane } from "@/game/lanes";
 import { trainLength } from "@/game/lanes";
-import { BIOMES } from "@/game/biomes";
+import { BIOMES, type BiomeId } from "@/game/biomes";
 import { Floater, Obstacle, Vehicle } from "./biomeModels";
 import { Baked, Box, Coin, PickupModel, Train } from "./models";
+import { groundTexture, type GroundTexture } from "./textures";
 
-function Ground({ color, top = 0, depth = 0.6 }: { color: string; top?: number; depth?: number }) {
+function Ground({
+  color,
+  texture,
+  top = 0,
+  depth = 0.6,
+}: {
+  color: string;
+  texture: GroundTexture;
+  top?: number;
+  depth?: number;
+}) {
   return (
     <mesh position={[0, top - depth / 2, 0]} receiveShadow>
       <boxGeometry args={[LANE_WIDTH, depth, 1]} />
-      <meshLambertMaterial color={color} />
+      <meshLambertMaterial color={color} map={groundTexture(texture)} />
     </mesh>
   );
 }
+
+const GRASS_TEXTURE: Record<BiomeId, GroundTexture> = {
+  meadow: "grass",
+  farm: "grass",
+  safari: "grass",
+  savannah: "grass",
+  city: "tiles",
+  northpole: "snow",
+};
 
 function GrassLane({ lane }: { lane: Lane }) {
   // Re-bake when a lumberjack chops a tree down.
@@ -28,7 +48,7 @@ function GrassLane({ lane }: { lane: Lane }) {
   });
   return (
     <>
-      <Ground color={BIOMES[lane.biome].grass[((lane.row % 2) + 2) % 2]} />
+      <Ground color={BIOMES[lane.biome].grass[((lane.row % 2) + 2) % 2]} texture={GRASS_TEXTURE[lane.biome]} />
       <Baked version={count}>
         {lane.trees.map((t) => (
           <group key={t.x} position={[t.x, 0, 0]}>
@@ -65,7 +85,7 @@ function RoadLane({ lane }: { lane: Lane }) {
   const dir = Math.sign(lane.speed);
   return (
     <>
-      <Ground color={BIOMES[lane.biome].road} top={-0.02} />
+      <Ground color={BIOMES[lane.biome].road} texture="road" top={-0.02} />
       {lane.continued && (
         <Baked shadows={false}>
           {Array.from({ length: Math.floor(LANE_WIDTH / 2) }, (_, i) => (
@@ -98,7 +118,7 @@ function RiverLane({ lane }: { lane: Lane }) {
   });
   return (
     <>
-      <Ground color={BIOMES[lane.biome].water} top={-0.28} depth={0.4} />
+      <Ground color={BIOMES[lane.biome].water} texture="water" top={-0.28} depth={0.4} />
       <group ref={bob}>
         {lane.movers.map((m, i) => (
           <group key={i} ref={(g) => void (refs.current[i] = g)}>
@@ -132,7 +152,7 @@ function RailLane({ lane }: { lane: Lane }) {
   });
   return (
     <>
-      <Ground color={BIOMES[lane.biome].railBed} top={-0.02} />
+      <Ground color={BIOMES[lane.biome].railBed} texture="gravel" top={-0.02} />
       <Baked shadows={false}>
         {Array.from({ length: Math.floor(LANE_WIDTH / 0.8) }, (_, i) => (
           <Box
