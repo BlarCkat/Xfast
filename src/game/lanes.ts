@@ -84,6 +84,11 @@ const PICKUP_CHANCE = 1 / 7;
 export const LIFE_CHANCE = 0.2;
 const POWERUPS: PickupKind[] = POWERUP_KEYS;
 const COIN_CHANCE = 0.35;
+/** Score where lanes start getting busier, and how many rows the ramp takes to max out. */
+export const DIFFICULTY_START = 500;
+const DIFFICULTY_RAMP = 500;
+export const difficultyAt = (row: number) =>
+  Math.max(0, Math.min(1, (row - DIFFICULTY_START) / DIFFICULTY_RAMP));
 
 /**
  * Endless lane generator. Lanes come in groups of one type, getting faster and
@@ -117,7 +122,7 @@ export class LaneGenerator {
     if (this.groupLeft <= 0) this.pickGroup(row);
     this.groupLeft--;
 
-    const difficulty = Math.min(1, row / 160);
+    const difficulty = difficultyAt(row);
     let lane: Lane;
     switch (this.groupType) {
       case "road":
@@ -156,7 +161,7 @@ export class LaneGenerator {
 
   private pickGroup(row: number) {
     const rng = this.rng;
-    const difficulty = Math.min(1, row / 160);
+    const difficulty = difficultyAt(row);
     if (this.groupType !== "grass" && rng() < 0.7) {
       this.groupType = "grass";
       this.groupLeft = randInt(rng, 1, 2);
