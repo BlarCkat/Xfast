@@ -1,0 +1,26 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Each player's cloud save. Only they can read or write it.
+    match /players/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['save', 'best', 'savedAt', 'updatedAt']);
+    }
+
+    // Coins bought through Lemon Squeezy. Written only by the webhook (Admin SDK bypasses these rules).
+    match /purchases/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Order log for the webhook. Never touched by the game.
+    match /orders/{orderId} {
+      allow read, write: if false;
+    }
+
+    // profiles, usernames and boards/{global|week}/entries have no rules here on purpose:
+    // with no match they're closed to clients, and only the game's API routes use them.
+  }
+}
