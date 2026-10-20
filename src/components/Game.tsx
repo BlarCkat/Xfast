@@ -106,6 +106,16 @@ export default function Game() {
     return () => window.removeEventListener("keydown", onKey);
   }, [engine, restart, storeOpen, toggleFx]);
 
+  // iOS Safari still zooms on pinch and quick double taps despite the viewport meta.
+  useEffect(() => {
+    const block = (e: Event) => e.preventDefault();
+    const events = ["gesturestart", "gesturechange", "dblclick"];
+    for (const name of events) document.addEventListener(name, block, { passive: false });
+    return () => {
+      for (const name of events) document.removeEventListener(name, block);
+    };
+  }, []);
+
   // Tap to hop forward, swipe to hop in any direction.
   const start = useRef<{ x: number; y: number } | null>(null);
   const onPointerDown = (e: React.PointerEvent) => {
