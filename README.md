@@ -128,7 +128,7 @@ Refunds (`order_refunded`) are marked on the order; coins already spent are not 
 
 ## Setting up Firebase and Lemon Squeezy
 
-Without these the game runs guest-only and the Coins tab says "Coming soon". All keys are listed in `.env.example`; put them in `.env.local` for local dev and in Vercel's project environment variables for production.
+Accounts are **switched off** until `NEXT_PUBLIC_ACCOUNTS=on` is set (and the Firebase keys below are in place). While off, the game runs guest-only: there is no sign-in, Ranks button or Coins tab. All keys are listed in `.env.example`; put them in `.env.local` for local dev and in Vercel's project environment variables for production.
 
 **Firebase**
 

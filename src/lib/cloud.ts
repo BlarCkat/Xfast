@@ -4,7 +4,7 @@ import { BEST_KEY, readBest } from "@/game/engine";
 import type { PackId } from "@/game/coinPacks";
 import { USERNAME_RULE, type Board, type LeaderboardResponse, type Profile } from "@/game/leaderboard";
 import { fresh, merge, normalize, wallet, type WalletState } from "@/game/wallet";
-import { firebaseApp, firebaseEnabled, useEmulators } from "./firebase";
+import { accountsEnabled, firebaseApp, useEmulators } from "./firebase";
 
 export type CloudStatus = "off" | "loading" | "guest" | "signed-in";
 
@@ -65,7 +65,7 @@ function writeBest(best: number) {
  * Lemon Squeezy are credited server-side to purchases/{uid} and claimed here.
  */
 class Cloud {
-  private state: CloudState = { status: firebaseEnabled ? "loading" : "off", uid: null, name: null, busy: false, notice: null, profile: null, editing: null };
+  private state: CloudState = { status: accountsEnabled ? "loading" : "off", uid: null, name: null, busy: false, notice: null, profile: null, editing: null };
   private listeners = new Set<() => void>();
   private auth: Auth | null = null;
   private db: Firestore | null = null;
@@ -93,7 +93,7 @@ class Cloud {
 
   /** Called once on the client when the game mounts. */
   start() {
-    if (this.started || !firebaseEnabled) return;
+    if (this.started || !accountsEnabled) return;
     this.started = true;
     this.auth = getAuth(firebaseApp());
     this.db = getFirestore(firebaseApp());

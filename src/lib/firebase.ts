@@ -11,6 +11,12 @@ const config = {
 /** False until the Firebase env vars are set, in which case the game runs as guest-only. */
 export const firebaseEnabled = Boolean(config.apiKey && config.authDomain && config.projectId && config.appId);
 
+/**
+ * Sign-in, cloud saves, leaderboards and coin packs. Off until NEXT_PUBLIC_ACCOUNTS=on,
+ * so they can stay switched off even once Firebase is configured.
+ */
+export const accountsEnabled = firebaseEnabled && process.env.NEXT_PUBLIC_ACCOUNTS === "on";
+
 export function firebaseApp(): FirebaseApp {
   return getApps().length ? getApp() : initializeApp(config);
 }

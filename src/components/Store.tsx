@@ -7,6 +7,7 @@ import { MAX_LEVEL, isInstant, strengthAt, upgradeCost, type PowerUp } from "@/g
 import { CHARACTERS, STORE_ITEMS, wallet, type CharacterId, type StoreItemId, type WalletState } from "@/game/wallet";
 import { COIN_PACKS, type PackId } from "@/game/coinPacks";
 import { cloud, type CloudState } from "@/lib/cloud";
+import { accountsEnabled } from "@/lib/firebase";
 import { Hex, Icon } from "./icons";
 import { CharacterModel } from "./models";
 import { Avatar } from "./Profile";
@@ -16,7 +17,8 @@ type Tab = "characters" | "powerups" | "coins";
 const TABS: { id: Tab; label: string }[] = [
   { id: "characters", label: "Characters" },
   { id: "powerups", label: "Power-ups" },
-  { id: "coins", label: "Coins" },
+  // Coin packs need an account to land in.
+  ...(accountsEnabled ? [{ id: "coins" as const, label: "Coins" }] : []),
 ];
 
 interface Cell {

@@ -7,6 +7,7 @@ import { CHICKEN_POWERUP_BONUS } from "@/game/config";
 import { POWERUPS, durationAt, hotkeyFor, type PowerUp } from "@/game/powerups";
 import { CHARACTERS, wallet } from "@/game/wallet";
 import { cloud } from "@/lib/cloud";
+import { accountsEnabled } from "@/lib/firebase";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
 import Store, { useWallet } from "./Store";
@@ -101,7 +102,7 @@ export default function Game() {
         setStoreOpen(true);
         return;
       }
-      if (e.code === "KeyL" && engine.status !== "playing") {
+      if (e.code === "KeyL" && accountsEnabled && engine.status !== "playing") {
         setBoardOpen(true);
         return;
       }
@@ -258,20 +259,22 @@ export default function Game() {
             <span>Store</span>
             <kbd>S</kbd>
           </button>
-          <button
-            aria-label="Leaderboard"
-            onPointerDown={stop}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              setBoardOpen(true);
-            }}
-          >
-            <span className="start-coin">
-              <Icon id="trophy" size={22} />
-            </span>
-            <span>Ranks</span>
-            <kbd>L</kbd>
-          </button>
+          {accountsEnabled && (
+            <button
+              aria-label="Leaderboard"
+              onPointerDown={stop}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                setBoardOpen(true);
+              }}
+            >
+              <span className="start-coin">
+                <Icon id="trophy" size={22} />
+              </span>
+              <span>Ranks</span>
+              <kbd>L</kbd>
+            </button>
+          )}
           <button
             className="start-play"
             onPointerDown={stop}
@@ -320,15 +323,17 @@ export default function Game() {
             >
               <kbd>S</kbd> Store
             </button>
-            <button
-              onPointerDown={stop}
-              onPointerUp={(e) => {
-                e.stopPropagation();
-                setBoardOpen(true);
-              }}
-            >
-              <kbd>L</kbd> Ranks
-            </button>
+            {accountsEnabled && (
+              <button
+                onPointerDown={stop}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  setBoardOpen(true);
+                }}
+              >
+                <kbd>L</kbd> Ranks
+              </button>
+            )}
             <button
               className="primary"
               onPointerDown={stop}
