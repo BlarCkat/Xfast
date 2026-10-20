@@ -6,6 +6,7 @@ import { Engine, type Direction } from "@/game/engine";
 import { CHICKEN_POWERUP_BONUS } from "@/game/config";
 import { POWERUPS, durationAt, hotkeyFor, type PowerUp } from "@/game/powerups";
 import { CHARACTERS, wallet } from "@/game/wallet";
+import { cloud } from "@/lib/cloud";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
 import Store, { useWallet } from "./Store";
@@ -41,6 +42,7 @@ export default function Game() {
   const [engine, setEngine] = useState(() => new Engine(wallet.get().selected));
   const ui = useSyncExternalStore(engine.subscribe, engine.getSnapshot, engine.getSnapshot);
   const w = useWallet();
+  const account = useSyncExternalStore(cloud.subscribe, cloud.get, cloud.get);
   const [storeOpen, setStoreOpen] = useState(false);
   const [fx, setFx] = useState(readFx);
   const toggleFx = useCallback(() => {
@@ -57,13 +59,23 @@ export default function Game() {
     durationAt(key, w.levels[key]) * (engine.character === "chicken" ? CHICKEN_POWERUP_BONUS : 1);
   const character = CHARACTERS.find((c) => c.id === engine.character) ?? CHARACTERS[0];
 
-  // Show a newly picked character straight away on the start screen.
+  useEffect(() => cloud.start(), []);
+
+  // Show a newly picked character, or a just-loaded account's top score, straight away on the start screen.
+  const engineUid = useRef(account.uid);
   useEffect(() => {
-    if (engine.status === "ready" && engine.character !== w.selected) setEngine(new Engine(w.selected));
-  }, [engine, w.selected]);
+    const switched = engineUid.current !== account.uid && account.status !== "loading";
+    if (engine.status === "ready" && (engine.character !== w.selected || switched)) {
+      engineUid.current = account.uid;
+      setEngine(new Engine(w.selected));
+    }
+  }, [engine, w.selected, account.uid, account.status]);
 
   useEffect(() => {
-    if (ui.status === "dead") diedAt.current = performance.now();
+    if (ui.status !== "dead") return;
+    diedAt.current = performance.now();
+    // The top score may have changed.
+    cloud.touch();
   }, [ui.status]);
 
   const restart = useCallback(() => {
@@ -204,6 +216,12 @@ export default function Game() {
       {ui.toast && (
         <div key={ui.toast.id} className="toast">
           {ui.toast.text}
+        </div>
+      )}
+
+      {account.notice && (
+        <div key={`cloud-${account.notice.id}`} className="toast toast-cloud">
+          {account.notice.text}
         </div>
       )}
 

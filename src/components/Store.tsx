@@ -5,13 +5,21 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 import { MAX_LEVEL, isInstant, strengthAt, upgradeCost, type PowerUp } from "@/game/powerups";
 import { CHARACTERS, STORE_ITEMS, wallet, type CharacterId, type StoreItemId, type WalletState } from "@/game/wallet";
+import { COIN_PACKS, type PackId } from "@/game/coinPacks";
+import { cloud, type CloudState } from "@/lib/cloud";
 import { Hex, Icon } from "./icons";
 import { CharacterModel } from "./models";
 
-type Tab = "characters" | "powerups";
+type Tab = "characters" | "powerups" | "coins";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "characters", label: "Characters" },
+  { id: "powerups", label: "Power-ups" },
+  { id: "coins", label: "Coins" },
+];
 
 interface Cell {
-  id: CharacterId | StoreItemId;
+  id: CharacterId | StoreItemId | PackId;
   name: string;
   price: number;
   kind: string;
@@ -33,7 +41,15 @@ const CHARACTER_BLURB: Record<CharacterId, string> = {
 };
 
 const cellsFor = (tab: Tab, w: WalletState): Cell[] =>
-  tab === "characters"
+  tab === "coins"
+    ? COIN_PACKS.map((p) => ({
+        id: p.id,
+        name: p.name,
+        price: 0,
+        kind: `Coin pack · ${p.coins} coins · ${p.price}`,
+        description: `${p.description} Coins are added to your account, so they follow you to any device you sign in on.`,
+      }))
+    : tab === "characters"
     ? CHARACTERS.map((c) => ({ id: c.id, name: c.name, price: c.price, kind: "Character", description: `${c.trait} ${CHARACTER_BLURB[c.id]}` }))
     : STORE_ITEMS.map((i) => ({
         id: i.id,
@@ -74,7 +90,14 @@ export function useWallet() {
   return useSyncExternalStore(wallet.subscribe, wallet.get, wallet.get);
 }
 
-function action(tab: Tab, cell: Cell, w: WalletState) {
+function action(tab: Tab, cell: Cell, w: WalletState, account: CloudState) {
+  if (tab === "coins") {
+    const pack = COIN_PACKS.find((p) => p.id === cell.id)!;
+    if (account.status === "off") return { label: "Coming soon", run: null };
+    if (account.status === "loading" || account.busy) return { label: "One moment…", run: null };
+    if (account.status === "guest") return { label: "Sign in to buy", run: () => void cloud.signIn() };
+    return { label: `Buy · ${pack.price}`, run: () => void cloud.buy(pack.id) };
+  }
   if (tab === "characters") {
     const id = cell.id as CharacterId;
     if (w.selected === id) return { label: "Equipped", run: null };
@@ -99,16 +122,36 @@ function upgradeAction(tab: Tab, cell: Cell, w: WalletState) {
   };
 }
 
+function Account({ account }: { account: CloudState }) {
+  if (account.status === "off") return null;
+  if (account.status === "signed-in")
+    return (
+      <div className="account">
+        <small title={account.name ?? undefined}>{account.name ?? "Signed in"}</small>
+        <button onClick={() => void cloud.signOut()}>Sign out</button>
+      </div>
+    );
+  return (
+    <div className="account">
+      <button disabled={account.status === "loading"} onClick={() => void cloud.signIn()}>
+        {account.status === "loading" ? "Loading…" : "Sign in to save"}
+      </button>
+    </div>
+  );
+}
+
 export default function Store({ onClose }: { onClose: () => void }) {
   const w = useWallet();
+  const account = useSyncExternalStore(cloud.subscribe, cloud.get, cloud.get);
   const [tab, setTab] = useState<Tab>("characters");
   const cells = cellsFor(tab, w);
   const [focus, setFocus] = useState(() => Math.max(0, CHARACTERS.findIndex((c) => c.id === w.selected)));
   const cell = cells[Math.min(focus, cells.length - 1)];
-  const act = action(tab, cell, w);
+  const act = action(tab, cell, w, account);
   const up = upgradeAction(tab, cell, w);
   const selected = CHARACTERS.find((c) => c.id === w.selected)!;
 
+  const nextTab = (t: Tab) => TABS[(TABS.findIndex((x) => x.id === t) + 1) % TABS.length].id;
   const switchTab = (next: Tab) => {
     setTab(next);
     setFocus(0);
@@ -131,7 +174,7 @@ export default function Store({ onClose }: { onClose: () => void }) {
       } else if (e.code === "KeyU") {
         up?.run?.();
       } else if (e.code === "KeyQ" || e.code === "KeyE") {
-        switchTab(tab === "characters" ? "powerups" : "characters");
+        switchTab(nextTab(tab));
       } else if (e.code === "Escape") {
         onClose();
       }
@@ -155,12 +198,11 @@ export default function Store({ onClose }: { onClose: () => void }) {
       <header className="menu-head">
         <nav className="crumbs">
           <span className="crumb-root">STORE /</span>
-          <button className={tab === "characters" ? "on" : ""} onClick={() => switchTab("characters")}>
-            CHARACTERS
-          </button>
-          <button className={tab === "powerups" ? "on" : ""} onClick={() => switchTab("powerups")}>
-            POWER-UPS
-          </button>
+          {TABS.map((t) => (
+            <button key={t.id} className={tab === t.id ? "on" : ""} onClick={() => switchTab(t.id)}>
+              {t.label.toUpperCase()}
+            </button>
+          ))}
         </nav>
         <div className="wallet-card">
           <div>
@@ -181,23 +223,25 @@ export default function Store({ onClose }: { onClose: () => void }) {
           <strong>{selected.name}</strong>
           <small>PLAYING AS</small>
         </div>
+        <Account account={account} />
       </div>
 
-      <div className="comb" role="listbox" aria-label={tab === "characters" ? "Characters" : "Power-ups"}>
+      <div className="comb" role="listbox" aria-label={TABS.find((t) => t.id === tab)!.label}>
         <div className="comb-inner">
           {rows.map((row, r) => (
             <div key={r} className={`comb-row comb-row-${r}`}>
               {row.map((c) => {
                 const i = cells.indexOf(c);
                 const isChar = tab === "characters";
+                const isPack = tab === "coins";
                 const owned = isChar && w.owned.includes(c.id as CharacterId);
                 const equipped = isChar && w.selected === c.id;
-                const count = isChar ? 0 : w.inventory[c.id as StoreItemId];
+                const count = isChar || isPack ? 0 : w.inventory[c.id as StoreItemId];
                 const affordable = w.coins >= c.price;
                 const tone = equipped || count > 0 ? "teal" : owned || affordable ? "white" : "locked";
                 const focused = i === focus;
                 const showProgress = !owned && !equipped && !affordable;
-                const level = isChar || c.id === "life" ? 0 : w.levels[c.id as PowerUp];
+                const level = isChar || isPack || c.id === "life" ? 0 : w.levels[c.id as PowerUp];
                 return (
                   <button
                     key={c.id}
@@ -222,7 +266,7 @@ export default function Store({ onClose }: { onClose: () => void }) {
                       ring={showProgress ? w.coins / c.price : level > 1 ? level / MAX_LEVEL : undefined}
                       ringColor={showProgress ? undefined : "var(--ui-gold)"}
                     >
-                      <Icon id={c.id} size={focused ? 40 : 34} />
+                      <Icon id={isPack ? "coin" : (c.id as CharacterId | StoreItemId)} size={focused ? 40 : 34} />
                     </Hex>
                   </button>
                 );
@@ -246,8 +290,8 @@ export default function Store({ onClose }: { onClose: () => void }) {
       </section>
 
       <footer className="menu-hints">
-        <button onClick={() => switchTab(tab === "characters" ? "powerups" : "characters")}>
-          <kbd>Q</kbd> {tab === "characters" ? "Power-ups" : "Characters"}
+        <button onClick={() => switchTab(nextTab(tab))}>
+          <kbd>Q</kbd> {TABS.find((t) => t.id === nextTab(tab))!.label}
         </button>
         <button className="primary" disabled={!act.run} onClick={() => act.run?.()}>
           <kbd>↵</kbd> {act.label}

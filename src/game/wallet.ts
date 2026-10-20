@@ -64,31 +64,53 @@ export interface WalletState {
   inventory: Record<StoreItemId, number>;
   /** Upgrade level of each power-up, 1 to MAX_LEVEL. */
   levels: Record<PowerUp, number>;
+  /** Total coins bought with real money that have already been added to `coins`. */
+  bought: number;
 }
 
 const KEY = "xfast-wallet";
 
-const fresh = (): WalletState => ({
+export const fresh = (): WalletState => ({
   coins: 0,
   owned: ["chicken"],
   selected: "chicken",
   inventory: { life: 0, ...noEffects() },
   levels: Object.fromEntries(POWERUPS.map((p) => [p.key, 1])) as Record<PowerUp, number>,
+  bought: 0,
 });
+
+/** Fill in anything missing from a saved wallet, whether it came from this browser or the cloud. */
+export function normalize(saved: Partial<WalletState> | null | undefined): WalletState {
+  const base = fresh();
+  if (!saved) return base;
+  return {
+    coins: Math.max(0, Number(saved.coins) || 0),
+    owned: Array.isArray(saved.owned) ? Array.from(new Set(["chicken", ...saved.owned])) as CharacterId[] : base.owned,
+    selected: saved.selected && saved.owned?.includes(saved.selected) ? saved.selected : "chicken",
+    inventory: { ...base.inventory, ...saved.inventory },
+    levels: { ...base.levels, ...saved.levels },
+    bought: Math.max(0, Number(saved.bought) || 0),
+  };
+}
+
+/** Combine guest progress with a cloud save so signing in never loses either. */
+export function merge(a: WalletState, b: WalletState): WalletState {
+  const max = <K extends string>(x: Record<K, number>, y: Record<K, number>) =>
+    Object.fromEntries(Object.keys({ ...x, ...y }).map((k) => [k, Math.max(x[k as K] ?? 0, y[k as K] ?? 0)])) as Record<K, number>;
+  return {
+    coins: Math.max(a.coins, b.coins),
+    owned: Array.from(new Set([...a.owned, ...b.owned])),
+    selected: b.selected,
+    inventory: max(a.inventory, b.inventory),
+    levels: max(a.levels, b.levels),
+    bought: Math.max(a.bought, b.bought),
+  };
+}
 
 function load(): WalletState {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return fresh();
-    const saved = JSON.parse(raw) as Partial<WalletState>;
-    const base = fresh();
-    return {
-      coins: Math.max(0, Number(saved.coins) || 0),
-      owned: Array.isArray(saved.owned) ? Array.from(new Set(["chicken", ...saved.owned])) as CharacterId[] : base.owned,
-      selected: saved.selected && saved.owned?.includes(saved.selected) ? saved.selected : "chicken",
-      inventory: { ...base.inventory, ...saved.inventory },
-      levels: { ...base.levels, ...saved.levels },
-    };
+    return normalize(raw ? (JSON.parse(raw) as Partial<WalletState>) : null);
   } catch {
     return fresh();
   }
@@ -96,7 +118,8 @@ function load(): WalletState {
 
 /**
  * Coins, unlocked characters and bought power-ups. Kept in the browser's
- * local storage so they survive between runs and visits.
+ * local storage so they survive between runs and visits; when the player is
+ * signed in, `cloud` also mirrors it to Firestore.
  */
 class Wallet {
   private state: WalletState | null = null;
@@ -117,6 +140,23 @@ class Wallet {
       // Without storage the wallet still works for this visit.
     }
     this.listeners.forEach((fn) => fn());
+  }
+
+  /** Swap in a whole wallet, e.g. one loaded from the cloud. */
+  replace(next: WalletState) {
+    this.set(normalize(next));
+  }
+
+  /**
+   * Add coins bought with real money. `total` is every coin the server has
+   * recorded for this account, so crediting is idempotent. Returns how many were new.
+   */
+  credit(total: number) {
+    const s = this.get();
+    const n = total - s.bought;
+    if (n <= 0) return 0;
+    this.set({ ...s, coins: s.coins + n, bought: total });
+    return n;
   }
 
   addCoins(n: number) {

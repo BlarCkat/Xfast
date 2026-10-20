@@ -777,3 +777,48 @@ kbd {
   display: inline-flex;
   color: var(--ui-gold);
 }
+
+/* ---- Accounts and coin packs ----------------------------------------- */
+
+.toast-cloud {
+  top: 12%;
+  z-index: 30;
+  font-size: 18px;
+  white-space: normal;
+  text-align: center;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  animation-duration: 3s;
+}
+
+.menu-sub .account {
+  margin-left: auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.account small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40vw;
+}
+
+.account button {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--ui-text);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.account button:hover {
+  background: rgba(255, 255, 255, 0.28);
+}

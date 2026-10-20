@@ -104,9 +104,9 @@ export interface UiSnapshot {
   stash: Effects;
 }
 
-const BEST_KEY = "xfast-best";
+export const BEST_KEY = "xfast-best";
 
-function readBest() {
+export function readBest() {
   try {
     return Number(localStorage.getItem(BEST_KEY)) || 0;
   } catch {
