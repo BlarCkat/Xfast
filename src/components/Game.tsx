@@ -10,6 +10,8 @@ import { cloud } from "@/lib/cloud";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
 import Store, { useWallet } from "./Store";
+import Leaderboard from "./Leaderboard";
+import ProfileEditor from "./Profile";
 
 const KEYS: Record<string, Direction> = {
   ArrowUp: "up",
@@ -44,6 +46,7 @@ export default function Game() {
   const w = useWallet();
   const account = useSyncExternalStore(cloud.subscribe, cloud.get, cloud.get);
   const [storeOpen, setStoreOpen] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
   const [fx, setFx] = useState(readFx);
   const toggleFx = useCallback(() => {
     setFx((on) => {
@@ -76,27 +79,30 @@ export default function Game() {
     diedAt.current = performance.now();
     // The top score may have changed.
     cloud.touch();
-  }, [ui.status]);
+    cloud.submitRun(engine.getSnapshot().score);
+  }, [ui.status, engine]);
 
   const restart = useCallback(() => {
     if (performance.now() - diedAt.current < RESTART_DELAY) return;
     setStoreOpen(false);
+    setBoardOpen(false);
     setEngine(new Engine(wallet.get().selected));
   }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      if (storeOpen) {
-        if (e.code === "Escape") setStoreOpen(false);
-        return;
-      }
+      // The store, leaderboard and profile editor handle their own keys.
+      if (e.repeat || storeOpen || boardOpen || cloud.get().editing) return;
       if (e.code === "KeyB") {
         toggleFx();
         return;
       }
       if (e.code === "KeyS" && engine.status !== "playing") {
         setStoreOpen(true);
+        return;
+      }
+      if (e.code === "KeyL" && engine.status !== "playing") {
+        setBoardOpen(true);
         return;
       }
       const power = POWERUPS.find((_, i) => hotkeyFor(i) === e.code);
@@ -116,7 +122,7 @@ export default function Game() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [engine, restart, storeOpen, toggleFx]);
+  }, [engine, restart, storeOpen, boardOpen, toggleFx]);
 
   // Tap to hop forward, swipe to hop in any direction.
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -239,6 +245,7 @@ export default function Game() {
       {ui.status === "ready" && (
         <nav className="start-nav" aria-label="Main menu">
           <button
+            aria-label="Store"
             onPointerDown={stop}
             onPointerUp={(e) => {
               e.stopPropagation();
@@ -250,6 +257,20 @@ export default function Game() {
             </span>
             <span>Store</span>
             <kbd>S</kbd>
+          </button>
+          <button
+            aria-label="Leaderboard"
+            onPointerDown={stop}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              setBoardOpen(true);
+            }}
+          >
+            <span className="start-coin">
+              <Icon id="trophy" size={22} />
+            </span>
+            <span>Ranks</span>
+            <kbd>L</kbd>
           </button>
           <button
             className="start-play"
@@ -265,6 +286,7 @@ export default function Game() {
             <span>Play</span>
           </button>
           <button
+            aria-label={`Graphics: ${fx ? "Realistic" : "Classic"}`}
             onPointerDown={stop}
             onPointerUp={(e) => {
               e.stopPropagation();
@@ -299,6 +321,15 @@ export default function Game() {
               <kbd>S</kbd> Store
             </button>
             <button
+              onPointerDown={stop}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                setBoardOpen(true);
+              }}
+            >
+              <kbd>L</kbd> Ranks
+            </button>
+            <button
               className="primary"
               onPointerDown={stop}
               onPointerUp={(e) => {
@@ -313,6 +344,8 @@ export default function Game() {
       )}
 
       {storeOpen && <Store onClose={() => setStoreOpen(false)} />}
+      {boardOpen && <Leaderboard onClose={() => setBoardOpen(false)} />}
+      {account.editing && <ProfileEditor start={account.editing} first={!account.profile?.username} />}
     </div>
   );
 }

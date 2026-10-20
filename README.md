@@ -111,6 +111,12 @@ Every power-up can be upgraded in the store (select it on the Power-ups tab and 
 
 Playing without an account works exactly as before: everything is kept in the browser. **Sign in to save** (in the store, next to the character you're playing as) signs in with Google and saves coins, characters, power-ups, upgrade levels and your top score to Firebase, so they follow you to any device. The first time you sign in, progress you made as a guest is folded into the account (the higher coin count, every character either side owns, and so on). Signing out leaves the browser as a fresh guest. The Realistic/Classic graphics choice stays per device.
 
+## Leaderboards and profiles
+
+- After signing in for the first time, players pick a username (3 to 16 letters, numbers or underscores, unique ignoring case) and can add a profile picture. Uploaded pictures are cropped to a 96 px square JPEG in the browser and stored with the profile, so there's no file storage to set up. Edit both from the leaderboard or by tapping your name in the store.
+- Every finished run by a signed-in player adds its score to their points. **Ranks** (the trophy on the start screen, or **L**) shows two boards: **This week**, which starts fresh every Monday at 00:00 UTC, and **All time**. Each lists the top 50 by points with their best run, and the bar at the bottom shows your own rank even if you're further down.
+- Runs are sent to `POST /api/runs`, which adds them to `boards/global/entries/{uid}` and `boards/{week}/entries/{uid}` (e.g. `boards/2026-W43`), so each week's board is kept. Scores come from the browser, so the server only rejects the clearly impossible: over 20,000 rows, or more rows than time since the player's last run allows. Guests' runs don't count.
+
 ## Buying coins
 
 1. A signed-in player picks a pack. `POST /api/checkout` checks their Firebase ID token and creates a Lemon Squeezy checkout for that pack's variant, with their Firebase uid in the checkout's custom data.

@@ -19,5 +19,8 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow read, write: if false;
     }
+
+    // profiles, usernames and boards/{global|week}/entries have no rules here on purpose:
+    // with no match they're closed to clients, and only the game's API routes use them.
   }
 }

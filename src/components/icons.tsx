@@ -2,7 +2,7 @@ import type { CharacterId, StoreItemId } from "@/game/wallet";
 
 // Bold single-colour glyphs for the store and HUD hexagons. They draw in currentColor.
 
-type IconId = StoreItemId | CharacterId | "coin";
+type IconId = StoreItemId | CharacterId | "coin" | "trophy";
 
 const PATHS: Record<IconId, React.ReactNode> = {
   life: <path d="M12 21 3.5 12.6A5.2 5.2 0 0 1 12 5.9a5.2 5.2 0 0 1 8.5 6.7Z" />,
@@ -59,6 +59,7 @@ const PATHS: Record<IconId, React.ReactNode> = {
   bowser: (
     <path d="M12 2l2 3.2 3.6-1.2-.6 3.8 3.6 1.4-2.8 2.6L20 15h-3.4L16 19H8l-.6-4H4l2.2-3.2-2.8-2.6L7 7.8 6.4 4 10 5.2ZM6 20h12v2H6Z" />
   ),
+  trophy: <path d="M6 2h12v2h4v3a5 5 0 0 1-5 5h-.3A6 6 0 0 1 13 15.9V18h3v4H8v-4h3v-2.1A6 6 0 0 1 7.3 12H7a5 5 0 0 1-5-5V4h4Zm-2 4v1a3 3 0 0 0 2 2.8V6Zm16 0h-2v3.8A3 3 0 0 0 20 7Z" />,
   coin: (
     <>
       <circle cx="12" cy="12" r="10" />

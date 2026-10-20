@@ -2,6 +2,7 @@ import { GoogleAuthProvider, connectAuthEmulator, getAuth, onAuthStateChanged, s
 import { connectFirestoreEmulator, doc, getDoc, getFirestore, onSnapshot, serverTimestamp, setDoc, type Firestore } from "firebase/firestore";
 import { BEST_KEY, readBest } from "@/game/engine";
 import type { PackId } from "@/game/coinPacks";
+import { USERNAME_RULE, type Board, type LeaderboardResponse, type Profile } from "@/game/leaderboard";
 import { fresh, merge, normalize, wallet, type WalletState } from "@/game/wallet";
 import { firebaseApp, firebaseEnabled, useEmulators } from "./firebase";
 
@@ -13,6 +14,10 @@ export interface CloudState {
   name: string | null;
   /** A checkout is being created. */
   busy: boolean;
+  /** Username and picture, once loaded. An empty username means the player hasn't picked one. */
+  profile: Profile | null;
+  /** While the profile editor is open, what it starts from. */
+  editing: Profile | null;
   notice: { text: string; id: number } | null;
 }
 
@@ -60,7 +65,7 @@ function writeBest(best: number) {
  * Lemon Squeezy are credited server-side to purchases/{uid} and claimed here.
  */
 class Cloud {
-  private state: CloudState = { status: firebaseEnabled ? "loading" : "off", uid: null, name: null, busy: false, notice: null };
+  private state: CloudState = { status: firebaseEnabled ? "loading" : "off", uid: null, name: null, busy: false, notice: null, profile: null, editing: null };
   private listeners = new Set<() => void>();
   private auth: Auth | null = null;
   private db: Firestore | null = null;
@@ -124,7 +129,7 @@ class Cloud {
     this.stopPurchases = null;
     this.loaded = false;
     if (!user) {
-      this.setState({ status: "guest", uid: null, name: null });
+      this.setState({ status: "guest", uid: null, name: null, profile: null, editing: null });
       return;
     }
     this.setState({ status: "loading", uid: user.uid, name: user.displayName ?? user.email });
@@ -162,6 +167,7 @@ class Cloud {
         if (added > 0) this.notify(`+${added} COINS`);
       });
       this.setState({ status: "signed-in" });
+      void this.loadProfile(user);
     } catch (err) {
       console.error("Cloud save failed to load", err);
       this.setState({ status: "signed-in" });
@@ -185,6 +191,63 @@ class Cloud {
     } catch (err) {
       console.error("Cloud save failed", err);
     }
+  }
+
+  /** Fetch from one of the game's API routes as the signed-in player. */
+  private async api<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const user = this.auth?.currentUser;
+    const headers = new Headers(init.headers);
+    headers.set("Content-Type", "application/json");
+    if (user) headers.set("Authorization", `Bearer ${await user.getIdToken()}`);
+    const res = await fetch(path, { ...init, headers });
+    const json = (await res.json().catch(() => ({}))) as T & { error?: string };
+    if (!res.ok) throw new Error(json.error ?? `Request failed (${res.status})`);
+    return json;
+  }
+
+  /** New players are asked to pick a username, starting from their Google name and photo. */
+  private async loadProfile(user: User) {
+    try {
+      const profile = await this.api<Profile>("/api/profile");
+      this.setState({ profile });
+      if (!profile.username) {
+        const name = (user.displayName ?? "").replace(/[^A-Za-z0-9_]/g, "").slice(0, 16);
+        this.setState({ editing: { username: USERNAME_RULE.test(name) ? name : "", photo: profile.photo || (user.photoURL ?? "") } });
+      }
+    } catch (err) {
+      console.error("Profile failed to load", err);
+    }
+  }
+
+  editProfile() {
+    if (this.state.status === "signed-in") this.setState({ editing: this.state.profile ?? { username: "", photo: "" } });
+  }
+
+  closeProfile() {
+    this.setState({ editing: null });
+  }
+
+  /** Returns an error message to show, or null once saved. */
+  async saveProfile(next: Profile): Promise<string | null> {
+    try {
+      const profile = await this.api<Profile>("/api/profile", { method: "PUT", body: JSON.stringify(next) });
+      this.setState({ profile, editing: null });
+      return null;
+    } catch (err) {
+      return (err as Error).message;
+    }
+  }
+
+  /** Count a finished run towards the weekly and global leaderboards. Guests' runs aren't counted. */
+  submitRun(score: number) {
+    if (this.state.status !== "signed-in" || score < 1) return;
+    this.api("/api/runs", { method: "POST", body: JSON.stringify({ score }) }).catch((err) =>
+      console.error("Run not counted", err),
+    );
+  }
+
+  leaderboard(board: Board) {
+    return this.api<LeaderboardResponse>(`/api/leaderboard?board=${board}`);
   }
 
   async signIn() {
@@ -218,14 +281,8 @@ class Cloud {
     this.setState({ busy: true });
     try {
       await this.save();
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await user.getIdToken()}` },
-        body: JSON.stringify({ pack }),
-      });
-      const json = (await res.json()) as { url?: string; error?: string };
-      if (!json.url) throw new Error(json.error ?? "No checkout URL");
-      window.location.assign(json.url);
+      const { url } = await this.api<{ url: string }>("/api/checkout", { method: "POST", body: JSON.stringify({ pack }) });
+      window.location.assign(url);
     } catch (err) {
       console.error(err);
       this.notify("CHECKOUT UNAVAILABLE");

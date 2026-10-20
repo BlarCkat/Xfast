@@ -9,6 +9,7 @@ import { COIN_PACKS, type PackId } from "@/game/coinPacks";
 import { cloud, type CloudState } from "@/lib/cloud";
 import { Hex, Icon } from "./icons";
 import { CharacterModel } from "./models";
+import { Avatar } from "./Profile";
 
 type Tab = "characters" | "powerups" | "coins";
 
@@ -124,13 +125,18 @@ function upgradeAction(tab: Tab, cell: Cell, w: WalletState) {
 
 function Account({ account }: { account: CloudState }) {
   if (account.status === "off") return null;
-  if (account.status === "signed-in")
+  if (account.status === "signed-in") {
+    const name = account.profile?.username || account.name || "Signed in";
     return (
       <div className="account">
-        <small title={account.name ?? undefined}>{account.name ?? "Signed in"}</small>
+        <button className="account-me" title="Edit profile" onClick={() => cloud.editProfile()}>
+          <Avatar photo={account.profile?.photo ?? ""} name={name} size={22} />
+          <span>{name}</span>
+        </button>
         <button onClick={() => void cloud.signOut()}>Sign out</button>
       </div>
     );
+  }
   return (
     <div className="account">
       <button disabled={account.status === "loading"} onClick={() => void cloud.signIn()}>
