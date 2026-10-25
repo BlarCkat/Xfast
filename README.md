@@ -97,7 +97,7 @@ Each character has its own trait, shown on the start screen and in the store.
 
 ## Upgrades
 
-Every power-up can be upgraded in the store (select it on the Power-ups tab and tap the red button, or press **U**). Upgrades come in three tiers of seven, shown as the row of boxes under the card: lime for tier 1, light red for tier 2, gold for tier 3. Each upgrade inside a tier costs 50 coins. Once a tier's seven boxes are full, stepping up to tier 2 costs 200 coins and to tier 3 costs 500, and the boxes start again. A fully upgraded power-up lasts three times as long; Warp reaches up to 12 more rows and Coin rain up to 24 more lanes. Upgrades apply to power-ups you pick up on the road as well as ones bought in the store, and stack with the Chicken's 50% bonus.
+Every power-up can be upgraded in the store (select it on the Power-ups tab and tap the red button, or press **U**). Upgrades come in three tiers of seven, shown as the row of boxes under the card: lime for tier 1, light red for tier 2, gold for tier 3. Each upgrade costs 50 coins in tier 1, 100 in tier 2 and 150 in tier 3. Once a tier's seven boxes are full, stepping up to tier 2 costs 200 coins and to tier 3 costs 500, and the boxes start again. A fully upgraded power-up lasts three times as long; Warp reaches up to 12 more rows and Coin rain up to 24 more lanes. Upgrades apply to power-ups you pick up on the road as well as ones bought in the store, and stack with the Chicken's 50% bonus.
 
 ## Coins and the store
 
