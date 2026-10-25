@@ -1,4 +1,4 @@
-import { MAX_LEVEL, POWERUPS, noEffects, upgradeCost, type PowerUp } from "./powerups";
+import { MAX_UPGRADES, POWERUPS, nextUpgrade, noEffects, type PowerUp } from "./powerups";
 
 export type CharacterId = "chicken" | "duck" | "frog" | "cat" | "penguin" | "robot" | "sparrow" | "snail" | "mario" | "luigi" | "bowser";
 export type StoreItemId = PowerUp | "life";
@@ -62,8 +62,8 @@ export interface WalletState {
   owned: CharacterId[];
   selected: CharacterId;
   inventory: Record<StoreItemId, number>;
-  /** Upgrade level of each power-up, 1 to MAX_LEVEL. */
-  levels: Record<PowerUp, number>;
+  /** Upgrade steps taken on each power-up, 0 to MAX_UPGRADES (see tierOf). */
+  upgrades: Record<PowerUp, number>;
 }
 
 const KEY = "xfast-wallet";
@@ -73,21 +73,27 @@ const fresh = (): WalletState => ({
   owned: ["chicken"],
   selected: "chicken",
   inventory: { life: 0, ...noEffects() },
-  levels: Object.fromEntries(POWERUPS.map((p) => [p.key, 1])) as Record<PowerUp, number>,
+  upgrades: Object.fromEntries(POWERUPS.map((p) => [p.key, 0])) as Record<PowerUp, number>,
 });
+
+/** Older saves kept a level from 1 to 5; each level above 1 becomes one filled tier-1 box. */
+function fromLevels(levels?: Record<PowerUp, number>) {
+  if (!levels) return {};
+  return Object.fromEntries(Object.entries(levels).map(([k, l]) => [k, Math.max(0, Math.min(MAX_UPGRADES, (Number(l) || 1) - 1))]));
+}
 
 function load(): WalletState {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return fresh();
-    const saved = JSON.parse(raw) as Partial<WalletState>;
+    const saved = JSON.parse(raw) as Partial<WalletState> & { levels?: Record<PowerUp, number> };
     const base = fresh();
     return {
       coins: Math.max(0, Number(saved.coins) || 0),
       owned: Array.isArray(saved.owned) ? Array.from(new Set(["chicken", ...saved.owned])) as CharacterId[] : base.owned,
       selected: saved.selected && saved.owned?.includes(saved.selected) ? saved.selected : "chicken",
       inventory: { ...base.inventory, ...saved.inventory },
-      levels: { ...base.levels, ...saved.levels },
+      upgrades: { ...base.upgrades, ...(saved.upgrades ?? fromLevels(saved.levels)) },
     };
   } catch {
     return fresh();
@@ -147,10 +153,9 @@ class Wallet {
 
   upgrade(id: PowerUp) {
     const s = this.get();
-    const level = s.levels[id];
-    const cost = upgradeCost(id, level);
-    if (level >= MAX_LEVEL || s.coins < cost) return false;
-    this.set({ ...s, coins: s.coins - cost, levels: { ...s.levels, [id]: level + 1 } });
+    const next = nextUpgrade(s.upgrades[id]);
+    if (!next || s.coins < next.cost) return false;
+    this.set({ ...s, coins: s.coins - next.cost, upgrades: { ...s.upgrades, [id]: s.upgrades[id] + 1 } });
     return true;
   }
 

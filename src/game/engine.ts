@@ -480,8 +480,8 @@ export class Engine {
 
   private apply(kind: PowerUp) {
     if (!isInstant(kind)) {
-      const level = wallet.get().levels[kind];
-      this.effects[kind] = durationAt(kind, level) * (this.character === "chicken" ? CHICKEN_POWERUP_BONUS : 1);
+      const upgrades = wallet.get().upgrades[kind];
+      this.effects[kind] = durationAt(kind, upgrades) * (this.character === "chicken" ? CHICKEN_POWERUP_BONUS : 1);
       return;
     }
     if (kind === "warp") this.warp();
@@ -492,7 +492,7 @@ export class Engine {
   private warp() {
     const p = this.player;
     const want = Math.max(-COLS, Math.min(COLS, Math.round(p.x)));
-    const rows = warpRowsAt(wallet.get().levels.warp);
+    const rows = warpRowsAt(wallet.get().upgrades.warp);
     for (let row = p.row + rows; row < p.row + rows + 15; row++) {
       const lane = this.lanes.get(row);
       if (lane?.type !== "grass") continue;
@@ -509,7 +509,7 @@ export class Engine {
 
   private coinRain() {
     const p = this.player;
-    for (let row = p.row + 1; row <= p.row + coinRainRowsAt(wallet.get().levels.coinrain); row++) {
+    for (let row = p.row + 1; row <= p.row + coinRainRowsAt(wallet.get().upgrades.coinrain); row++) {
       const lane = this.lanes.get(row);
       if (!lane || lane.coin !== null || (lane.type !== "grass" && lane.type !== "road")) continue;
       lane.coin = this.freeColumn(lane, Math.floor(Math.random() * (COLS * 2 + 1)) - COLS);

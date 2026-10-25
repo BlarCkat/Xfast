@@ -912,21 +912,37 @@ kbd {
 
 .shop-pips {
   display: flex;
+  align-items: center;
   gap: 2px;
   justify-content: flex-end;
   width: var(--card-w);
   margin-top: 8px;
 }
 
-.shop-pips span {
+.shop-pips-tier {
+  margin-right: 6px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.shop-pips .pip {
   width: 13px;
   height: 14px;
   background: #8c6cf2;
   transform: skewX(-12deg);
 }
 
+/* Filled boxes take the tier's colour: savings and tier 2 light red, tier 1 lime, tier 3 gold. */
 .shop-pips .full {
   background: #f2867a;
+}
+
+.shop-pips.tier-1 .full {
+  background: #b4e33d;
+}
+
+.shop-pips.tier-3 .full {
+  background: #f4c542;
 }
 
 .shop-pips .next {

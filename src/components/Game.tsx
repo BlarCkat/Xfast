@@ -79,7 +79,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   const diedAt = useRef(0);
   // Upgrades and the chicken's bonus stretch power-ups, so the HUD rings measure against the real length.
   const fullDuration = (key: PowerUp) =>
-    durationAt(key, w.levels[key]) * (engine.character === "chicken" ? CHICKEN_POWERUP_BONUS : 1);
+    durationAt(key, w.upgrades[key]) * (engine.character === "chicken" ? CHICKEN_POWERUP_BONUS : 1);
   const character = CHARACTERS.find((c) => c.id === engine.character) ?? CHARACTERS[0];
 
   // Show a newly picked character straight away on the start screen.

@@ -40,24 +40,47 @@ export const hotkeyFor = (i: number) => (i < 10 ? `Digit${(i + 1) % 10}` : null)
 export const isInstant = (k: PowerUp) => POWERUP_DURATION[k] === 0;
 
 // ---- Upgrades -------------------------------------------------------------------
+//
+// A power-up climbs three tiers of seven upgrades each. Filling a tier unlocks a pricier step into
+// the next one, which starts again from an empty row of boxes. Progress is stored as a single count
+// of steps taken (level upgrades and tier steps alike), from 0 up to MAX_UPGRADES.
 
-export const MAX_LEVEL = 5;
+export const TIERS = 3;
+export const TIER_SIZE = 7;
+/** Coins for one upgrade inside each tier. */
+export const LEVEL_COST = [50, 50, 50];
+/** Coins to step up into tier 2 and tier 3. */
+export const TIER_COST = [0, 200, 500];
+export const MAX_UPGRADES = TIERS * (TIER_SIZE + 1) - 1;
 
-/** Coins to go from `level` to `level + 1`: four times the power-up's price per level. */
-export const upgradeCost = (k: PowerUp, level: number) =>
-  POWERUPS.find((p) => p.key === k)!.price * 4 * level;
+/** Which tier (1-3) a power-up is on, and how many of that tier's boxes are filled. */
+export function tierOf(upgrades: number) {
+  const tier = Math.min(TIERS, Math.floor(upgrades / (TIER_SIZE + 1)) + 1);
+  return { tier, filled: upgrades - (tier - 1) * (TIER_SIZE + 1) };
+}
 
-/** Each level past the first adds a quarter of the base duration, so level 5 lasts twice as long. */
-export const durationAt = (k: PowerUp, level: number) => POWERUP_DURATION[k] * (1 + (level - 1) * 0.25);
+/** The next step for a power-up: another box in this tier, a step into the next tier, or nothing at max. */
+export function nextUpgrade(upgrades: number): { kind: "level" | "tier"; tier: number; cost: number } | null {
+  if (upgrades >= MAX_UPGRADES) return null;
+  const { tier, filled } = tierOf(upgrades);
+  if (filled < TIER_SIZE) return { kind: "level", tier, cost: LEVEL_COST[tier - 1] };
+  return { kind: "tier", tier: tier + 1, cost: TIER_COST[tier] };
+}
 
-/** Warp jumps 2 more rows per level; coin rain covers 4 more lanes per level. */
-export const warpRowsAt = (level: number) => WARP_ROWS + (level - 1) * 2;
-export const coinRainRowsAt = (level: number) => COIN_RAIN_ROWS + (level - 1) * 4;
+/** How far along the whole upgrade path a power-up is, 0 to 1. */
+const progress = (upgrades: number) => Math.min(1, upgrades / MAX_UPGRADES);
 
-/** One line describing what a power-up does at a level, for the store. */
-export function strengthAt(k: PowerUp, level: number) {
-  if (k === "warp") return `${warpRowsAt(level)}+ rows`;
-  if (k === "coinrain") return `${coinRainRowsAt(level)} lanes`;
-  const s = durationAt(k, level);
+/** Fully upgraded power-ups last three times as long. */
+export const durationAt = (k: PowerUp, upgrades: number) => POWERUP_DURATION[k] * (1 + 2 * progress(upgrades));
+
+/** Warp reaches up to 12 more rows; coin rain covers up to 24 more lanes. */
+export const warpRowsAt = (upgrades: number) => WARP_ROWS + Math.round(12 * progress(upgrades));
+export const coinRainRowsAt = (upgrades: number) => COIN_RAIN_ROWS + Math.round(24 * progress(upgrades));
+
+/** One line describing what a power-up does after a number of upgrades, for the store. */
+export function strengthAt(k: PowerUp, upgrades: number) {
+  if (k === "warp") return `${warpRowsAt(upgrades)}+ rows`;
+  if (k === "coinrain") return `${coinRainRowsAt(upgrades)} lanes`;
+  const s = durationAt(k, upgrades);
   return `${Number.isInteger(s) ? s : s.toFixed(1)}s`;
 }

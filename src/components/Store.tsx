@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import type { Group } from "three";
-import { MAX_LEVEL, isInstant, strengthAt, upgradeCost, type PowerUp } from "@/game/powerups";
+import { TIER_SIZE, isInstant, nextUpgrade, strengthAt, tierOf, type PowerUp } from "@/game/powerups";
 import { CHARACTERS, STORE_ITEMS, wallet, type CharacterId, type StoreItemId, type WalletState } from "@/game/wallet";
 import { Icon } from "./icons";
 import { CharacterModel } from "./models";
@@ -42,7 +42,7 @@ const cellsFor = (tab: StoreTab, w: WalletState): Cell[] =>
         kind:
           i.id === "life"
             ? "Extra life"
-            : `${isInstant(i.id) ? "Instant" : "Power-up"} · Level ${w.levels[i.id]}/${MAX_LEVEL} · ${strengthAt(i.id, w.levels[i.id])}`,
+            : `${isInstant(i.id) ? "Instant" : "Power-up"} · Tier ${tierOf(w.upgrades[i.id]).tier} · ${strengthAt(i.id, w.upgrades[i.id])}`,
         description: i.description,
       }));
 
@@ -89,13 +89,13 @@ function action(tab: StoreTab, cell: Cell, w: WalletState) {
 function upgradeAction(tab: StoreTab, cell: Cell, w: WalletState) {
   if (tab !== "powerups" || cell.id === "life") return null;
   const id = cell.id as PowerUp;
-  const level = w.levels[id];
-  if (level >= MAX_LEVEL) return { label: "Max level", run: null, next: null };
-  const cost = upgradeCost(id, level);
+  const done = w.upgrades[id];
+  const step = nextUpgrade(done);
+  if (!step) return { label: "Max level", run: null, next: null };
   return {
-    label: `Upgrade · ${cost}`,
-    next: strengthAt(id, level + 1),
-    run: w.coins >= cost ? () => wallet.upgrade(id) : null,
+    label: step.kind === "tier" ? `Tier ${step.tier} · ${step.cost}` : `Upgrade · ${step.cost}`,
+    next: strengthAt(id, done + 1),
+    run: w.coins >= step.cost ? () => wallet.upgrade(id) : null,
   };
 }
 
@@ -143,9 +143,11 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
 
   const isChar = tab === "characters";
   const owned = isChar && w.owned.includes(cell.id as CharacterId);
-  // The pips under the card: upgrade level for power-ups, savings toward the price for anything locked.
-  const level = !isChar && cell.id !== "life" ? w.levels[cell.id as PowerUp] : 0;
-  const filled = owned ? PIPS : level ? Math.round((level / MAX_LEVEL) * PIPS) : Math.min(PIPS, Math.floor((w.coins / cell.price) * PIPS));
+  // The boxes under the card: a power-up's upgrades in its current tier (lime, light red, gold),
+  // or savings toward the price for characters and extra lives.
+  const upgradable = !isChar && cell.id !== "life";
+  const tier = upgradable ? tierOf(w.upgrades[cell.id as PowerUp]) : null;
+  const filled = tier ? tier.filled : owned ? PIPS : Math.min(PIPS, Math.floor((w.coins / cell.price) * PIPS));
 
   return (
     <div
@@ -207,9 +209,13 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
           )}
         </section>
 
-        <div className="shop-pips" aria-hidden="true">
+        <div
+          className={`shop-pips${tier ? ` tier-${tier.tier}` : ""}`}
+          aria-label={tier ? `Tier ${tier.tier}, ${tier.filled} of ${TIER_SIZE} upgrades` : undefined}
+        >
+          {tier && <span className="shop-pips-tier">TIER {tier.tier}</span>}
           {Array.from({ length: PIPS }, (_, i) => (
-            <span key={i} className={i < filled ? "full" : i === filled ? "next" : ""} />
+            <span key={i} className={`pip${i < filled ? " full" : i === filled ? " next" : ""}`} />
           ))}
         </div>
       </div>
@@ -253,7 +259,7 @@ const CARD_STRETCH = 80;
 const CHARACTER_ART: Partial<Record<CharacterId, string>> = {
   chicken: "/characters/chicken.png",
 };
-const PIPS = 7;
+const PIPS = TIER_SIZE;
 
 /** The purple backdrop with its darker diagonal bands and thin swirl lines. */
 function ShopBackdrop() {
