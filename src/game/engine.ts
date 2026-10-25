@@ -16,6 +16,7 @@ import {
   CAT_REFILL_HOPS,
   CHICKEN_POWERUP_BONUS,
   TIME_TRAIT_HOPS,
+  LEAP_TRAIT_HOPS,
   MARIO_COINS_PER_LIFE,
   BOWSER_FIRE_HOPS,
   BOWSER_FIRE_ROWS,
@@ -384,7 +385,7 @@ export class Engine {
 
   private collectCoin(lane: Lane) {
     lane.coin = null;
-    const n = this.effects.double > 0 ? 2 : 1;
+    const n = this.effects.double > 0 || this.character === "human" ? 2 : 1;
     wallet.addCoins(n);
     this.setUi({ coins: this.ui.coins + n });
     if (this.character === "mario") {
@@ -439,6 +440,13 @@ export class Engine {
       this.apply(timeTrait);
       this.syncEffects(true);
       this.setUi({ toast: { text: PICKUP_LABEL[timeTrait], id: ++this.toastId } });
+    }
+    // The leopard pounces ahead and the owl takes to the air every so many hops.
+    const leapTrait = this.character === "leopard" ? "warp" : this.character === "owl" ? "wings" : null;
+    if (leapTrait && steps % LEAP_TRAIT_HOPS === 0) {
+      this.apply(leapTrait);
+      this.syncEffects(true);
+      this.setUi({ toast: { text: leapTrait === "warp" ? "POUNCE!" : PICKUP_LABEL[leapTrait], id: ++this.toastId } });
     }
     const tier = Math.floor(steps / STEPS_PER_SPEEDUP);
     const scale = Math.min(MAX_SPEED_SCALE, 1 + tier * SPEEDUP_STEP);
