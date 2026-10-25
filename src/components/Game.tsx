@@ -138,6 +138,12 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
     if (ui.status === "dead") diedAt.current = performance.now();
   }, [ui.status]);
 
+  // Leaving the store goes back to the main menu, even when it was opened from the score screen.
+  const closeStore = useCallback(() => {
+    setStoreOpen(false);
+    setEngine((current) => (current.status === "dead" ? new Engine(wallet.get().selected) : current));
+  }, []);
+
   const restart = useCallback(() => {
     if (performance.now() - diedAt.current < RESTART_DELAY) return;
     setStoreOpen(false);
@@ -153,7 +159,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
         return;
       }
       if (storeOpen) {
-        if (e.code === "Escape") setStoreOpen(false);
+        if (e.code === "Escape") closeStore();
         return;
       }
       if (goalsOpen) {
@@ -189,7 +195,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [engine, restart, storeOpen, optionsOpen, goalsOpen, locked, toggleFx, openStore]);
+  }, [engine, restart, storeOpen, optionsOpen, goalsOpen, locked, toggleFx, openStore, closeStore]);
 
   const pick = (item: MenuItem) => {
     if (item === "play") engine.move("up");
@@ -399,7 +405,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
       )}
 
       {goalsOpen && <Achievements onClose={() => setGoalsOpen(false)} />}
-      {storeOpen && <Store initialTab={storeTab} onClose={() => setStoreOpen(false)} />}
+      {storeOpen && <Store initialTab={storeTab} onClose={closeStore} />}
     </div>
   );
 }

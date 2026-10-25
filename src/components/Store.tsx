@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 import { TIER_SIZE, isInstant, nextUpgrade, strengthAt, tierOf, type PowerUp } from "@/game/powerups";
@@ -9,12 +9,14 @@ import { Icon } from "./icons";
 import { CharacterModel } from "./models";
 import { CurrencyHeap } from "./CurrencyArt";
 import { ART_POWERUPS } from "./PowerupArt";
+import { GoalList } from "./Achievements";
 
-export type StoreTab = "characters" | "powerups" | "bank";
+export type StoreTab = "characters" | "powerups" | "bank" | "achievements";
 const TABS: { id: StoreTab; label: string }[] = [
   { id: "characters", label: "CHARACTERS" },
   { id: "powerups", label: "POWER-UPS" },
   { id: "bank", label: "BANK" },
+  { id: "achievements", label: "ACHIEVEMENTS" },
 ];
 
 // Coin and gem packs. Payments aren't wired up yet, so they can't be bought.
@@ -140,7 +142,25 @@ function upgradeAction(tab: StoreTab, cell: Cell, w: WalletState) {
 export default function Store({ onClose, initialTab = "characters" }: { onClose: () => void; initialTab?: StoreTab }) {
   const w = useWallet();
   const [tab, setTab] = useState<StoreTab>(initialTab);
-  const cells = cellsFor(tab, w);
+  const goals = tab === "achievements";
+  // The achievements tab has no card or grid; the power-ups stand in so the hooks below stay simple.
+  const cells = cellsFor(goals ? "powerups" : tab, w);
+  const shop = useRef<HTMLDivElement>(null);
+  const pin = useRef<HTMLDivElement>(null);
+  const grid = useRef<HTMLDivElement>(null);
+  const size = useCardSize();
+
+  // Tiles fade out as they scroll up under the pinned card, rather than showing round its edges.
+  const fadeTiles = useCallback(() => {
+    const top = pin.current?.getBoundingClientRect().bottom;
+    if (top === undefined || !grid.current) return;
+    for (const tile of Array.from(grid.current.children) as HTMLElement[]) {
+      const r = tile.getBoundingClientRect();
+      const fade = r.height * 0.35;
+      tile.style.opacity = String(Math.max(0, Math.min(1, (r.top - (top - fade)) / (fade + 12))));
+    }
+  }, []);
+  useLayoutEffect(fadeTiles, [fadeTiles, tab, size]);
   const [focus, setFocus] = useState(() =>
     tab === "characters" ? Math.max(0, CHARACTERS.findIndex((c) => c.id === w.selected)) : 0,
   );
@@ -191,9 +211,12 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
 
   return (
     <div
+      ref={shop}
       className="shop"
       role="dialog"
       aria-label="Store"
+      onScroll={fadeTiles}
+      style={{ "--card-w": `${size.width}px`, "--card-h": `${size.height}px`, "--card-units": size.units } as React.CSSProperties}
       // Keep taps inside the store from moving the chicken underneath.
       onPointerDown={(e) => e.stopPropagation()}
       onPointerUp={(e) => e.stopPropagation()}
@@ -227,10 +250,14 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
         </div>
       </header>
 
+      {goals && <GoalList />}
+
       {/* The selected item's card stays pinned while the grid scrolls up under it. */}
-      <div className="shop-pin">
+      {!goals && (
+      <>
+      <div className="shop-pin" ref={pin}>
         <section className="shop-card" aria-live="polite">
-          <CardFrame />
+          <CardFrame wide={size.units - 256} />
           <h2 className="shop-card-title">{cell.name.toUpperCase()}</h2>
           <div className="shop-card-body">
             {hasPreview(cell.id) ? (
@@ -245,13 +272,20 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
               {cell.description}
               {up?.next && ` Next level: ${up.next}.`}
             </p>
-            <button className="shop-card-buy" disabled={!act.run} onClick={() => act.run?.()}>
-              {act.label}
-            </button>
+            <div className="shop-card-actions">
+              <button className="shop-card-buy" disabled={!act.run} onClick={() => act.run?.()}>
+                {act.label}
+              </button>
+              {up?.next && (
+                <button className={`shop-card-up${up.run ? " ready" : ""}`} disabled={!up.run} onClick={() => up.run?.()} aria-label={up.label}>
+                  <svg viewBox="0 0 24 24" width={16} height={16} aria-hidden="true">
+                    <path d="M12 4 4 13h5v7h6v-7h5Z" fill="currentColor" />
+                  </svg>
+                  {up.label.replace(/^Upgrade · /, "")}
+                </button>
+              )}
+            </div>
           </div>
-          {up?.run && (
-            <button className="shop-card-up" onClick={() => up.run?.()} aria-label={up.label} title={up.label} />
-          )}
         </section>
 
         <div
@@ -267,7 +301,7 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
         </div>
       </div>
 
-      <div className="shop-grid" role="listbox" aria-label={TABS.find((t) => t.id === tab)!.label}>
+      <div className="shop-grid" ref={grid} role="listbox" aria-label={TABS.find((t) => t.id === tab)!.label}>
         {cells.map((c, i) => {
           const mine = isChar && w.owned.includes(c.id as CharacterId);
           const equipped = isChar && w.selected === c.id;
@@ -298,11 +332,39 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
           );
         })}
       </div>
+      </>
+      )}
     </div>
   );
 }
 
+/**
+ * The card's size. Its height stays as before, but it widens to fill most of the screen's width,
+ * leaving a margin so it never touches the edges. The extra width is added to the card's drawing in
+ * SVG units (see CardFrame), so the corners and notches keep their shape.
+ */
+function useCardSize() {
+  const measure = () => {
+    if (typeof window === "undefined") return { width: 256, height: 392, units: 256 };
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const base = Math.min(vw * 0.62, 270, vh * 0.52 * 0.653);
+    const height = (base * (312 + CARD_STRETCH)) / 256;
+    const width = Math.max(base, Math.min(vw - 2 * CARD_MARGIN, height * 0.95));
+    return { width, height, units: (width / height) * (312 + CARD_STRETCH) };
+  };
+  const [size, setSize] = useState(measure);
+  useEffect(() => {
+    const onResize = () => setSize(measure());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return size;
+}
+
 const GRID_COLS = 3;
+/** Space kept between the card and the sides of the screen. */
+const CARD_MARGIN = 22;
 /** Extra height (in card SVG units) added to the middle of the card; keep in sync with --card-h in globals.css. */
 const CARD_STRETCH = 80;
 /** Illustrated portraits that replace the glyph on a character's tile. */
@@ -330,30 +392,51 @@ export function ShopBackdrop() {
 /**
  * The card from the mockup: cream torn-paper frame, a sweeping shine, dark notched panel and teal
  * title banner. Points below the banner are pushed down by CARD_STRETCH so the panel is tall enough
- * to show a whole character; the corners keep their shape.
+ * to show a whole character, and points right of the middle are pushed right by `wide` so the card
+ * can fill the screen's width; the corners keep their shape.
  */
-function CardFrame() {
+function CardFrame({ wide }: { wide: number }) {
   const e = CARD_STRETCH;
-  const paper = `M255.024 0L20.3935 7.56873V64.5445L8.61995 55.7143L18.9218 ${265.957 + e}L0 ${289.714 + e}L22.7062 ${
-    301.488 + e
-  }L15.558 ${312 + e}L245.353 ${302.119 + e}L255.024 25.0189L245.353 14.717L255.024 0Z`;
-  const panel = `M237.575 20.6055H35.7425L24.5996 ${290.557 + e}L192.163 ${294.131 + e}L231.689 ${260.913 + e}L237.575 20.6055Z`;
+  const x = (v: number) => (v > 128 ? v + wide : v);
+  const W = 256 + wide;
+  const H = 312 + e;
+  const path = (points: [number, number][]) => `M${points.map(([px, py]) => `${x(px)} ${py}`).join("L")}Z`;
+  const paper = path([
+    [255.024, 0],
+    [20.3935, 7.56873],
+    [20.3935, 64.5445],
+    [8.61995, 55.7143],
+    [18.9218, 265.957 + e],
+    [0, 289.714 + e],
+    [22.7062, 301.488 + e],
+    [15.558, 312 + e],
+    [245.353, 302.119 + e],
+    [255.024, 25.0189],
+    [245.353, 14.717],
+  ]);
+  const panel = path([
+    [237.575, 20.6055],
+    [35.7425, 20.6055],
+    [24.5996, 290.557 + e],
+    [192.163, 294.131 + e],
+    [231.689, 260.913 + e],
+  ]);
+  const banner = `M${x(170.717)} 106.384C${x(168.531)} 109.075 80.1028 99.9363 36.1621 95.0306L38.8953 23.3379H${x(234.631)}L${x(
+    232.739,
+  )} 95.0306H${x(181.44)}C${x(178.777)} 97.6937 ${x(172.904)} 103.693 ${x(170.717)} 106.384Z`;
   return (
-    <svg className="shop-card-frame" viewBox={`0 0 256 ${312 + e}`} fill="none" aria-hidden="true">
+    <svg className="shop-card-frame" viewBox={`0 0 ${W} ${H}`} fill="none" aria-hidden="true">
       <path d={paper} fill="#F3EED1" />
-      <mask id="shop-card-paper" style={{ maskType: "alpha" }} maskUnits="userSpaceOnUse" x="0" y="0" width="256" height={312 + e}>
+      <mask id="shop-card-paper" style={{ maskType: "alpha" }} maskUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
         <path d={paper} fill="#F3EED1" />
       </mask>
       <g mask="url(#shop-card-paper)">
         <g className="shop-card-shine">
-          <rect x="-24.9609" y="52.293" width="350.672" height="43.31" transform="rotate(18.5736 -24.9609 52.293)" fill="#F2E38C" />
+          <rect x="-24.9609" y="52.293" width={350.672 + wide} height="43.31" transform="rotate(18.5736 -24.9609 52.293)" fill="#F2E38C" />
         </g>
       </g>
       <path d={panel} fill="#212139" />
-      <path
-        d="M170.717 106.384C168.531 109.075 80.1028 99.9363 36.1621 95.0306L38.8953 23.3379H234.631L232.739 95.0306H181.44C178.777 97.6937 172.904 103.693 170.717 106.384Z"
-        fill="#2DDED3"
-      />
+      <path d={banner} fill="#2DDED3" />
     </svg>
   );
 }

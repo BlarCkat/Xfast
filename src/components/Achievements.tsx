@@ -53,18 +53,25 @@ export default function Achievements({ onClose }: { onClose: () => void }) {
           <GoalArt goal={GOALS.find((g) => g.kind === "badge")} size={22} /> {s.badges.length}
         </span>
       </header>
-      <div className="options-list goals">
-        <h3 className="goals-head">Today</h3>
-        <p className="goals-note">A star for each, every day.</p>
-        {GOALS.filter((g) => g.kind === "daily").map((g) => (
-          <GoalRow key={g.id} goal={g} />
-        ))}
-        <h3 className="goals-head">Badges</h3>
-        <p className="goals-note">Yours to keep once earned.</p>
-        {GOALS.filter((g) => g.kind === "badge").map((g) => (
-          <GoalRow key={g.id} goal={g} />
-        ))}
-      </div>
+      <GoalList />
+    </div>
+  );
+}
+
+/** Today's goals and the badges, as listed on this page and on the store's Achievements tab. */
+export function GoalList() {
+  return (
+    <div className="options-list goals">
+      <h3 className="goals-head">Today</h3>
+      <p className="goals-note">A star for each, every day.</p>
+      {GOALS.filter((g) => g.kind === "daily").map((g) => (
+        <GoalRow key={g.id} goal={g} />
+      ))}
+      <h3 className="goals-head">Badges</h3>
+      <p className="goals-note">Yours to keep once earned.</p>
+      {GOALS.filter((g) => g.kind === "badge").map((g) => (
+        <GoalRow key={g.id} goal={g} />
+      ))}
     </div>
   );
 }

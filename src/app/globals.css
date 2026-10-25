@@ -914,7 +914,8 @@ kbd {
 .shop-tabs {
   order: 3;
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 2px clamp(6px, 2vw, 10px);
   align-items: baseline;
   width: 100%;
   justify-content: center;
@@ -924,7 +925,7 @@ kbd {
   padding: 0;
   border: none;
   background: none;
-  font-size: 20px;
+  font-size: clamp(14px, 4vw, 18px);
   white-space: nowrap;
   color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
@@ -932,7 +933,7 @@ kbd {
 
 .shop-tabs button.on {
   color: var(--ui-text);
-  font-size: 26px;
+  font-size: clamp(19px, 5.3vw, 24px);
 }
 
 .shop-pill {
@@ -972,10 +973,12 @@ kbd {
 }
 
 /* The card keeps the SVG's 256x312 shape; everything on it is placed in percentages of that box. */
+/* Store.tsx widens the card to fit the screen: --card-units is its width in SVG units (256 at the
+   mockup's size), so insets measured on the mockup are scaled by 256 / --card-units to stay put. */
 .shop-card {
   position: relative;
   width: var(--card-w);
-  aspect-ratio: 256 / 392;
+  aspect-ratio: calc(var(--card-units, 256) / 392);
 }
 
 .shop-card-frame {
@@ -1003,8 +1006,8 @@ kbd {
 
 .shop-card-title {
   position: absolute;
-  left: 15%;
-  right: 8.5%;
+  left: calc(15% * 256 / var(--card-units, 256));
+  right: calc(8.5% * 256 / var(--card-units, 256));
   top: 6%;
   height: 18.3%;
   display: grid;
@@ -1021,8 +1024,8 @@ kbd {
 
 .shop-card-body {
   position: absolute;
-  left: 12%;
-  right: 9.5%;
+  left: calc(12% * 256 / var(--card-units, 256));
+  right: calc(9.5% * 256 / var(--card-units, 256));
   top: 27.8%;
   height: 65%;
   display: flex;
@@ -1089,20 +1092,48 @@ kbd {
   cursor: default;
 }
 
-/* Red upgrade button on the frame's bottom-left corner; it only appears when an upgrade is affordable. */
+.shop-card-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.shop-card-actions .shop-card-buy {
+  margin-top: 0;
+}
+
+/* Red upgrade button beside Buy: an arrow and the cost, pulsing when it can be afforded. */
 .shop-card-up {
-  position: absolute;
-  left: 9%;
-  top: 92%;
-  width: 18%;
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%);
-  border: 3px solid #fff;
-  border-radius: 50%;
-  background: radial-gradient(circle, #f6533f 55%, #e23a2a 56%, #e23a2a 64%, #f6533f 66%);
-  box-shadow: 0 3px 0 rgba(30, 20, 80, 0.35);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  border: none;
+  background: #f6533f;
+  color: #fff;
+  font-size: 22px;
+  font-family: var(--font-score);
+  transform: skewX(-10deg);
   cursor: pointer;
-  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.shop-card-up.ready {
+  animation: up-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes up-pulse {
+  50% {
+    transform: skewX(-10deg) scale(1.08);
+  }
+}
+
+.shop-card-up:disabled {
+  background: rgba(246, 83, 63, 0.35);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: default;
 }
 
 .shop-pips {
@@ -1147,12 +1178,13 @@ kbd {
 .shop-grid {
   position: relative;
   z-index: 1;
+  /* The tiles' opacity is set as they scroll under the card (see fadeTiles). */
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   flex: none;
   width: 100%;
-  max-width: 320px;
+  max-width: var(--card-w, 320px);
   margin-top: 28px;
   padding: 0 8px;
 }
