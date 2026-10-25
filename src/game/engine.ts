@@ -36,6 +36,7 @@ import {
   type Effects,
   type PowerUp,
 } from "./powerups";
+import { pop } from "./sound";
 import { type CharacterId, wallet } from "./wallet";
 
 export type { Effects, PowerUp };
@@ -253,6 +254,7 @@ export class Engine {
 
     p.hop = { fromX: p.x, toX, fromZ: p.z, toZ: toRow, t: 0, drift, span };
     p.row = toRow;
+    pop(span > 1);
     p.ride = null;
 
     this.countStep();
