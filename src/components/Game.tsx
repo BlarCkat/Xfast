@@ -6,7 +6,7 @@ import { Engine, type Direction } from "@/game/engine";
 import { CHICKEN_POWERUP_BONUS } from "@/game/config";
 import { POWERUPS, TIER_SIZE, durationAt, hotkeyFor, tierOf, type PowerUp } from "@/game/powerups";
 import { TRACKS, audioSettings, onAudioSettings, setAudioSettings, type TrackId } from "@/game/sound";
-import { CHARACTERS, wallet } from "@/game/wallet";
+import { wallet } from "@/game/wallet";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
 import { PowerRing } from "./PowerRing";
@@ -127,7 +127,6 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   // Upgrades and the chicken's bonus stretch power-ups, so the HUD rings measure against the real length.
   const fullDuration = (key: PowerUp) =>
     durationAt(key, w.upgrades[key]) * (engine.character === "chicken" ? CHICKEN_POWERUP_BONUS : 1);
-  const character = CHARACTERS.find((c) => c.id === engine.character) ?? CHARACTERS[0];
 
   // Show a newly picked character straight away on the start screen.
   useEffect(() => {
@@ -335,9 +334,6 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
               </button>
             ))}
           </nav>
-          <p className="menu-trait">
-            {character.name}: {character.trait}
-          </p>
         </div>
       )}
 

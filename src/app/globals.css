@@ -557,16 +557,6 @@ kbd {
   outline: none;
 }
 
-.menu-trait {
-  margin: 14px 0 0 14px;
-  max-width: 360px;
-  font-family: var(--font-caption);
-  font-size: var(--caption-size);
-  line-height: 1.1;
-  letter-spacing: 0;
-  color: var(--ui-text-dim);
-}
-
 /* ---- Options --------------------------------------------------------- */
 
 /* Options use the store's full-screen purple backdrop, with a column of settings instead of a card. */
