@@ -94,6 +94,9 @@ Each character has its own trait, shown on the start screen and in the store.
 | Mario | 400 | Super Mushroom: the first car or train hit shrinks him instead of costing a life, and he grows back in each new biome. Every 100 coins in a run is a 1-UP. |
 | Luigi | 450 | Poltergust: pulls in coins within 2 tiles. Ghost hunter: nothing can hit him in the Spooky biome. |
 | Bowser | 500 | Smashes through trees and rocks, and breathes fire every 50 hops to wreck the traffic on the next 4 lanes. |
+| Human | 550 | Coins are always doubled. |
+| Leopard | 600 | Pounces ahead to safe grass (Warp) every 50 hops. |
+| Owl | 650 | Takes flight (Wings) every 50 hops. |
 
 ## Upgrades
 
@@ -102,5 +105,5 @@ Every power-up can be upgraded in the store (select it on the Power-ups tab and 
 ## Coins and the store
 
 - Coins sit on grass and road lanes. They are saved in your browser as soon as you pick them up, even if you die.
-- Open the **Store** from the start or game over screen to unlock characters (Duck 50, Frog 100, Penguin 150, Cat 200, Robot 250, Sparrow 300, Snail 350, Mario 400, Luigi 450, Bowser 500) and buy power-ups (Foresight 30, Slowmo 30, Rock 40, Extra life 60).
+- Open the **Store** from the start or game over screen to unlock characters (Duck 50, Frog 100, Penguin 150, Cat 200, Robot 250, Sparrow 300, Snail 350, Mario 400, Luigi 450, Bowser 500, Human 550, Leopard 600, Owl 650) and buy power-ups (Foresight 30, Slowmo 30, Rock 40, Extra life 60).
 - Bought power-ups appear as buttons in the bottom right during a run, or use keys 1 to 0 for the first ten power-ups in store order. Bought extra lives are added when your next run starts.

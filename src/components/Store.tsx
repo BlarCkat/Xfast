@@ -30,6 +30,9 @@ const CHARACTER_BLURB: Record<CharacterId, string> = {
   mario: "Has crossed worse. Mostly pipes, lava and the occasional castle.",
   luigi: "Jumps a little higher, worries a lot more.",
   bowser: "King of the Koopas. Does not wait for the green man.",
+  human: "Finally, someone who knows what the green man means. Still ignores him.",
+  leopard: "Spots an opening, then a few more. Never changes them.",
+  owl: "Wise enough to look both ways. Can turn its head far enough to do it at once.",
 };
 
 const cellsFor = (tab: Tab, w: WalletState): Cell[] =>
