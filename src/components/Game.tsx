@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Engine, type Direction } from "@/game/engine";
-import { CHICKEN_POWERUP_BONUS } from "@/game/config";
 import { POWERUPS, TIER_SIZE, durationAt, hotkeyFor, tierOf, type PowerUp } from "@/game/powerups";
 import { TRACKS, audioSettings, onAudioSettings, setAudioSettings, type TrackId } from "@/game/sound";
 import { wallet } from "@/game/wallet";
@@ -126,12 +125,14 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   const diedAt = useRef(0);
   // Upgrades and the chicken's bonus stretch power-ups, so the HUD rings measure against the real length.
   const fullDuration = (key: PowerUp) =>
-    durationAt(key, w.upgrades[key]) * (engine.character === "chicken" ? CHICKEN_POWERUP_BONUS : 1);
+    durationAt(key, w.upgrades[key]) * (engine.character === "chicken" ? engine.traits.powerupBonus : 1);
 
-  // Show a newly picked character straight away on the start screen.
+  // Show a newly picked or upgraded character straight away on the start screen.
+  const selectedTier = w.charTiers[w.selected] ?? 1;
   useEffect(() => {
-    if (engine.status === "ready" && engine.character !== w.selected) setEngine(new Engine(w.selected));
-  }, [engine, w.selected]);
+    if (engine.status !== "ready") return;
+    if (engine.character !== w.selected || engine.tier !== selectedTier) setEngine(new Engine(w.selected));
+  }, [engine, w.selected, selectedTier]);
 
   useEffect(() => {
     if (ui.status === "dead") diedAt.current = performance.now();
@@ -249,7 +250,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
           <span>TOP {ui.best}</span>
           {engine.speedScale > 1 && <span className="hud-speed">SPEED ×{engine.speedScale.toFixed(1)}</span>}
           <span className="hud-coins">
-            <Icon id="coin" size={14} /> {w.coins}
+            <Icon id="coin" size={22} /> {w.coins}
           </span>
         </div>
         <div className="effects">
@@ -386,7 +387,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
               {ui.score >= ui.best && ui.score > 0 ? "NEW TOP SCORE!" : `TOP ${ui.best}`}
             </p>
             <p className="game-over-coins" style={{ "--i": 3 } as React.CSSProperties}>
-              <Icon id="coin" size={22} /> +<CountUp to={ui.coins} delay={1.2} />
+              <Icon id="coin" size={30} /> +<CountUp to={ui.coins} delay={1.2} />
             </p>
           </div>
           <div className="game-over-actions">

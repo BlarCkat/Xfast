@@ -1,3 +1,4 @@
+import { CHARACTER_TIERS, CHARACTER_TIER_COST } from "./characters";
 import { MAX_UPGRADES, POWERUPS, nextUpgrade, noEffects, type PowerUp } from "./powerups";
 
 export type CharacterId = "chicken" | "duck" | "frog" | "cat" | "penguin" | "robot" | "sparrow" | "snail" | "mario" | "luigi" | "bowser";
@@ -66,6 +67,8 @@ export interface WalletState {
   inventory: Record<StoreItemId, number>;
   /** Upgrade steps taken on each power-up, 0 to MAX_UPGRADES (see tierOf). */
   upgrades: Record<PowerUp, number>;
+  /** Each character's tier, 1 to CHARACTER_TIERS (see characters.ts). */
+  charTiers: Partial<Record<CharacterId, number>>;
 }
 
 const KEY = "xfast-wallet";
@@ -77,6 +80,7 @@ const fresh = (): WalletState => ({
   selected: "chicken",
   inventory: { life: 0, ...noEffects() },
   upgrades: Object.fromEntries(POWERUPS.map((p) => [p.key, 0])) as Record<PowerUp, number>,
+  charTiers: {},
 });
 
 /** Older saves kept a level from 1 to 5; each level above 1 becomes one filled tier-1 box. */
@@ -98,6 +102,7 @@ function load(): WalletState {
       selected: saved.selected && saved.owned?.includes(saved.selected) ? saved.selected : "chicken",
       inventory: { ...base.inventory, ...saved.inventory },
       upgrades: { ...base.upgrades, ...(saved.upgrades ?? fromLevels(saved.levels)) },
+      charTiers: { ...saved.charTiers },
     };
   } catch {
     return fresh();
@@ -160,6 +165,21 @@ class Wallet {
     const next = nextUpgrade(s.upgrades[id]);
     if (!next || s.coins < next.cost) return false;
     this.set({ ...s, coins: s.coins - next.cost, upgrades: { ...s.upgrades, [id]: s.upgrades[id] + 1 } });
+    return true;
+  }
+
+  /** A character's tier, 1 to CHARACTER_TIERS. */
+  tierOf(id: CharacterId) {
+    return Math.max(1, Math.min(CHARACTER_TIERS, this.get().charTiers[id] ?? 1));
+  }
+
+  /** Step an owned character up a tier, strengthening its trait. */
+  upgradeCharacter(id: CharacterId) {
+    const s = this.get();
+    const tier = this.tierOf(id);
+    const cost = CHARACTER_TIER_COST[tier];
+    if (!s.owned.includes(id) || tier >= CHARACTER_TIERS || s.coins < cost) return false;
+    this.set({ ...s, coins: s.coins - cost, charTiers: { ...s.charTiers, [id]: tier + 1 } });
     return true;
   }
 

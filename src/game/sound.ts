@@ -245,20 +245,23 @@ export function coin(double = false) {
 export const UPGRADE_SWEEP = 2 / 3;
 
 /**
- * Upgrading a power-up: three rising sweeps of quick ticks, one per row of the dot grid as it passes
- * up the card, each sweep a step higher than the last.
+ * Upgrading: one tick per row of the dot grid as it sweeps up the card three times. The ticks climb
+ * all the way through, starting deep and round and ending light and bright, over a low swell.
  */
 export function upgrade() {
   const ac = audio();
   if (!ac) return;
   const rows = 8;
-  for (let sweep = 0; sweep < 3; sweep++) {
-    for (let row = 0; row < rows; row++) {
-      const t = ac.currentTime + sweep * UPGRADE_SWEEP + (row / rows) * UPGRADE_SWEEP;
-      const f = 660 * 2 ** ((sweep * 4 + row * 1.5) / 12);
-      tone(ac, t, { type: "triangle", from: f, peak: 0.1 + row * 0.01, length: 0.07, attack: 0.002 });
-      tone(ac, t, { type: "sine", from: f * 2, peak: 0.03, length: 0.05, attack: 0.002 });
-    }
+  const ticks = rows * 3;
+  const t0 = ac.currentTime;
+  tone(ac, t0, { type: "sine", from: 55, to: 110, peak: 0.22, length: UPGRADE_SWEEP * 1.2, attack: 0.08 });
+  for (let i = 0; i < ticks; i++) {
+    const t = t0 + (i / rows) * UPGRADE_SWEEP;
+    const k = i / (ticks - 1);
+    // About three and a half octaves, from 110 Hz to 1250 Hz.
+    const f = 110 * 2 ** ((i * 1.8) / 12);
+    tone(ac, t, { type: "triangle", from: f, peak: 0.16 - k * 0.07, length: 0.09 - k * 0.03, attack: 0.002, lowpass: 600 + k * 5000 });
+    tone(ac, t, { type: "sine", from: f * 2, peak: 0.01 + k * 0.04, length: 0.05, attack: 0.002 });
   }
 }
 

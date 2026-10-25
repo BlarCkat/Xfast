@@ -2,8 +2,8 @@
 
 import { memo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import type { Group, Mesh, MeshBasicMaterial } from "three";
-import { Color, MeshBasicMaterial as BasicMaterial, PlaneGeometry } from "three";
+import type { Group, InstancedMesh, Mesh, MeshBasicMaterial } from "three";
+import { Color, MeshBasicMaterial as BasicMaterial, Object3D, PlaneGeometry, SphereGeometry } from "three";
 import { COLS, FORESIGHT_STEPS, LANE_WIDTH, TRAIN_SPEED, WRAP } from "@/game/config";
 import type { Engine } from "@/game/engine";
 import type { Lane } from "@/game/lanes";
@@ -308,6 +308,43 @@ function CoinView({ lane }: { lane: Lane }) {
 const seaGeometry = new PlaneGeometry(LANE_WIDTH, 1).rotateX(-Math.PI / 2);
 const seaMaterial = new BasicMaterial({ color: "#1d6fa5", transparent: true, opacity: 0.32, depthWrite: false });
 
+// Bubbles rise from the seabed of every underwater lane to the surface sheet, wobbling as they go.
+const BUBBLES = 6;
+const BUBBLE_TOP = 1.85;
+const bubbleGeometry = new SphereGeometry(1, 10, 8);
+const bubbleMaterial = new BasicMaterial({ color: "#dff6ff", transparent: true, opacity: 0.55, depthWrite: false });
+const bubbleDummy = new Object3D();
+
+function Bubbles({ row }: { row: number }) {
+  const ref = useRef<InstancedMesh>(null);
+  // Seeded by the row, so each lane keeps its own bubbles as it scrolls back into view.
+  const [seeds] = useState(() =>
+    Array.from({ length: BUBBLES }, (_, i) => {
+      const r = (n: number) => {
+        const v = Math.sin((row + 1) * 12.9898 + i * 78.233 + n * 37.719) * 43758.5453;
+        return v - Math.floor(v);
+      };
+      return { x: (r(0) - 0.5) * LANE_WIDTH * 0.8, z: (r(1) - 0.5) * 0.8, speed: 0.35 + r(2) * 0.35, phase: r(3), size: 0.04 + r(4) * 0.05 };
+    }),
+  );
+  useFrame(({ clock }) => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const t = clock.elapsedTime;
+    seeds.forEach((b, i) => {
+      const life = (t * b.speed + b.phase) % 1;
+      const y = 0.1 + life * (BUBBLE_TOP - 0.1);
+      bubbleDummy.position.set(b.x + Math.sin(t * 3 + i) * 0.08, y, b.z + Math.cos(t * 2.5 + i) * 0.05);
+      // Grow a little on the way up and pop out just under the surface.
+      bubbleDummy.scale.setScalar(b.size * (0.7 + life * 0.6) * Math.min(1, (1 - life) * 12));
+      bubbleDummy.updateMatrix();
+      mesh.setMatrixAt(i, bubbleDummy.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+  });
+  return <instancedMesh ref={ref} args={[bubbleGeometry, bubbleMaterial, BUBBLES]} frustumCulled={false} renderOrder={1} />;
+}
+
 export const LaneView = memo(function LaneView({ lane, engine }: { lane: Lane; engine: Engine }) {
   return (
     <group position={[0, 0, -lane.row]}>
@@ -318,6 +355,7 @@ export const LaneView = memo(function LaneView({ lane, engine }: { lane: Lane; e
       {lane.type === "road" && <RoadLane lane={lane} />}
       {lane.type === "river" && <RiverLane lane={lane} />}
       {lane.type === "rail" && <RailLane lane={lane} />}
+      {lane.biome === "underwater" && <Bubbles row={lane.row} />}
       {lane.biome === "underwater" && <mesh geometry={seaGeometry} material={seaMaterial} position={[0, 1.9, 0]} renderOrder={2} />}
     </group>
   );

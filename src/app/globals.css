@@ -1024,8 +1024,8 @@ kbd {
 .shop-pill-coin {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: #2b9df4;
   color: var(--ui-gold);
@@ -1075,10 +1075,10 @@ kbd {
   transition: fill 0.35s ease;
 }
 
-/* Upgrading: the paper turns blue and the shine gives way to a band of faded yellow dots that
+/* Upgrading: the paper turns the new tier's colour (set on the frame by Store) and the shine gives way to a band of faded yellow dots that
    sweeps up the card three times in 2s, in time with the upgrade sound (UPGRADE_SWEEP in sound.ts). */
 .boosting .shop-card-paper {
-  fill: #3d8bff;
+  fill: var(--boost-color, #b4e33d);
 }
 
 .shop-card-shine {

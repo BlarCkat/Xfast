@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExter
 import { Canvas, useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 import { TIER_SIZE, isInstant, nextUpgrade, strengthAt, tierOf, type PowerUp } from "@/game/powerups";
+import { CHARACTER_TIERS, CHARACTER_TIER_COST, nextPerk, traitText } from "@/game/characters";
 import { CHARACTERS, STORE_ITEMS, wallet, type CharacterId, type StoreItemId, type WalletState } from "@/game/wallet";
 import { Icon } from "./icons";
 import { CharacterModel } from "./models";
@@ -59,7 +60,16 @@ const cellsFor = (tab: StoreTab, w: WalletState): Cell[] =>
         description: `Adds ${p.amount} ${p.kind} to your wallet.`,
       }))
     : tab === "characters"
-    ? CHARACTERS.map((c) => ({ id: c.id, name: c.name, price: c.price, kind: "Character", description: `${c.trait} ${CHARACTER_BLURB[c.id]}` }))
+    ? CHARACTERS.map((c) => {
+        const tier = wallet.tierOf(c.id);
+        return {
+          id: c.id,
+          name: c.name,
+          price: c.price,
+          kind: w.owned.includes(c.id) ? `Character · Tier ${tier}` : "Character",
+          description: `${traitText(c.id, tier)} ${CHARACTER_BLURB[c.id]}`,
+        };
+      })
     : STORE_ITEMS.map((i) => ({
         id: i.id,
         name: i.name,
@@ -126,8 +136,26 @@ function action(tab: StoreTab, cell: Cell, w: WalletState) {
   return { label: `Buy · ${cell.price}`, run: w.coins >= cell.price ? () => wallet.buyItem(id) : null };
 }
 
-/** Upgrading a power-up: longer duration, or more rows for the instant ones. */
+/** Tier colours, shared by the boxes under the card and the upgrade sweep: lime, light red, gold, sky, violet. */
+const TIER_COLORS = ["#b4e33d", "#f2867a", "#f4c542", "#5bc0eb", "#c77dff"];
+
+/**
+ * Upgrading a power-up (longer duration, or more rows for the instant ones), or stepping an owned
+ * character up a tier, which strengthens its trait.
+ */
 function upgradeAction(tab: StoreTab, cell: Cell, w: WalletState) {
+  if (tab === "characters") {
+    const id = cell.id as CharacterId;
+    if (!w.owned.includes(id)) return null;
+    const tier = wallet.tierOf(id);
+    if (tier >= CHARACTER_TIERS) return { label: "Max tier", run: null, next: null };
+    const cost = CHARACTER_TIER_COST[tier];
+    return {
+      label: `Tier ${tier + 1} · ${cost}`,
+      next: `Tier ${tier + 1}: ${nextPerk(id, tier)}`,
+      run: w.coins >= cost ? () => wallet.upgradeCharacter(id) : null,
+    };
+  }
   if (tab !== "powerups" || cell.id === "life") return null;
   const id = cell.id as PowerUp;
   const done = w.upgrades[id];
@@ -135,7 +163,7 @@ function upgradeAction(tab: StoreTab, cell: Cell, w: WalletState) {
   if (!step) return { label: "Max level", run: null, next: null };
   return {
     label: step.kind === "tier" ? `Tier ${step.tier} · ${step.cost}` : `Upgrade · ${step.cost}`,
-    next: strengthAt(id, done + 1),
+    next: `Next level: ${strengthAt(id, done + 1)}`,
     run: w.coins >= step.cost ? () => wallet.upgrade(id) : null,
   };
 }
@@ -168,7 +196,7 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
   const cell = cells[Math.min(focus, cells.length - 1)];
   const act = action(tab, cell, w);
   const up = upgradeAction(tab, cell, w);
-  // An upgrade turns the card blue and sweeps a dot grid up it three times, with a ticking sound.
+  // An upgrade turns the card the new tier's colour and sweeps a dot grid up it three times, with a ticking sound.
   const [boosting, setBoosting] = useState(0);
   const boostTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const doUpgrade = up?.run
@@ -221,7 +249,11 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
   const isBank = tab === "bank";
   const upgradable = tab === "powerups" && cell.id !== "life";
   const tier = upgradable ? tierOf(w.upgrades[cell.id as PowerUp]) : null;
-  const filled = tier ? tier.filled : owned ? PIPS : Math.min(PIPS, Math.floor((w.coins / cell.price) * PIPS));
+  // An owned character's boxes are its five tiers instead, each in its tier's colour.
+  const charTier = owned ? wallet.tierOf(cell.id as CharacterId) : 0;
+  const pips = charTier ? CHARACTER_TIERS : PIPS;
+  const filled = tier ? tier.filled : charTier || Math.min(PIPS, Math.floor((w.coins / cell.price) * PIPS));
+  const boostColor = TIER_COLORS[(tier?.tier ?? charTier ?? 1) - 1] ?? TIER_COLORS[0];
 
   return (
     <div
@@ -253,13 +285,13 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
         <div className="shop-pill" aria-label={`${w.coins} coins`}>
           <span>{w.coins}</span>
           <span className="shop-pill-coin">
-            <Icon id="coin" size={16} />
+            <Icon id="coin" size={24} />
           </span>
         </div>
         <div className="shop-pill" aria-label={`${w.gems} gems`}>
           <span>{w.gems}</span>
           <span className="shop-pill-coin">
-            <Icon id="gem" size={16} />
+            <Icon id="gem" size={24} />
           </span>
         </div>
       </header>
@@ -271,7 +303,7 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
       <>
       <div className="shop-pin" ref={pin}>
         <section className="shop-card" aria-live="polite">
-          <CardFrame wide={size.units - 256} boost={boosting} />
+          <CardFrame wide={size.units - 256} boost={boosting} color={boostColor} />
           <h2 className="shop-card-title">{cell.name.toUpperCase()}</h2>
           <div className="shop-card-body">
             {hasPreview(cell.id) ? (
@@ -284,7 +316,7 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
             <p className="shop-card-kind">{cell.kind}</p>
             <p className="shop-card-desc">
               {cell.description}
-              {up?.next && ` Next level: ${up.next}.`}
+              {up?.next && ` ${up.next}.`}
             </p>
             <div className="shop-card-actions">
               <button className="shop-card-buy" disabled={!act.run} onClick={() => act.run?.()}>
@@ -304,13 +336,23 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
 
         <div
           className={`shop-pips${tier ? ` tier-${tier.tier}` : ""}`}
-          aria-label={tier ? `Tier ${tier.tier}, ${tier.filled} of ${TIER_SIZE} upgrades` : undefined}
+          aria-label={
+            tier
+              ? `Tier ${tier.tier}, ${tier.filled} of ${TIER_SIZE} upgrades`
+              : charTier
+              ? `Tier ${charTier} of ${CHARACTER_TIERS}`
+              : undefined
+          }
           // Packs have nothing to save toward; keep the space so the card doesn't jump between tabs.
           style={isBank ? { visibility: "hidden" } : undefined}
         >
-          {tier && <span className="shop-pips-tier">TIER {tier.tier}</span>}
-          {Array.from({ length: PIPS }, (_, i) => (
-            <span key={i} className={`pip${i < filled ? " full" : i === filled ? " next" : ""}`} />
+          {(tier || charTier > 0) && <span className="shop-pips-tier">TIER {tier?.tier ?? charTier}</span>}
+          {Array.from({ length: pips }, (_, i) => (
+            <span
+              key={i}
+              className={`pip${i < filled ? " full" : i === filled ? " next" : ""}`}
+              style={charTier && i < filled ? { background: TIER_COLORS[i] } : undefined}
+            />
           ))}
         </div>
       </div>
@@ -411,7 +453,7 @@ export function ShopBackdrop() {
  * to show a whole character, and points right of the middle are pushed right by `wide` so the card
  * can fill the screen's width; the corners keep their shape.
  */
-function CardFrame({ wide, boost = 0 }: { wide: number; boost?: number }) {
+function CardFrame({ wide, boost = 0, color }: { wide: number; boost?: number; color: string }) {
   const e = CARD_STRETCH;
   const x = (v: number) => (v > 128 ? v + wide : v);
   const W = 256 + wide;
@@ -441,10 +483,16 @@ function CardFrame({ wide, boost = 0 }: { wide: number; boost?: number }) {
     232.739,
   )} 95.0306H${x(181.44)}C${x(178.777)} 97.6937 ${x(172.904)} 103.693 ${x(170.717)} 106.384Z`;
   return (
-    <svg className={`shop-card-frame${boost ? " boosting" : ""}`} viewBox={`0 0 ${W} ${H}`} fill="none" aria-hidden="true">
+    <svg
+      className={`shop-card-frame${boost ? " boosting" : ""}`}
+      viewBox={`0 0 ${W} ${H}`}
+      fill="none"
+      aria-hidden="true"
+      style={{ "--boost-color": color } as React.CSSProperties}
+    >
       <defs>
         <pattern id="shop-card-dots" width="10" height="10" patternUnits="userSpaceOnUse">
-          <circle cx="5" cy="5" r="2.4" fill="#F2E38C" />
+          <circle cx="5" cy="5" r="2.4" fill={color === TIER_COLORS[2] ? "#fff7d1" : "#F2E38C"} />
         </pattern>
         {/* Fades the band of dots out towards its top and bottom edges. */}
         <linearGradient id="shop-card-dots-fade" x1="0" y1="0" x2="0" y2="1">
