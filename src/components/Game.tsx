@@ -5,11 +5,11 @@ import { Canvas } from "@react-three/fiber";
 import { Engine, type Direction } from "@/game/engine";
 import { CHICKEN_POWERUP_BONUS } from "@/game/config";
 import { POWERUPS, durationAt, hotkeyFor, type PowerUp } from "@/game/powerups";
-import { audioSettings, onAudioSettings, setAudioSettings } from "@/game/sound";
+import { TRACKS, audioSettings, onAudioSettings, setAudioSettings, type TrackId } from "@/game/sound";
 import { CHARACTERS, wallet } from "@/game/wallet";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
-import Store, { useWallet, type StoreTab } from "./Store";
+import Store, { ShopBackdrop, useWallet, type StoreTab } from "./Store";
 
 const KEYS: Record<string, Direction> = {
   ArrowUp: "up",
@@ -37,6 +37,9 @@ function readFx() {
     return true;
   }
 }
+
+/** The track after this one, wrapping round. */
+const nextTrack = (id: TrackId) => TRACKS[(TRACKS.findIndex((t) => t.id === id) + 1) % TRACKS.length].id;
 
 /** A labelled volume slider for the options panel. */
 function Volume({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
@@ -298,9 +301,17 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
       )}
 
       {optionsOpen && (
-        <div className="options" onPointerDown={stop} onPointerUp={stop}>
-          <div className="options-panel">
-            <h2>OPTIONS</h2>
+        <div className="shop options-screen" role="dialog" aria-label="Options" onPointerDown={stop} onPointerUp={stop}>
+          <ShopBackdrop />
+          <header className="shop-head">
+            <button className="shop-back" onClick={() => setOptionsOpen(false)} aria-label="Back">
+              <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden="true">
+                <path d="M15 4 7 12l8 8" fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <h2 className="options-title">OPTIONS</h2>
+          </header>
+          <div className="options-list">
             <button className="options-row" onClick={toggleFx}>
               <span>Graphics</span>
               <span className="options-value">{fx ? "Realistic" : "Classic"}</span>
@@ -311,10 +322,15 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
               <span>Music</span>
               <span className="options-value">{sound.musicOn ? "On" : "Off"}</span>
             </button>
-            {sound.musicOn && <Volume label="Music volume" value={sound.music} onChange={(music) => setAudioSettings({ music })} />}
-            <button className="options-back" onClick={() => setOptionsOpen(false)}>
-              BACK
-            </button>
+            {sound.musicOn && (
+              <>
+                <button className="options-row" onClick={() => setAudioSettings({ track: nextTrack(sound.track) })}>
+                  <span>Track</span>
+                  <span className="options-value">{TRACKS.find((t) => t.id === sound.track)!.name}</span>
+                </button>
+                <Volume label="Music volume" value={sound.music} onChange={(music) => setAudioSettings({ music })} />
+              </>
+            )}
           </div>
         </div>
       )}

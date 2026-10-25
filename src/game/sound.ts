@@ -7,10 +7,23 @@ export interface AudioSettings {
   /** Music volume, 0 to 1. */
   music: number;
   musicOn: boolean;
+  track: TrackId;
 }
 
+/** The background tracks, both loudness-matched; the first is the default. */
+export const TRACKS = [
+  { id: "theme", name: "Roadmasters" },
+  { id: "pixel-pulse", name: "Pixel Pulse" },
+] as const;
+export type TrackId = (typeof TRACKS)[number]["id"];
+
 const SETTINGS_KEY = "xfast-audio";
-const DEFAULTS: AudioSettings = { sfx: 0.8, music: 0.5, musicOn: true };
+const DEFAULTS: AudioSettings = { sfx: 0.8, music: 0.5, musicOn: true, track: "theme" };
+/**
+ * Music at full volume sits about 9 dB under the effects at full volume, so hops and coins always
+ * cut through it at matching slider positions.
+ */
+const MUSIC_HEADROOM = 0.35;
 
 let settings: AudioSettings = DEFAULTS;
 const listeners = new Set<() => void>();
@@ -19,6 +32,7 @@ function loadSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}") as Partial<AudioSettings>;
     settings = { ...DEFAULTS, ...saved };
+    if (!TRACKS.some((t) => t.id === settings.track)) settings.track = DEFAULTS.track;
   } catch {
     settings = DEFAULTS;
   }
@@ -53,7 +67,7 @@ function applyVolumes() {
   if (!ctx || !master || !musicBus) return;
   // Squared, so the sliders feel even to the ear rather than all the change bunching at the top.
   master.gain.setTargetAtTime(settings.sfx ** 2, ctx.currentTime, 0.05);
-  musicBus.gain.setTargetAtTime(settings.musicOn ? settings.music ** 2 * 0.8 : 0, ctx.currentTime, 0.05);
+  musicBus.gain.setTargetAtTime(settings.musicOn ? settings.music ** 2 * MUSIC_HEADROOM : 0, ctx.currentTime, 0.05);
   if (music && !settings.musicOn) music.pause();
 }
 
@@ -90,13 +104,15 @@ function startMusic() {
   const ac = audio();
   if (!ac || !musicBus) return;
   if (!music) {
-    // Opus is about a third smaller at the same quality; older Safari falls back to MP3.
-    const opus = new Audio().canPlayType('audio/webm; codecs="opus"') !== "";
-    music = new Audio(opus ? "/audio/pixel-pulse.webm" : "/audio/pixel-pulse.mp3");
+    music = new Audio();
     music.loop = true;
     music.crossOrigin = "anonymous";
     ac.createMediaElementSource(music).connect(musicBus);
   }
+  // Opus is about a third smaller at the same quality; older Safari falls back to MP3.
+  const opus = music.canPlayType('audio/webm; codecs="opus"') !== "";
+  const src = `/audio/${settings.track}.${opus ? "webm" : "mp3"}`;
+  if (!music.src.endsWith(src)) music.src = src;
   if (music.paused) void music.play().catch(() => {});
 }
 
@@ -184,7 +200,7 @@ export function pop(big = false) {
   osc.type = "sine";
   osc.frequency.setValueAtTime(320 * pitch, t);
   osc.frequency.exponentialRampToValueAtTime(820 * pitch, t + length * 0.55);
-  osc.connect(filter(ac, "lowpass", 1800)).connect(envelope(ac, t, 0.22, length, 0.004)).connect(master!);
+  osc.connect(filter(ac, "lowpass", 1800)).connect(envelope(ac, t, 0.32, length, 0.004)).connect(master!);
   osc.start(t);
   osc.stop(t + length + 0.02);
 }
@@ -201,9 +217,9 @@ export function coin(double = false) {
   const t = Math.max(ac.currentTime, lastCoin + 0.06);
   lastCoin = t;
   const k = double ? 1.12 : 1;
-  tone(ac, t, { type: "triangle", from: 988 * k, peak: 0.16, length: 0.09, attack: 0.002 });
-  tone(ac, t + 0.07, { type: "triangle", from: 1319 * k, peak: 0.16, length: 0.3, attack: 0.002 });
-  tone(ac, t + 0.07, { type: "sine", from: 2638 * k, peak: 0.04, length: 0.18, attack: 0.002 });
+  tone(ac, t, { type: "triangle", from: 988 * k, peak: 0.24, length: 0.09, attack: 0.002 });
+  tone(ac, t + 0.07, { type: "triangle", from: 1319 * k, peak: 0.24, length: 0.3, attack: 0.002 });
+  tone(ac, t + 0.07, { type: "sine", from: 2638 * k, peak: 0.06, length: 0.18, attack: 0.002 });
 }
 
 /**

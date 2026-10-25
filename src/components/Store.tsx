@@ -312,7 +312,7 @@ const CHARACTER_ART: Partial<Record<CharacterId, string>> = {
 const PIPS = TIER_SIZE;
 
 /** The purple backdrop with its darker diagonal bands and thin swirl lines. */
-function ShopBackdrop() {
+export function ShopBackdrop() {
   return (
     <svg className="shop-backdrop" viewBox="0 0 393 852" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <rect width="393" height="852" fill="#7048e8" />
