@@ -408,38 +408,6 @@ export function Eagle() {
   );
 }
 
-/**
- * An energy canister from the concept art: orange end caps with a knob on top, a violet glass
- * middle and a glowing lightning bolt inside. Tilted like the art; about 0.8 tall.
- */
-export function Battery() {
-  const orange = "#f5a623";
-  const deep = "#d9720f";
-  const glass = "#8b5cf6";
-  return (
-    <group rotation={[0, 0, -0.6]}>
-      {/* Bottom cap with its darker lip */}
-      <Box size={[0.42, 0.16, 0.42]} position={[0, -0.25, 0]} color={orange} />
-      <Box size={[0.44, 0.05, 0.44]} position={[0, -0.16, 0]} color={deep} />
-      {/* Glass body: violet walls, a pale highlight and a bright core */}
-      <Box size={[0.36, 0.3, 0.36]} position={[0, 0, 0]} color={glass} />
-      <Box size={[0.08, 0.22, 0.02]} position={[-0.1, 0.02, 0.18]} color="#c9b6ff" cast={false} />
-      {/* Lightning bolt, glowing through the front and back of the glass */}
-      {[0.19, -0.19].map((z) => (
-        <group key={z} position={[0, 0, z]}>
-          <Box size={[0.1, 0.08, 0.03]} position={[0.04, 0.08, 0]} color="#fff4ff" glow={2} cast={false} />
-          <Box size={[0.16, 0.05, 0.03]} color="#fff4ff" glow={2} cast={false} />
-          <Box size={[0.1, 0.08, 0.03]} position={[-0.04, -0.08, 0]} color="#fff4ff" glow={2} cast={false} />
-        </group>
-      ))}
-      {/* Top cap, lip and knob */}
-      <Box size={[0.44, 0.05, 0.44]} position={[0, 0.16, 0]} color={deep} />
-      <Box size={[0.42, 0.16, 0.42]} position={[0, 0.25, 0]} color={orange} />
-      <Box size={[0.2, 0.08, 0.2]} position={[0, 0.37, 0]} color="#ffc94d" />
-    </group>
-  );
-}
-
 /** Collectibles: a heart for lives, and one icon per power-up. */
 export function PickupModel({ kind }: { kind: PickupKind }) {
   if (kind === "life") {
