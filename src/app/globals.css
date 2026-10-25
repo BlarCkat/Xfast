@@ -707,6 +707,7 @@ kbd {
 
 .shop-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   width: 100%;
@@ -714,6 +715,7 @@ kbd {
 }
 
 .shop-back {
+  margin-right: auto;
   display: grid;
   place-items: center;
   flex: none;
@@ -725,10 +727,14 @@ kbd {
   cursor: pointer;
 }
 
+/* The tabs get a row of their own under the back button and wallet. */
 .shop-tabs {
+  order: 3;
   display: flex;
   gap: 12px;
   align-items: baseline;
+  width: 100%;
+  justify-content: center;
 }
 
 .shop-tabs button {
@@ -750,7 +756,6 @@ kbd {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-left: auto;
   padding: 3px 4px 3px 18px;
   border-radius: 999px;
   background: #1f1b45;
@@ -1008,6 +1013,13 @@ kbd {
   height: 82%;
   object-fit: contain;
   pointer-events: none;
+}
+
+/* Currency heaps leave room for the amount in the corner. */
+.shop-tile-art.pack {
+  width: 60%;
+  height: 60%;
+  margin-bottom: 10%;
 }
 
 .icon-art {

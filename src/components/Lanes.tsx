@@ -10,7 +10,8 @@ import type { Lane } from "@/game/lanes";
 import { trainLength } from "@/game/lanes";
 import { BIOMES, type BiomeId } from "@/game/biomes";
 import { Floater, Obstacle, Vehicle } from "./biomeModels";
-import { Baked, Box, Coin, PickupModel, Train } from "./models";
+import { Baked, Box, PickupModel, Train } from "./models";
+import { CoinArt } from "./CurrencyArt";
 import { ART_POWERUPS, PickupArt } from "./PowerupArt";
 import { groundTexture, type GroundTexture } from "./textures";
 
@@ -296,9 +297,9 @@ function CoinView({ lane }: { lane: Lane }) {
   });
   return (
     <group ref={ref} position={[0, 0.35, 0]} visible={false}>
-      <Baked>
-        <Coin />
-      </Baked>
+      <group scale={0.5}>
+        <CoinArt />
+      </group>
     </group>
   );
 }

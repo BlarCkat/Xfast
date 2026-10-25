@@ -430,29 +430,6 @@ export function PickupModel({ kind }: { kind: PickupKind }) {
       </group>
     );
   }
-  if (kind === "double") {
-    return (
-      <group>
-        <group position={[-0.1, 0.06, -0.06]}>
-          <Coin />
-        </group>
-        <group position={[0.1, -0.06, 0.06]}>
-          <Coin />
-        </group>
-      </group>
-    );
-  }
-
-  if (kind === "shield") {
-    return (
-      <group>
-        <Box size={[0.4, 0.42, 0.12]} position={[0, 0.02, 0]} color="#1fa3b8" />
-        <Box size={[0.24, 0.12, 0.13]} position={[0, -0.24, 0]} color="#1fa3b8" />
-        <Box size={[0.08, 0.3, 0.14]} position={[0, 0.02, 0]} color="#e0f7fa" cast={false} />
-      </group>
-    );
-  }
-
   if (kind === "wings") {
     return <Wings />;
   }
@@ -508,32 +485,6 @@ export function PickupModel({ kind }: { kind: PickupKind }) {
         <Box size={[0.08, 0.44, 0.1]} position={[0.2, 0, 0]} color="#3f51b5" />
         <Box size={[0.08, 0.44, 0.1]} position={[-0.2, 0, 0]} color="#3f51b5" />
         <Box size={[0.24, 0.24, 0.06]} position={[0, 0, 0]} color="#9fa8ff" cast={false} />
-      </group>
-    );
-  }
-  if (kind === "coinrain") {
-    return (
-      <group scale={0.75}>
-        <group position={[-0.22, 0.12, 0]}>
-          <Coin />
-        </group>
-        <group position={[0.22, 0.18, 0]}>
-          <Coin />
-        </group>
-        <group position={[0, -0.18, 0]}>
-          <Coin />
-        </group>
-      </group>
-    );
-  }
-  if (kind === "slowmo") {
-    return (
-      <group>
-        <Box size={[0.36, 0.06, 0.36]} position={[0, 0.22, 0]} color="#2f6fb5" />
-        <Box size={[0.36, 0.06, 0.36]} position={[0, -0.22, 0]} color="#2f6fb5" />
-        <Box size={[0.24, 0.14, 0.24]} position={[0, 0.12, 0]} color="#8fd3ff" />
-        <Box size={[0.08, 0.1, 0.08]} position={[0, 0, 0]} color="#8fd3ff" />
-        <Box size={[0.24, 0.14, 0.24]} position={[0, -0.12, 0]} color="#ffe08a" />
       </group>
     );
   }
@@ -830,16 +781,6 @@ export function CharacterModel({ id }: { id: CharacterId }) {
     default:
       return <Chicken />;
   }
-}
-
-export function Coin() {
-  return (
-    <group>
-      <Box size={[0.38, 0.38, 0.08]} position={[0, 0, 0]} color="#ffc928" glow={0.6} />
-      <Box size={[0.26, 0.26, 0.1]} position={[0, 0, 0]} color="#ffe27a" cast={false} glow={1.2} />
-      <Box size={[0.06, 0.16, 0.11]} position={[0, 0, 0]} color="#e0a800" cast={false} />
-    </group>
-  );
 }
 
 export function Wings() {

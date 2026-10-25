@@ -59,6 +59,8 @@ export const STORE_ITEMS: StoreItem[] = [
 
 export interface WalletState {
   coins: number;
+  /** The premium currency; bought in the store once payments are in. */
+  gems: number;
   owned: CharacterId[];
   selected: CharacterId;
   inventory: Record<StoreItemId, number>;
@@ -70,6 +72,7 @@ const KEY = "xfast-wallet";
 
 const fresh = (): WalletState => ({
   coins: 0,
+  gems: 0,
   owned: ["chicken"],
   selected: "chicken",
   inventory: { life: 0, ...noEffects() },
@@ -90,6 +93,7 @@ function load(): WalletState {
     const base = fresh();
     return {
       coins: Math.max(0, Number(saved.coins) || 0),
+      gems: Math.max(0, Number(saved.gems) || 0),
       owned: Array.isArray(saved.owned) ? Array.from(new Set(["chicken", ...saved.owned])) as CharacterId[] : base.owned,
       selected: saved.selected && saved.owned?.includes(saved.selected) ? saved.selected : "chicken",
       inventory: { ...base.inventory, ...saved.inventory },

@@ -7,12 +7,25 @@ import { TIER_SIZE, isInstant, nextUpgrade, strengthAt, tierOf, type PowerUp } f
 import { CHARACTERS, STORE_ITEMS, wallet, type CharacterId, type StoreItemId, type WalletState } from "@/game/wallet";
 import { Icon } from "./icons";
 import { CharacterModel } from "./models";
+import { CurrencyHeap } from "./CurrencyArt";
 import { ART_POWERUPS } from "./PowerupArt";
 
-export type StoreTab = "characters" | "powerups";
+export type StoreTab = "characters" | "powerups" | "bank";
+const TABS: { id: StoreTab; label: string }[] = [
+  { id: "characters", label: "CHARACTERS" },
+  { id: "powerups", label: "POWER-UPS" },
+  { id: "bank", label: "BANK" },
+];
+
+// Coin and gem packs. Payments aren't wired up yet, so they can't be bought.
+type PackId = `${"coins" | "gems"}-${number}`;
+const PACKS = (["coins", "gems"] as const).flatMap((kind) =>
+  [10, 50, 100, 1000].map((amount) => ({ id: `${kind}-${amount}` as PackId, kind, amount })),
+);
+const packOf = (id: Cell["id"]) => PACKS.find((p) => p.id === id);
 
 interface Cell {
-  id: CharacterId | StoreItemId;
+  id: CharacterId | StoreItemId | PackId;
   name: string;
   price: number;
   kind: string;
@@ -34,7 +47,15 @@ const CHARACTER_BLURB: Record<CharacterId, string> = {
 };
 
 const cellsFor = (tab: StoreTab, w: WalletState): Cell[] =>
-  tab === "characters"
+  tab === "bank"
+    ? PACKS.map((p) => ({
+        id: p.id,
+        name: `${p.amount} ${p.kind}`,
+        price: 0,
+        kind: p.kind === "coins" ? "Coin pack" : "Gem pack",
+        description: `Adds ${p.amount} ${p.kind} to your wallet.`,
+      }))
+    : tab === "characters"
     ? CHARACTERS.map((c) => ({ id: c.id, name: c.name, price: c.price, kind: "Character", description: `${c.trait} ${CHARACTER_BLURB[c.id]}` }))
     : STORE_ITEMS.map((i) => ({
         id: i.id,
@@ -59,15 +80,20 @@ function Spinner({ y, children }: { y: number; children: React.ReactNode }) {
   );
 }
 
-/** A slowly turning model: a character, or one of the illustrated power-ups. */
-function Preview({ id }: { id: CharacterId | PowerUp }) {
+/** A slowly turning model on the card: a character, an illustrated power-up or a currency pack. */
+function Preview({ id }: { id: Cell["id"] }) {
   const art = ART_POWERUPS[id as PowerUp];
+  const pack = packOf(id);
   return (
     <div className="menu-preview">
       <Canvas orthographic camera={{ position: [0, 1.2, 3], zoom: 72 }}>
         <hemisphereLight args={["#ffffff", "#9fc3e8", 1.8]} />
         <directionalLight position={[-2, 4, 3]} intensity={1.6} />
-        {art ? (
+        {pack ? (
+          <Spinner y={0.25}>
+            <CurrencyHeap kind={pack.kind} amount={pack.amount} />
+          </Spinner>
+        ) : art ? (
           <Spinner y={0.25}>{art()}</Spinner>
         ) : (
           <Spinner y={-0.7}>
@@ -79,11 +105,14 @@ function Preview({ id }: { id: CharacterId | PowerUp }) {
   );
 }
 
+const hasPreview = (id: Cell["id"]) => CHARACTERS.some((c) => c.id === id) || !!ART_POWERUPS[id as PowerUp] || !!packOf(id);
+
 export function useWallet() {
   return useSyncExternalStore(wallet.subscribe, wallet.get, wallet.get);
 }
 
 function action(tab: StoreTab, cell: Cell, w: WalletState) {
+  if (tab === "bank") return { label: "Coming soon", run: null };
   if (tab === "characters") {
     const id = cell.id as CharacterId;
     if (w.selected === id) return { label: "Equipped", run: null };
@@ -141,7 +170,8 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
       } else if (e.code === "KeyU") {
         up?.run?.();
       } else if (e.code === "KeyQ" || e.code === "KeyE") {
-        switchTab(tab === "characters" ? "powerups" : "characters");
+        const i = TABS.findIndex((t) => t.id === tab) + (e.code === "KeyE" ? 1 : -1);
+        switchTab(TABS[(i + TABS.length) % TABS.length].id);
       } else if (e.code === "Escape") {
         onClose();
       }
@@ -154,7 +184,8 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
   const owned = isChar && w.owned.includes(cell.id as CharacterId);
   // The boxes under the card: a power-up's upgrades in its current tier (lime, light red, gold),
   // or savings toward the price for characters and extra lives.
-  const upgradable = !isChar && cell.id !== "life";
+  const isBank = tab === "bank";
+  const upgradable = tab === "powerups" && cell.id !== "life";
   const tier = upgradable ? tierOf(w.upgrades[cell.id as PowerUp]) : null;
   const filled = tier ? tier.filled : owned ? PIPS : Math.min(PIPS, Math.floor((w.coins / cell.price) * PIPS));
 
@@ -176,17 +207,22 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
           </svg>
         </button>
         <nav className="shop-tabs">
-          <button className={isChar ? "on" : ""} onClick={() => switchTab("characters")}>
-            CHARACTERS
-          </button>
-          <button className={!isChar ? "on" : ""} onClick={() => switchTab("powerups")}>
-            POWER-UPS
-          </button>
+          {TABS.map((t) => (
+            <button key={t.id} className={tab === t.id ? "on" : ""} onClick={() => switchTab(t.id)}>
+              {t.label}
+            </button>
+          ))}
         </nav>
         <div className="shop-pill" aria-label={`${w.coins} coins`}>
           <span>{w.coins}</span>
           <span className="shop-pill-coin">
             <Icon id="coin" size={16} />
+          </span>
+        </div>
+        <div className="shop-pill" aria-label={`${w.gems} gems`}>
+          <span>{w.gems}</span>
+          <span className="shop-pill-coin">
+            <Icon id="gem" size={16} />
           </span>
         </div>
       </header>
@@ -197,11 +233,11 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
           <CardFrame />
           <h2 className="shop-card-title">{cell.name.toUpperCase()}</h2>
           <div className="shop-card-body">
-            {isChar || ART_POWERUPS[cell.id as PowerUp] ? (
-              <Preview id={cell.id as CharacterId | PowerUp} />
+            {hasPreview(cell.id) ? (
+              <Preview id={cell.id} />
             ) : (
               <span className="shop-card-icon">
-                <Icon id={cell.id} size={64} />
+                <Icon id={cell.id as StoreItemId | CharacterId} size={64} />
               </span>
             )}
             <p className="shop-card-kind">{cell.kind}</p>
@@ -221,6 +257,8 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
         <div
           className={`shop-pips${tier ? ` tier-${tier.tier}` : ""}`}
           aria-label={tier ? `Tier ${tier.tier}, ${tier.filled} of ${TIER_SIZE} upgrades` : undefined}
+          // Packs have nothing to save toward; keep the space so the card doesn't jump between tabs.
+          style={isBank ? { visibility: "hidden" } : undefined}
         >
           {tier && <span className="shop-pips-tier">TIER {tier.tier}</span>}
           {Array.from({ length: PIPS }, (_, i) => (
@@ -229,12 +267,13 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
         </div>
       </div>
 
-      <div className="shop-grid" role="listbox" aria-label={isChar ? "Characters" : "Power-ups"}>
+      <div className="shop-grid" role="listbox" aria-label={TABS.find((t) => t.id === tab)!.label}>
         {cells.map((c, i) => {
           const mine = isChar && w.owned.includes(c.id as CharacterId);
           const equipped = isChar && w.selected === c.id;
-          const count = isChar ? 0 : w.inventory[c.id as StoreItemId];
-          const locked = !mine && w.coins < c.price;
+          const pack = packOf(c.id);
+          const count = tab === "powerups" ? w.inventory[c.id as StoreItemId] : 0;
+          const locked = !mine && !pack && w.coins < c.price;
           const focused = i === focus;
           return (
             <button
@@ -246,13 +285,15 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
               className={`shop-tile${focused ? " on" : ""}${locked ? " locked" : ""}${equipped ? " equipped" : ""}`}
               onClick={() => (focused ? act.run?.() : setFocus(i))}
             >
-              {isChar && CHARACTER_ART[c.id as CharacterId] ? (
+              {pack ? (
+                <img className="shop-tile-art pack" src={`/currency/${pack.id}.png`} alt="" draggable={false} />
+              ) : isChar && CHARACTER_ART[c.id as CharacterId] ? (
                 <img className="shop-tile-art" src={CHARACTER_ART[c.id as CharacterId]} alt="" draggable={false} />
               ) : (
-                <Icon id={c.id} size={34} />
+                <Icon id={c.id as StoreItemId | CharacterId} size={34} />
               )}
               {count > 0 && <span className="shop-tile-badge">{count}</span>}
-              <span className="shop-tile-price">{mine ? (equipped ? "ON" : "OWNED") : c.price}</span>
+              <span className="shop-tile-price">{pack ? `×${pack.amount}` : mine ? (equipped ? "ON" : "OWNED") : c.price}</span>
             </button>
           );
         })}

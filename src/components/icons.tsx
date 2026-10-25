@@ -2,7 +2,7 @@ import type { CharacterId, StoreItemId } from "@/game/wallet";
 
 // Bold single-colour glyphs for the store and HUD hexagons. They draw in currentColor.
 
-type IconId = StoreItemId | CharacterId | "coin";
+type IconId = StoreItemId | CharacterId | "coin" | "gem";
 
 const PATHS: Record<IconId, React.ReactNode> = {
   life: <path d="M12 21 3.5 12.6A5.2 5.2 0 0 1 12 5.9a5.2 5.2 0 0 1 8.5 6.7Z" />,
@@ -59,6 +59,7 @@ const PATHS: Record<IconId, React.ReactNode> = {
   bowser: (
     <path d="M12 2l2 3.2 3.6-1.2-.6 3.8 3.6 1.4-2.8 2.6L20 15h-3.4L16 19H8l-.6-4H4l2.2-3.2-2.8-2.6L7 7.8 6.4 4 10 5.2ZM6 20h12v2H6Z" />
   ),
+  gem: <path d="M12 1 23 12 12 23 1 12Zm0 5-6 6 6 6 6-6Z" />,
   coin: (
     <>
       <circle cx="12" cy="12" r="10" />
@@ -70,10 +71,16 @@ const PATHS: Record<IconId, React.ReactNode> = {
 /** Illustrated icons that replace a glyph wherever it appears (store, HUD, inventory). */
 const ART: Partial<Record<IconId, string>> = {
   wings: "/powerups/wings.png",
-  // Snapshots of the 3D models in PowerupArt.
+  // Snapshots of the 3D models in PowerupArt and CurrencyArt.
   superhop: "/powerups/superhop.png",
   freeze: "/powerups/freeze.png",
   magnet: "/powerups/magnet.png",
+  slowmo: "/powerups/slowmo.png",
+  shield: "/powerups/shield.png",
+  double: "/powerups/double.png",
+  coinrain: "/powerups/coinrain.png",
+  coin: "/currency/coin.png",
+  gem: "/currency/gem.png",
 };
 
 export function Icon({ id, size = 24 }: { id: IconId; size?: number }) {
