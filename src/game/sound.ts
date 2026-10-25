@@ -53,7 +53,7 @@ export function setAudioSettings(next: Partial<AudioSettings>) {
     // Settings still apply for this visit.
   }
   applyVolumes();
-  if (settings.musicOn) startMusic();
+  if (settings.musicOn) void startMusic();
   listeners.forEach((fn) => fn());
 }
 
@@ -99,10 +99,10 @@ function audio() {
   return ctx;
 }
 
-/** Stream the background track on a loop, through the music volume. */
+/** Stream the background track on a loop, through the music volume. Resolves once it is playing (or refused). */
 function startMusic() {
   const ac = audio();
-  if (!ac || !musicBus) return;
+  if (!ac || !musicBus) return Promise.resolve();
   if (!music) {
     music = new Audio();
     music.loop = true;
@@ -113,17 +113,28 @@ function startMusic() {
   const opus = music.canPlayType('audio/webm; codecs="opus"') !== "";
   const src = `/audio/${settings.track}.${opus ? "webm" : "mp3"}`;
   if (!music.src.endsWith(src)) music.src = src;
-  if (music.paused) void music.play().catch(() => {});
+  return music.paused ? music.play().catch(() => {}) : Promise.resolve();
 }
 
-// The first tap or key press anywhere starts the audio (and the music), as browsers require.
+// Music starts as soon as the game opens where the browser allows it. Most only allow sound after a
+// tap or key press, so every one tries again until the audio is actually running. A touch only counts
+// once the finger lifts, so the first pointerdown on a phone is too early and mustn't end the retries.
 if (typeof window !== "undefined") {
+  const events = ["pointerdown", "pointerup", "keydown", "touchend", "click"];
   const unlock = () => {
-    if (!audio()) return;
-    if (settings.musicOn) startMusic();
-    for (const e of ["pointerdown", "pointerup", "keydown", "touchend"]) window.removeEventListener(e, unlock, true);
+    const ac = audio();
+    if (!ac) return;
+    const playing = settings.musicOn ? startMusic() : Promise.resolve();
+    void Promise.all([ac.resume().catch(() => {}), playing]).then(() => {
+      if (ac.state !== "running" || (settings.musicOn && music?.paused)) return;
+      for (const e of events) window.removeEventListener(e, unlock, true);
+    });
   };
-  for (const e of ["pointerdown", "pointerup", "keydown", "touchend"]) window.addEventListener(e, unlock, true);
+  for (const e of events) window.addEventListener(e, unlock, true);
+  if (settings.musicOn) {
+    if (document.readyState === "complete") unlock();
+    else window.addEventListener("load", unlock, { once: true });
+  }
 }
 
 /** Two seconds of white noise, shared by every hiss, whoosh and splash. */

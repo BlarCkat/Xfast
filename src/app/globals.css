@@ -781,19 +781,19 @@ kbd {
   max-width: 420px;
 }
 
+/* Slanted like the selected tile in the store. */
 .game-over-actions button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
   border: none;
-  border-radius: 18px;
   font-family: var(--font-ui);
+  transform: skewX(-6deg);
   cursor: pointer;
 }
 
-.game-over-actions kbd {
-  opacity: 0.7;
+.game-over-actions button > span {
+  transform: skewX(6deg);
 }
 
 .game-over-store {
@@ -808,11 +808,38 @@ kbd {
   background: var(--ui-teal);
   color: var(--ui-ink);
   font-size: 40px;
-  box-shadow: 0 6px 0 var(--ui-teal-deep);
+  outline: 3px solid #fff;
+}
+
+/* The score screen builds up line by line: label, count, best, coins, then the buttons. */
+.game-over-score > *,
+.game-over-actions > * {
+  animation: game-over-line 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+  animation-delay: calc(0.75s + var(--i) * 0.12s);
+}
+
+@keyframes game-over-line {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.9);
+  }
+}
+
+.game-over-actions > * {
+  animation-name: game-over-button;
+}
+
+@keyframes game-over-button {
+  from {
+    opacity: 0;
+    transform: translateY(24px) skewX(-6deg);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .game-over {
+  .game-over,
+  .game-over-score > *,
+  .game-over-actions > * {
     animation: none;
   }
 }

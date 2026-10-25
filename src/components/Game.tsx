@@ -80,6 +80,26 @@ const MENU: { id: MenuItem; label: string }[] = [
   { id: "exit", label: "EXIT" },
 ];
 
+/** Counts up from 0 to `to`, starting after `delay` seconds and easing out over about a second. */
+function CountUp({ to, delay = 0 }: { to: number; delay?: number }) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setValue(to);
+      return;
+    }
+    const start = performance.now() + delay * 1000;
+    const length = Math.min(1400, 400 + to * 6);
+    let frame = requestAnimationFrame(function tick(now) {
+      const t = Math.min(1, Math.max(0, (now - start) / length));
+      setValue(Math.round(to * (1 - (1 - t) ** 3)));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [to, delay]);
+  return <>{value}</>;
+}
+
 export default function Game({ onReady, onExit, locked = false }: GameProps) {
   const [engine, setEngine] = useState(() => new Engine(wallet.get().selected));
   const ui = useSyncExternalStore(engine.subscribe, engine.getSnapshot, engine.getSnapshot);
@@ -353,19 +373,25 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
         <div className="game-over" role="dialog" aria-label="Run over" onPointerDown={stop} onPointerUp={stop}>
           <ShopBackdrop />
           <div className="game-over-score">
-            <p className="game-over-kind">SCORE</p>
-            <p className="game-over-value">{ui.score}</p>
-            <p className="game-over-best">{ui.score >= ui.best && ui.score > 0 ? "NEW TOP SCORE!" : `TOP ${ui.best}`}</p>
-            <p className="game-over-coins">
-              <Icon id="coin" size={22} /> +{ui.coins}
+            <p className="game-over-kind" style={{ "--i": 0 } as React.CSSProperties}>
+              SCORE
+            </p>
+            <p className="game-over-value" style={{ "--i": 1 } as React.CSSProperties}>
+              <CountUp to={ui.score} delay={0.85} />
+            </p>
+            <p className="game-over-best" style={{ "--i": 2 } as React.CSSProperties}>
+              {ui.score >= ui.best && ui.score > 0 ? "NEW TOP SCORE!" : `TOP ${ui.best}`}
+            </p>
+            <p className="game-over-coins" style={{ "--i": 3 } as React.CSSProperties}>
+              <Icon id="coin" size={22} /> +<CountUp to={ui.coins} delay={1.2} />
             </p>
           </div>
           <div className="game-over-actions">
-            <button className="game-over-store" onClick={() => openStore("powerups")}>
-              STORE <kbd>S</kbd>
+            <button className="game-over-store" style={{ "--i": 4 } as React.CSSProperties} onClick={() => openStore("powerups")}>
+              <span>STORE</span>
             </button>
-            <button className="game-over-play" onClick={restart}>
-              PLAY <kbd>↵</kbd>
+            <button className="game-over-play" style={{ "--i": 5 } as React.CSSProperties} onClick={restart}>
+              <span>PLAY</span>
             </button>
           </div>
         </div>
