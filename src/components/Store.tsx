@@ -52,7 +52,7 @@ function Spinner({ id }: { id: CharacterId }) {
     if (ref.current) ref.current.rotation.y += dt * 1.2;
   });
   return (
-    <group ref={ref} position={[0, -0.55, 0]}>
+    <group ref={ref} position={[0, -0.7, 0]}>
       <CharacterModel id={id} />
     </group>
   );
@@ -61,7 +61,7 @@ function Spinner({ id }: { id: CharacterId }) {
 function Preview({ id }: { id: CharacterId }) {
   return (
     <div className="menu-preview">
-      <Canvas orthographic camera={{ position: [0, 1.2, 3], zoom: 80 }}>
+      <Canvas orthographic camera={{ position: [0, 1.2, 3], zoom: 72 }}>
         <hemisphereLight args={["#ffffff", "#9fc3e8", 1.8]} />
         <directionalLight position={[-2, 4, 3]} intensity={1.6} />
         <Spinner id={id} />
@@ -247,6 +247,8 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
 }
 
 const GRID_COLS = 3;
+/** Extra height (in card SVG units) added to the middle of the card; keep in sync with --card-h in globals.css. */
+const CARD_STRETCH = 80;
 /** Illustrated portraits that replace the glyph on a character's tile. */
 const CHARACTER_ART: Partial<Record<CharacterId, string>> = {
   chicken: "/characters/chicken.png",
@@ -269,14 +271,21 @@ function ShopBackdrop() {
   );
 }
 
-/** The card from the mockup: cream torn-paper frame, a sweeping shine, dark notched panel and teal title banner. */
+/**
+ * The card from the mockup: cream torn-paper frame, a sweeping shine, dark notched panel and teal
+ * title banner. Points below the banner are pushed down by CARD_STRETCH so the panel is tall enough
+ * to show a whole character; the corners keep their shape.
+ */
 function CardFrame() {
-  const paper =
-    "M255.024 0L20.3935 7.56873V64.5445L8.61995 55.7143L18.9218 265.957L0 289.714L22.7062 301.488L15.558 312L245.353 302.119L255.024 25.0189L245.353 14.717L255.024 0Z";
+  const e = CARD_STRETCH;
+  const paper = `M255.024 0L20.3935 7.56873V64.5445L8.61995 55.7143L18.9218 ${265.957 + e}L0 ${289.714 + e}L22.7062 ${
+    301.488 + e
+  }L15.558 ${312 + e}L245.353 ${302.119 + e}L255.024 25.0189L245.353 14.717L255.024 0Z`;
+  const panel = `M237.575 20.6055H35.7425L24.5996 ${290.557 + e}L192.163 ${294.131 + e}L231.689 ${260.913 + e}L237.575 20.6055Z`;
   return (
-    <svg className="shop-card-frame" viewBox="0 0 256 312" fill="none" aria-hidden="true">
+    <svg className="shop-card-frame" viewBox={`0 0 256 ${312 + e}`} fill="none" aria-hidden="true">
       <path d={paper} fill="#F3EED1" />
-      <mask id="shop-card-paper" style={{ maskType: "alpha" }} maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="312">
+      <mask id="shop-card-paper" style={{ maskType: "alpha" }} maskUnits="userSpaceOnUse" x="0" y="0" width="256" height={312 + e}>
         <path d={paper} fill="#F3EED1" />
       </mask>
       <g mask="url(#shop-card-paper)">
@@ -284,7 +293,7 @@ function CardFrame() {
           <rect x="-24.9609" y="52.293" width="350.672" height="43.31" transform="rotate(18.5736 -24.9609 52.293)" fill="#F2E38C" />
         </g>
       </g>
-      <path d="M237.575 20.6055H35.7425L24.5996 290.557L192.163 294.131L231.689 260.913L237.575 20.6055Z" fill="#212139" />
+      <path d={panel} fill="#212139" />
       <path
         d="M170.717 106.384C168.531 109.075 80.1028 99.9363 36.1621 95.0306L38.8953 23.3379H234.631L232.739 95.0306H181.44C178.777 97.6937 172.904 103.693 170.717 106.384Z"
         fill="#2DDED3"

@@ -664,6 +664,9 @@ kbd {
 
 /* The whole screen scrolls; only the card (and its pips) stays pinned at the top. */
 .shop {
+  /* The card is 256 wide by 392 tall (312 from the mockup plus an 80-unit stretch in the middle). */
+  --card-w: min(62vw, 270px, calc(52vh * 0.653));
+  --card-h: calc(var(--card-w) * 392 / 256);
   position: absolute;
   inset: 0;
   z-index: 20;
@@ -769,8 +772,8 @@ kbd {
 /* The card keeps the SVG's 256x312 shape; everything on it is placed in percentages of that box. */
 .shop-card {
   position: relative;
-  width: min(68vw, 300px, calc(42vh * 0.8205));
-  aspect-ratio: 256 / 312;
+  width: var(--card-w);
+  aspect-ratio: 256 / 392;
 }
 
 .shop-card-frame {
@@ -789,7 +792,7 @@ kbd {
 
 @keyframes shine {
   from {
-    transform: translateY(300px);
+    transform: translateY(380px);
   }
   to {
     transform: translateY(-200px);
@@ -800,8 +803,8 @@ kbd {
   position: absolute;
   left: 15%;
   right: 8.5%;
-  top: 7.5%;
-  height: 23%;
+  top: 6%;
+  height: 18.3%;
   display: grid;
   place-items: center;
   margin: 0;
@@ -818,8 +821,8 @@ kbd {
   position: absolute;
   left: 12%;
   right: 9.5%;
-  top: 35%;
-  height: 55%;
+  top: 27.8%;
+  height: 65%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -833,7 +836,7 @@ kbd {
 .shop-card-body .menu-preview {
   flex: 1;
   width: 100%;
-  min-height: 0;
+  min-height: 120px;
 }
 
 .shop-card-icon {
@@ -882,7 +885,7 @@ kbd {
 .shop-card-up {
   position: absolute;
   left: 9%;
-  top: 90%;
+  top: 92%;
   width: 18%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
@@ -898,7 +901,7 @@ kbd {
   display: flex;
   gap: 2px;
   justify-content: flex-end;
-  width: min(68vw, 300px, calc(42vh * 0.8205));
+  width: var(--card-w);
   margin-top: 8px;
 }
 
@@ -991,5 +994,5 @@ kbd {
 
 /* Arrow-key focus scrolls a tile into view below the pinned card, not under it. */
 .shop-tile {
-  scroll-margin-top: calc(min(68vw, 300px, calc(42vh * 0.8205)) * 1.22 + 60px);
+  scroll-margin-top: calc(var(--card-h) + 60px);
 }
