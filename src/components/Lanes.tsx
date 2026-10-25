@@ -274,7 +274,7 @@ function PickupView({ lane }: { lane: Lane }) {
   if (!pickup) return null;
   return (
     <group ref={ref} position={[pickup.x, 0.45, 0]}>
-      {pickup.kind !== "life" && ART_POWERUPS[pickup.kind] ? (
+      {ART_POWERUPS[pickup.kind] ? (
         <PickupArt kind={pickup.kind} />
       ) : (
         <Baked>
