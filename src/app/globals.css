@@ -649,6 +649,10 @@ kbd {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .shop-card-shine,
+  .shop-card-up {
+    animation: none;
+  }
   .curtain,
   .curtain-returning {
     transition: none;
@@ -658,6 +662,7 @@ kbd {
 
 /* ---- Store: purple card screen ---------------------------------------- */
 
+/* The whole screen scrolls; only the card (and its pips) stays pinned at the top. */
 .shop {
   position: absolute;
   inset: 0;
@@ -666,16 +671,17 @@ kbd {
   flex-direction: column;
   align-items: center;
   color: var(--ui-text);
-  padding-block: calc(14px + env(safe-area-inset-top, 0px)) 0;
+  padding-block: calc(14px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-bottom, 0px));
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  touch-action: auto;
-  overflow: hidden;
+  touch-action: pan-y;
+  overflow-x: hidden;
+  overflow-y: auto;
   isolation: isolate;
 }
 
 .shop-backdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: -1;
   width: 100%;
@@ -693,6 +699,7 @@ kbd {
 .shop-back {
   display: grid;
   place-items: center;
+  flex: none;
   width: 36px;
   height: 36px;
   border: none;
@@ -709,10 +716,10 @@ kbd {
 
 .shop-tabs button {
   padding: 0;
-  white-space: nowrap;
   border: none;
   background: none;
   font-size: 20px;
+  white-space: nowrap;
   color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
 }
@@ -743,13 +750,27 @@ kbd {
   color: var(--ui-gold);
 }
 
-/* The card keeps the SVG's 260x320 shape; everything on it is placed in percentages of that box. */
+.shop-pin {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: none;
+  padding-top: 14px;
+  pointer-events: none;
+}
+
+.shop-pin > * {
+  pointer-events: auto;
+}
+
+/* The card keeps the SVG's 256x312 shape; everything on it is placed in percentages of that box. */
 .shop-card {
   position: relative;
-  flex: none;
-  width: min(68vw, 300px, calc(40vh * 0.8125));
-  aspect-ratio: 260 / 320;
-  margin-top: 14px;
+  width: min(68vw, 300px, calc(42vh * 0.8205));
+  aspect-ratio: 256 / 312;
 }
 
 .shop-card-frame {
@@ -757,15 +778,30 @@ kbd {
   inset: 0;
   width: 100%;
   height: 100%;
+  overflow: visible;
   filter: drop-shadow(0 6px 0 rgba(30, 20, 80, 0.25));
+}
+
+/* The yellow shine sweeps up the paper from below the card to above it, once every 5s. */
+.shop-card-shine {
+  animation: shine 5s linear infinite;
+}
+
+@keyframes shine {
+  from {
+    transform: translateY(300px);
+  }
+  to {
+    transform: translateY(-200px);
+  }
 }
 
 .shop-card-title {
   position: absolute;
-  left: 14.6%;
-  right: 10%;
-  top: 9.4%;
-  height: 21%;
+  left: 15%;
+  right: 8.5%;
+  top: 7.5%;
+  height: 23%;
   display: grid;
   place-items: center;
   margin: 0;
@@ -774,23 +810,22 @@ kbd {
   line-height: 0.9;
   text-align: center;
   color: #fff;
-  -webkit-text-stroke: 5px #15142a;
+  -webkit-text-stroke: 5px #000;
   paint-order: stroke fill;
-  text-shadow: 0 3px 0 #15142a;
 }
 
 .shop-card-body {
   position: absolute;
-  left: 11.5%;
-  right: 9%;
-  top: 34%;
-  height: 46%;
+  left: 12%;
+  right: 9.5%;
+  top: 35%;
+  height: 55%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: 0 8px;
+  padding: 0 8px 6px;
   text-align: center;
   overflow: hidden;
 }
@@ -825,12 +860,30 @@ kbd {
   overflow: hidden;
 }
 
-/* The red action button sits on the frame's bottom-left corner. */
-.shop-card-act {
+.shop-card-buy {
+  flex: none;
+  margin-top: 4px;
+  padding: 0 14px;
+  border: none;
+  background: #2dded3;
+  color: #15142a;
+  font-size: 22px;
+  transform: skewX(-10deg);
+  cursor: pointer;
+}
+
+.shop-card-buy:disabled {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.75);
+  cursor: default;
+}
+
+/* Red upgrade button on the frame's bottom-left corner; it only appears when an upgrade is affordable. */
+.shop-card-up {
   position: absolute;
-  left: 14.2%;
-  top: 91.25%;
-  width: 17%;
+  left: 9%;
+  top: 90%;
+  width: 18%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border: 3px solid #fff;
@@ -838,44 +891,14 @@ kbd {
   background: radial-gradient(circle, #f6533f 55%, #e23a2a 56%, #e23a2a 64%, #f6533f 66%);
   box-shadow: 0 3px 0 rgba(30, 20, 80, 0.35);
   cursor: pointer;
-}
-
-.shop-card-act:disabled {
-  filter: brightness(0.75);
-  cursor: default;
-}
-
-.shop-card-act-label {
-  position: absolute;
-  left: 25%;
-  top: 84%;
-  font-size: 22px;
-  pointer-events: none;
-}
-
-.shop-card-up {
-  position: absolute;
-  left: 4%;
-  top: calc(100% + 8px);
-  padding: 0 12px;
-  border: none;
-  background: #1f1b45;
-  font-size: 18px;
-  transform: skewX(-12deg);
-  cursor: pointer;
-}
-
-.shop-card-up:disabled {
-  opacity: 0.5;
-  cursor: default;
+  animation: pulse 1.2s ease-in-out infinite;
 }
 
 .shop-pips {
   display: flex;
   gap: 2px;
-  align-self: center;
   justify-content: flex-end;
-  width: min(68vw, 300px, calc(40vh * 0.8125));
+  width: min(68vw, 300px, calc(42vh * 0.8205));
   margin-top: 8px;
 }
 
@@ -895,16 +918,16 @@ kbd {
 }
 
 .shop-grid {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px 8px;
+  gap: 8px;
+  flex: none;
   width: 100%;
   max-width: 320px;
   margin-top: 28px;
-  padding: 4px 8px calc(24px + env(safe-area-inset-bottom, 0px));
-  overflow-y: auto;
-  flex: 1;
-  align-content: start;
+  padding: 0 8px;
 }
 
 .shop-tile {
@@ -953,4 +976,9 @@ kbd {
   top: 4px;
   left: 8px;
   font-size: 15px;
+}
+
+/* Arrow-key focus scrolls a tile into view below the pinned card, not under it. */
+.shop-tile {
+  scroll-margin-top: calc(min(68vw, 300px, calc(42vh * 0.8205)) * 1.22 + 60px);
 }

@@ -180,42 +180,38 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
         </div>
       </header>
 
-      <section className="shop-card" aria-live="polite">
-        <CardFrame />
-        <h2 className="shop-card-title">{cell.name.toUpperCase()}</h2>
-        <div className="shop-card-body">
-          {isChar ? (
-            <Preview id={cell.id as CharacterId} />
-          ) : (
-            <span className="shop-card-icon">
-              <Icon id={cell.id} size={64} />
-            </span>
+      {/* The selected item's card stays pinned while the grid scrolls up under it. */}
+      <div className="shop-pin">
+        <section className="shop-card" aria-live="polite">
+          <CardFrame />
+          <h2 className="shop-card-title">{cell.name.toUpperCase()}</h2>
+          <div className="shop-card-body">
+            {isChar ? (
+              <Preview id={cell.id as CharacterId} />
+            ) : (
+              <span className="shop-card-icon">
+                <Icon id={cell.id} size={64} />
+              </span>
+            )}
+            <p className="shop-card-kind">{cell.kind}</p>
+            <p className="shop-card-desc">
+              {cell.description}
+              {up?.next && ` Next level: ${up.next}.`}
+            </p>
+            <button className="shop-card-buy" disabled={!act.run} onClick={() => act.run?.()}>
+              {act.label}
+            </button>
+          </div>
+          {up?.run && (
+            <button className="shop-card-up" onClick={() => up.run?.()} aria-label={up.label} title={up.label} />
           )}
-          <p className="shop-card-kind">{cell.kind}</p>
-          <p className="shop-card-desc">
-            {cell.description}
-            {up?.next && ` Next level: ${up.next}.`}
-          </p>
-        </div>
-        <button
-          className="shop-card-act"
-          disabled={!act.run}
-          onClick={() => act.run?.()}
-          aria-label={act.label}
-          title={act.label}
-        />
-        <span className="shop-card-act-label">{act.label}</span>
-        {up && (
-          <button className="shop-card-up" disabled={!up.run} onClick={() => up.run?.()}>
-            {up.label}
-          </button>
-        )}
-      </section>
+        </section>
 
-      <div className="shop-pips" aria-hidden="true">
-        {Array.from({ length: PIPS }, (_, i) => (
-          <span key={i} className={i < filled ? "full" : i === filled ? "next" : ""} />
-        ))}
+        <div className="shop-pips" aria-hidden="true">
+          {Array.from({ length: PIPS }, (_, i) => (
+            <span key={i} className={i < filled ? "full" : i === filled ? "next" : ""} />
+          ))}
+        </div>
       </div>
 
       <div className="shop-grid" role="listbox" aria-label={isChar ? "Characters" : "Power-ups"}>
@@ -265,15 +261,26 @@ function ShopBackdrop() {
   );
 }
 
-/** The card: cream torn-paper frame, tape strips, teal title banner and dark notched panel. */
+/** The card from the mockup: cream torn-paper frame, a sweeping shine, dark notched panel and teal title banner. */
 function CardFrame() {
+  const paper =
+    "M255.024 0L20.3935 7.56873V64.5445L8.61995 55.7143L18.9218 265.957L0 289.714L22.7062 301.488L15.558 312L245.353 302.119L255.024 25.0189L245.353 14.717L255.024 0Z";
   return (
-    <svg className="shop-card-frame" viewBox="0 0 260 320" aria-hidden="true">
-      <path d="M25 12 252 4 259 18 251 306 22 316 4 290 20 282 17 60Z" fill="#f6f0d8" />
-      <path d="M8 58 30 62 29 128 12 124Z" fill="#f2df8c" />
-      <path d="M249 138 262 140 258 196 247 192Z" fill="#f2df8c" />
-      <path d="M30 26 241 22 237 266 199 298 30 298Z" fill="#22203a" />
-      <path d="M38 30 234 27 232 96 186 98 172 108 38 102Z" fill="#2edfcf" />
+    <svg className="shop-card-frame" viewBox="0 0 256 312" fill="none" aria-hidden="true">
+      <path d={paper} fill="#F3EED1" />
+      <mask id="shop-card-paper" style={{ maskType: "alpha" }} maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="312">
+        <path d={paper} fill="#F3EED1" />
+      </mask>
+      <g mask="url(#shop-card-paper)">
+        <g className="shop-card-shine">
+          <rect x="-24.9609" y="52.293" width="350.672" height="43.31" transform="rotate(18.5736 -24.9609 52.293)" fill="#F2E38C" />
+        </g>
+      </g>
+      <path d="M237.575 20.6055H35.7425L24.5996 290.557L192.163 294.131L231.689 260.913L237.575 20.6055Z" fill="#212139" />
+      <path
+        d="M170.717 106.384C168.531 109.075 80.1028 99.9363 36.1621 95.0306L38.8953 23.3379H234.631L232.739 95.0306H181.44C178.777 97.6937 172.904 103.693 170.717 106.384Z"
+        fill="#2DDED3"
+      />
     </svg>
   );
 }
