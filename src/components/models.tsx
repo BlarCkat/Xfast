@@ -227,22 +227,67 @@ export function Baked({
   );
 }
 
-/** The chicken faces -z when rotation is 0. */
+/**
+ * The chicken faces -z when rotation is 0. Dressed like the key art: a cream cap with a blue brim,
+ * a boombox on its shoulder, sleepy eyes and chunky sneakers.
+ */
 export function Chicken() {
+  const white = "#ffffff";
+  const shade = "#e4ecf2";
+  const red = "#d8352a";
   return (
     <group>
-      <Box size={[0.56, 0.5, 0.56]} position={[0, 0.4, 0.04]} color="#ffffff" />
-      <Box size={[0.42, 0.34, 0.4]} position={[0, 0.78, -0.08]} color="#ffffff" />
-      <Box size={[0.12, 0.14, 0.24]} position={[0, 1.02, -0.06]} color="#e94f37" />
-      <Box size={[0.14, 0.1, 0.16]} position={[0, 0.74, -0.34]} color="#f49d37" />
-      <Box size={[0.1, 0.12, 0.06]} position={[0, 0.6, -0.31]} color="#e94f37" />
-      <Box size={[0.06, 0.08, 0.06]} position={[0.16, 0.84, -0.28]} color="#222222" />
-      <Box size={[0.06, 0.08, 0.06]} position={[-0.16, 0.84, -0.28]} color="#222222" />
-      <Box size={[0.08, 0.2, 0.3]} position={[0.31, 0.42, 0.06]} color="#f2f2f2" />
-      <Box size={[0.08, 0.2, 0.3]} position={[-0.31, 0.42, 0.06]} color="#f2f2f2" />
-      <Box size={[0.3, 0.16, 0.12]} position={[0, 0.5, 0.35]} color="#f2f2f2" />
-      <Box size={[0.08, 0.16, 0.08]} position={[0.12, 0.08, 0]} color="#f49d37" />
-      <Box size={[0.08, 0.16, 0.08]} position={[-0.12, 0.08, 0]} color="#f49d37" />
+      {/* Sneakers: cream soles, purple-blue uppers with a red flash, yellow laces */}
+      {[0.17, -0.17].map((x) => (
+        <group key={x} position={[x, 0, 0]}>
+          <Box size={[0.23, 0.07, 0.4]} position={[0, 0.035, -0.08]} color="#f1ead6" />
+          <Box size={[0.21, 0.12, 0.32]} position={[0, 0.13, -0.06]} color="#5b4fd0" />
+          <Box size={[0.22, 0.07, 0.07]} position={[0, 0.1, -0.25]} color="#f1ead6" />
+          <Box size={[0.22, 0.07, 0.12]} position={[0, 0.12, 0.05]} color="#d9364a" />
+          <Box size={[0.13, 0.03, 0.16]} position={[0, 0.2, -0.12]} color="#f5c542" cast={false} />
+          <Box size={[0.1, 0.08, 0.1]} position={[x > 0 ? -0.04 : 0.04, 0.22, 0.01]} color="#f08f2e" />
+        </group>
+      ))}
+      {/* Round body with a pale belly and folded wings */}
+      <Box size={[0.56, 0.5, 0.56]} position={[0, 0.46, 0.04]} color={white} />
+      <Box size={[0.44, 0.3, 0.06]} position={[0, 0.42, -0.25]} color={shade} cast={false} />
+      <Box size={[0.08, 0.22, 0.32]} position={[0.31, 0.46, 0.08]} color={shade} />
+      <Box size={[0.08, 0.22, 0.32]} position={[-0.31, 0.46, 0.08]} color={shade} />
+      {/* Tail plume sweeping up and back */}
+      <Box size={[0.3, 0.18, 0.12]} position={[0, 0.58, 0.36]} color={white} />
+      <Box size={[0.24, 0.2, 0.12]} position={[0, 0.72, 0.44]} color={white} />
+      <Box size={[0.16, 0.18, 0.1]} position={[0, 0.88, 0.48]} color={shade} />
+      {/* Head, beak, wattle */}
+      <Box size={[0.42, 0.34, 0.4]} position={[0, 0.84, -0.08]} color={white} />
+      <Box size={[0.16, 0.1, 0.16]} position={[0, 0.8, -0.35]} color="#f2a01f" />
+      <Box size={[0.1, 0.13, 0.06]} position={[0, 0.66, -0.31]} color={red} />
+      {/* Sleepy eyes: red rims, heavy lids, pupils peeking from below */}
+      {[0.12, -0.12].map((x) => (
+        <group key={x} position={[x, 0, 0]}>
+          <Box size={[0.13, 0.12, 0.04]} position={[0, 0.88, -0.285]} color="#c8322a" cast={false} />
+          <Box size={[0.09, 0.08, 0.03]} position={[0, 0.875, -0.3]} color="#ece6d4" cast={false} />
+          <Box size={[0.05, 0.04, 0.03]} position={[x > 0 ? -0.01 : 0.01, 0.86, -0.31]} color="#141414" cast={false} />
+          <Box size={[0.1, 0.03, 0.03]} position={[0, 0.915, -0.31]} color="#141414" cast={false} />
+        </group>
+      ))}
+      {/* Cap: cream crown, purple back panel, red lettering stripe, blue brim; the comb pokes out on top */}
+      <Box size={[0.46, 0.14, 0.42]} position={[0, 1.07, -0.06]} color="#ebe3c8" />
+      <Box size={[0.47, 0.14, 0.14]} position={[0, 1.07, 0.11]} color="#6a4bb0" />
+      <Box size={[0.26, 0.05, 0.03]} position={[0, 1.08, -0.275]} color={red} cast={false} />
+      <Box size={[0.44, 0.04, 0.2]} position={[0, 0.99, -0.34]} color="#2f5bd1" />
+      <Box size={[0.12, 0.12, 0.2]} position={[0, 1.2, -0.04]} color={red} />
+      <Box size={[0.1, 0.08, 0.1]} position={[0, 1.28, 0.06]} color={red} />
+      {/* Boombox resting on the shoulder, with speakers, a sticker, handle and antenna */}
+      <group position={[-0.37, 0.86, 0]}>
+        <Box size={[0.14, 0.24, 0.4]} color="#3d4d52" />
+        <Box size={[0.03, 0.12, 0.12]} position={[-0.075, 0, -0.1]} color="#9aa7aa" cast={false} />
+        <Box size={[0.03, 0.12, 0.12]} position={[-0.075, 0, 0.1]} color="#9aa7aa" cast={false} />
+        <Box size={[0.03, 0.05, 0.05]} position={[-0.075, -0.08, 0]} color="#f2c230" cast={false} />
+        <Box size={[0.04, 0.04, 0.32]} position={[0, 0.17, 0]} color="#2b3639" />
+        <Box size={[0.04, 0.06, 0.04]} position={[0, 0.14, -0.14]} color="#2b3639" />
+        <Box size={[0.04, 0.06, 0.04]} position={[0, 0.14, 0.14]} color="#2b3639" />
+        <Box size={[0.02, 0.36, 0.02]} position={[0, 0.3, 0.16]} color="#b8c0c2" cast={false} />
+      </group>
     </group>
   );
 }
