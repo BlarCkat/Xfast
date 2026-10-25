@@ -220,7 +220,11 @@ let lastCar = 0;
 
 let lastCoin = 0;
 
-/** Picking up a coin: a bright two-note chime, a little higher for double coins. */
+/**
+ * Picking up a coin: two quick bell notes a major third apart (about F#6 then A#6), each with a
+ * soft octave below and above so it rings like a little bell. Modelled on the reference clip the
+ * player sent; double coins ring a little higher.
+ */
 export function coin(double = false) {
   const ac = audio();
   if (!ac) return;
@@ -228,9 +232,13 @@ export function coin(double = false) {
   const t = Math.max(ac.currentTime, lastCoin + 0.06);
   lastCoin = t;
   const k = double ? 1.12 : 1;
-  tone(ac, t, { type: "triangle", from: 988 * k, peak: 0.24, length: 0.09, attack: 0.002 });
-  tone(ac, t + 0.07, { type: "triangle", from: 1319 * k, peak: 0.24, length: 0.3, attack: 0.002 });
-  tone(ac, t + 0.07, { type: "sine", from: 2638 * k, peak: 0.06, length: 0.18, attack: 0.002 });
+  const bell = (at: number, f: number, ring: number) => {
+    tone(ac, at, { type: "sine", from: f, peak: 0.22, length: ring, attack: 0.003 });
+    tone(ac, at, { type: "sine", from: f / 2, peak: 0.04, length: ring * 0.6, attack: 0.003 });
+    tone(ac, at, { type: "sine", from: f * 2, peak: 0.025, length: ring * 0.4, attack: 0.002 });
+  };
+  bell(t, 1480 * k, 0.6);
+  bell(t + 0.13, 1870 * k, 1.1);
 }
 
 /**
