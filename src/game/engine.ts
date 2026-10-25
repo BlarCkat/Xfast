@@ -100,7 +100,8 @@ export interface UiSnapshot {
   coins: number;
   /** Whole seconds left on each power-up (0 = inactive); only changes once a second. */
   effects: Effects;
-  toast: null | { text: string; id: number };
+  /** `icon` is an image shown before the text, such as an achievement star. */
+  toast: null | { text: string; id: number; icon?: string };
   /** Cat only: progress (0-1) towards regrowing the next life, or null for other characters. */
   refill: number | null;
   /** Duck only: power-ups picked up this run and saved for later. */
@@ -498,7 +499,8 @@ export class Engine {
   private award(goals: Goal[]) {
     for (const g of goals) {
       sound.coin(true);
-      this.setUi({ toast: { text: `${g.kind === "daily" ? "★" : "BADGE:"} ${g.title.toUpperCase()}`, id: ++this.toastId } });
+      const icon = g.kind === "daily" ? "/achievements/star.png" : `/achievements/medal-${g.id}.png`;
+      this.setUi({ toast: { text: g.title.toUpperCase(), icon, id: ++this.toastId } });
     }
   }
 

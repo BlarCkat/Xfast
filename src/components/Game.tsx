@@ -303,6 +303,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
 
       {ui.toast && (
         <div key={ui.toast.id} className="toast">
+          {ui.toast.icon && <img className="toast-icon" src={ui.toast.icon} alt="" />}
           {ui.toast.text}
         </div>
       )}
