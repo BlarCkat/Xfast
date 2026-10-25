@@ -36,7 +36,7 @@ import {
   type Effects,
   type PowerUp,
 } from "./powerups";
-import { pop } from "./sound";
+import * as sound from "./sound";
 import { type CharacterId, wallet } from "./wallet";
 
 export type { Effects, PowerUp };
@@ -254,7 +254,7 @@ export class Engine {
 
     p.hop = { fromX: p.x, toX, fromZ: p.z, toZ: toRow, t: 0, drift, span };
     p.row = toRow;
-    pop(span > 1);
+    sound.pop(span > 1);
     p.ride = null;
 
     this.countStep();
@@ -321,8 +321,10 @@ export class Engine {
       p.x = Math.max(-COLS, Math.min(COLS, p.x));
       return false;
     }
-    if (this.character === "duck") this.dive();
-    else this.die("water");
+    if (this.character === "duck") {
+      sound.splash();
+      this.dive();
+    } else this.die("water");
     return true;
   }
 
@@ -561,6 +563,12 @@ export class Engine {
     if (p.death) return;
     const revive = this.ui.lives > 0;
     p.death = { kind, t: 0, pushX, revive };
+    if (kind === "car") sound.crash();
+    else if (kind === "train") sound.crash(true);
+    else if (kind === "water") {
+      if (this.lanes.get(p.row)?.biome === "volcano") sound.sizzle();
+      else sound.splash();
+    }
     p.queued = null;
     p.ride = null;
     if (kind !== "eagle") p.hop = null;
@@ -636,6 +644,7 @@ export class Engine {
     // Freeze stops traffic and trains outright.
     const trafficDt = this.effects.freeze > 0 ? 0 : worldDt;
     for (const lane of this.lanes.values()) this.updateLane(lane, trafficDt);
+    if (this.audible) this.hearRivers();
 
     for (const k of Object.keys(this.effects) as PowerUp[]) this.effects[k] = Math.max(0, this.effects[k] - dt);
     p.shield = Math.max(0, p.shield - dt);
@@ -729,7 +738,13 @@ export class Engine {
           m.wrecked += dt;
           continue;
         }
+        const before = m.x - this.player.x;
         m.x += lane.speed * dt * (lane.type === "road" ? this.speedScale : 1);
+        // A car going past the player's column, close by.
+        const after = m.x - this.player.x;
+        if (lane.type === "road" && this.audible && Math.sign(before) !== Math.sign(after) && Math.abs(after) < 2) {
+          sound.carPass(lane.row - this.player.row, m.length);
+        }
         // A fixed period keeps the spacing between movers constant forever.
         if (m.x > WRAP) m.x -= WRAP * 2;
         if (m.x < -WRAP) m.x += WRAP * 2;
@@ -738,8 +753,13 @@ export class Engine {
       const train = lane.train;
       const len = trainLength(lane);
       const dir = Math.sign(lane.speed);
+      const rows = lane.row - this.player.row;
       if (train.active) {
+        const before = train.x - this.player.x;
         train.x += dir * TRAIN_SPEED * this.speedScale * dt;
+        // The engine reaching the player's column (the train's x is its middle, so lead by half its length).
+        const lead = dir * len / 2;
+        if (this.audible && Math.sign(before + lead) !== Math.sign(train.x - this.player.x + lead)) sound.trainPass(rows);
         if (Math.abs(train.x) > WRAP + len) {
           train.active = false;
           train.warning = false;
@@ -747,13 +767,35 @@ export class Engine {
         }
       } else {
         train.timer -= dt;
+        const warned = train.warning;
         train.warning = train.timer < TRAIN_WARNING;
+        if (train.warning && !warned && this.audible) sound.trainBell(rows);
         if (train.timer <= 0) {
           train.active = true;
+          if (this.audible) sound.trainHorn(rows);
           train.x = -dir * (WRAP + len / 2);
         }
       }
     }
+  }
+
+  /** Sounds play only during a run, not behind the menu. */
+  private get audible() {
+    return this.ui.status === "playing";
+  }
+
+  /** The murmur of the nearest river (or lava) within a few rows. */
+  private hearRivers() {
+    const p = this.player;
+    let level = 0;
+    let lava = false;
+    for (let r = p.row - 3; r <= p.row + 3; r++) {
+      const lane = this.lanes.get(r);
+      if (lane?.type !== "river") continue;
+      const l = 1 - Math.abs(r - p.row) / 4;
+      if (l > level) [level, lava] = [l, lane.biome === "volcano"];
+    }
+    sound.riverAmbience(level, lava);
   }
 
   private checkCollisions() {
