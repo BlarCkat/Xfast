@@ -76,7 +76,7 @@ Performance: every car, train, log, coin and lane of trees is merged into one me
 
 - `src/game/` holds the rules with no rendering: `lanes.ts` generates lanes, `biomes.ts` defines the themes, `engine.ts` runs hopping, collisions, the camera focus and scoring.
 - `src/components/` renders it: `Scene.tsx` (camera, lights, player, eagle), `Lanes.tsx` (each lane type), `models.tsx` and `biomeModels.tsx` (voxel models), `Game.tsx` (HUD and input).
-- `src/lib/cloud.ts` handles accounts and cloud saves in the browser; `src/lib/server/` and `src/app/api/` hold the Firebase Admin and Lemon Squeezy code that runs on the server.
+- `src/lib/cloud.ts` handles accounts and cloud saves in the browser; `src/lib/server/` and `src/app/api/` hold the Firebase Admin code that runs on the server (profiles, runs and leaderboards).
 
 ## Characters
 
@@ -105,45 +105,27 @@ Every power-up can be upgraded in the store (select it on the Power-ups tab and 
 - Coins sit on grass and road lanes. They are saved in your browser as soon as you pick them up, even if you die.
 - Open the **Store** from the start or game over screen to unlock characters (Duck 50, Frog 100, Penguin 150, Cat 200, Robot 250, Sparrow 300, Snail 350, Mario 400, Luigi 450, Bowser 500) and buy power-ups (Foresight 30, Slowmo 30, Rock 40, Extra life 60).
 - Bought power-ups appear as buttons in the bottom right during a run, or use keys 1 to 0 for the first ten power-ups in store order. Bought extra lives are added when your next run starts.
-- In the store's **Coins** tab, signed-in players can buy coin packs (300, 1,000 or 3,000 coins) through Lemon Squeezy.
-
-## Accounts and cloud saves
-
-Playing without an account works exactly as before: everything is kept in the browser. **Sign in to save** (in the store, next to the character you're playing as) signs in with Google and saves coins, characters, power-ups, upgrade levels and your top score to Firebase, so they follow you to any device. The first time you sign in, progress you made as a guest is folded into the account (the higher coin count, every character either side owns, and so on). Signing out leaves the browser as a fresh guest. The Realistic/Classic graphics choice stays per device.
 
 ## Leaderboards and profiles
 
-- After signing in for the first time, players pick a username (3 to 16 letters, numbers or underscores, unique ignoring case) and can add a profile picture. Uploaded pictures are cropped to a 96 px square JPEG in the browser and stored with the profile, so there's no file storage to set up. Edit both from the leaderboard or by tapping your name in the store.
-- Every finished run by a signed-in player adds its score to their points. **Ranks** (the trophy on the start screen, or **L**) shows two boards: **This week**, which starts fresh every Monday at 00:00 UTC, and **All time**. Each lists the top 50 by points with their best run, and the bar at the bottom shows your own rank even if you're further down.
-- Runs are sent to `POST /api/runs`, which adds them to `boards/global/entries/{uid}` and `boards/{week}/entries/{uid}` (e.g. `boards/2026-W43`), so each week's board is kept. Scores come from the browser, so the server only rejects the clearly impossible: over 20,000 rows, or more rows than time since the player's last run allows. Guests' runs don't count.
+- **Ranks** (the trophy on the start screen or game over screen, or **L**) shows two boards: **This week**, which starts fresh every Monday at 00:00 UTC, and **All time**. Both rank players by points: every finished run adds its score. Each board lists the top 50 with their best run, and the bar at the bottom shows your own rank even if you're further down.
+- No sign-in is needed. Each browser quietly gets an anonymous Firebase identity, and the first time you open Ranks you're asked to pick a username (3 to 16 letters, numbers or underscores, unique ignoring case) and can add a profile picture. Uploaded pictures are cropped to a 96 px square JPEG in the browser and stored with the profile, so there's no file storage to set up. Runs finished before you pick a name count under `player_xxxxxx`.
+- Runs are sent to `POST /api/runs`, which adds them to `boards/global/entries/{uid}` and `boards/{week}/entries/{uid}` (e.g. `boards/2026-W43`), so each week's board is kept. Scores come from the browser, so the server only rejects the clearly impossible: over 20,000 rows, or more rows than time since the player's last run allows.
+- The anonymous identity lives in the browser, so clearing site data or switching devices starts a new player. Google sign-in (below) fixes that.
 
-## Buying coins
+## Accounts and cloud saves (switched off)
 
-1. A signed-in player picks a pack. `POST /api/checkout` checks their Firebase ID token and creates a Lemon Squeezy checkout for that pack's variant, with their Firebase uid in the checkout's custom data.
-2. They pay on Lemon Squeezy and come back to `/?purchase=…`.
-3. Lemon Squeezy sends `order_created` to `POST /api/lemonsqueezy/webhook`. The route checks the `X-Signature` HMAC, looks up how many coins the paid variant is worth (the buyer can't change this), and in one Firestore transaction records `orders/{orderId}` and adds the coins to `purchases/{uid}.coins`. A retried webhook for the same order is ignored.
-4. The game listens to `purchases/{uid}` and adds any coins it hasn't credited yet to the wallet.
+Google sign-in is built but **switched off** until `NEXT_PUBLIC_ACCOUNTS=on`. When on, **Sign in to save** (in the store, next to the character you're playing as) signs in with Google, keeping your username and leaderboard points, and saves coins, characters, power-ups, upgrade levels and your top score to Firebase so they follow you to any device. The first time you sign in, progress you made as a guest is folded into the account (the higher coin count, every character either side owns, and so on). Signing out leaves the browser as a fresh guest. The Realistic/Classic graphics choice stays per device.
 
-Refunds (`order_refunded`) are marked on the order; coins already spent are not taken back.
+## Setting up Firebase
 
-## Setting up Firebase and Lemon Squeezy
-
-Accounts are **switched off** until `NEXT_PUBLIC_ACCOUNTS=on` is set (and the Firebase keys below are in place). While off, the game runs guest-only: there is no sign-in, Ranks button or Coins tab. All keys are listed in `.env.example`; put them in `.env.local` for local dev and in Vercel's project environment variables for production.
-
-**Firebase**
+The leaderboards need the Firebase keys below; without them the game runs exactly as before and there is no Ranks button. Set `NEXT_PUBLIC_LEADERBOARD=off` to hide them even with Firebase set up. All keys are listed in `.env.example`; put them in `.env.local` for local dev and in Vercel's project environment variables for production.
 
 1. Create a project at https://console.firebase.google.com.
-2. Build → Authentication → Get started, and enable the **Google** provider. Under Settings → Authorized domains, add your Vercel domain.
+2. Build → Authentication → Get started, and enable the **Anonymous** provider (and **Google**, for when accounts are switched on). Under Settings → Authorized domains, add your Vercel domain.
 3. Build → Firestore Database → Create database (production mode). Paste `firestore.rules` into the Rules tab and publish (or run `npx firebase deploy --only firestore:rules`).
 4. Project settings → General → Your apps → add a Web app. Its config gives `NEXT_PUBLIC_FIREBASE_API_KEY`, `_AUTH_DOMAIN`, `_PROJECT_ID` and `_APP_ID`.
 5. Project settings → Service accounts → Generate new private key. From the JSON, set `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL` and `FIREBASE_PRIVATE_KEY` (the `private_key` value, with its `\n`s left as they are).
-
-**Lemon Squeezy**
-
-1. Create a store at https://app.lemonsqueezy.com (start in test mode).
-2. Add a product for the coin packs with three variants priced to match `src/game/coinPacks.ts` ($0.99, $2.99, $6.99), and put each variant's ID in `LEMONSQUEEZY_VARIANT_POCKET`, `_BAG` and `_CHEST`.
-3. Settings → API → create a key for `LEMONSQUEEZY_API_KEY`. Settings → Stores shows the store ID for `LEMONSQUEEZY_STORE_ID`.
-4. Settings → Webhooks → add `https://<your-domain>/api/lemonsqueezy/webhook` with the `order_created` and `order_refunded` events. The signing secret you choose there is `LEMONSQUEEZY_WEBHOOK_SECRET`.
 
 **Local development with emulators**
 

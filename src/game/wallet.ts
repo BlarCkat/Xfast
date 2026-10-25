@@ -64,8 +64,6 @@ export interface WalletState {
   inventory: Record<StoreItemId, number>;
   /** Upgrade level of each power-up, 1 to MAX_LEVEL. */
   levels: Record<PowerUp, number>;
-  /** Total coins bought with real money that have already been added to `coins`. */
-  bought: number;
 }
 
 const KEY = "xfast-wallet";
@@ -76,7 +74,6 @@ export const fresh = (): WalletState => ({
   selected: "chicken",
   inventory: { life: 0, ...noEffects() },
   levels: Object.fromEntries(POWERUPS.map((p) => [p.key, 1])) as Record<PowerUp, number>,
-  bought: 0,
 });
 
 /** Fill in anything missing from a saved wallet, whether it came from this browser or the cloud. */
@@ -89,7 +86,6 @@ export function normalize(saved: Partial<WalletState> | null | undefined): Walle
     selected: saved.selected && saved.owned?.includes(saved.selected) ? saved.selected : "chicken",
     inventory: { ...base.inventory, ...saved.inventory },
     levels: { ...base.levels, ...saved.levels },
-    bought: Math.max(0, Number(saved.bought) || 0),
   };
 }
 
@@ -103,7 +99,6 @@ export function merge(a: WalletState, b: WalletState): WalletState {
     selected: b.selected,
     inventory: max(a.inventory, b.inventory),
     levels: max(a.levels, b.levels),
-    bought: Math.max(a.bought, b.bought),
   };
 }
 
@@ -145,18 +140,6 @@ class Wallet {
   /** Swap in a whole wallet, e.g. one loaded from the cloud. */
   replace(next: WalletState) {
     this.set(normalize(next));
-  }
-
-  /**
-   * Add coins bought with real money. `total` is every coin the server has
-   * recorded for this account, so crediting is idempotent. Returns how many were new.
-   */
-  credit(total: number) {
-    const s = this.get();
-    const n = total - s.bought;
-    if (n <= 0) return 0;
-    this.set({ ...s, coins: s.coins + n, bought: total });
-    return n;
   }
 
   addCoins(n: number) {

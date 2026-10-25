@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Board, LeaderboardResponse } from "@/game/leaderboard";
 import { cloud } from "@/lib/cloud";
 import { Avatar } from "./Profile";
@@ -23,9 +23,9 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
   const [data, setData] = useState<LeaderboardResponse | null>(null);
   const [error, setError] = useState(false);
 
-  // Reload when the board changes, or the player signs in or renames themselves.
+  // Reload when the board changes, or the player's identity or name changes.
   useEffect(() => {
-    if (account.status === "off" || account.status === "loading") return;
+    if (account.status === "off" || !account.uid) return;
     let live = true;
     setData(null);
     setError(false);
@@ -36,7 +36,15 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
     return () => {
       live = false;
     };
-  }, [board, account.status, account.profile]);
+  }, [board, account.status, account.uid, account.profile]);
+
+  // The first time a nameless player opens the leaderboard, ask them for a username.
+  const asked = useRef(false);
+  useEffect(() => {
+    if (asked.current || !account.profile || account.profile.username) return;
+    asked.current = true;
+    cloud.editProfile();
+  }, [account.profile]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -99,14 +107,7 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="board-me">
-        {account.status === "guest" ? (
-          <>
-            <span className="board-me-text">Sign in to get on the leaderboard.</span>
-            <button className="primary" onClick={() => void cloud.signIn()}>
-              Sign in
-            </button>
-          </>
-        ) : account.status === "signed-in" ? (
+        {account.uid && (
           <>
             <Avatar photo={account.profile?.photo ?? ""} name={account.profile?.username || "?"} size={36} />
             <span className="board-name">
@@ -119,9 +120,11 @@ export default function Leaderboard({ onClose }: { onClose: () => void }) {
                   : ""}
               </small>
             </span>
-            <button onClick={() => cloud.editProfile()}>Edit profile</button>
+            <button className={account.profile?.username ? "" : "primary"} onClick={() => cloud.editProfile()}>
+              {account.profile?.username ? "Edit profile" : "Pick a username"}
+            </button>
           </>
-        ) : null}
+        )}
       </div>
 
       <footer className="menu-hints">

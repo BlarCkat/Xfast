@@ -7,7 +7,7 @@ import { CHICKEN_POWERUP_BONUS } from "@/game/config";
 import { POWERUPS, durationAt, hotkeyFor, type PowerUp } from "@/game/powerups";
 import { CHARACTERS, wallet } from "@/game/wallet";
 import { cloud } from "@/lib/cloud";
-import { accountsEnabled } from "@/lib/firebase";
+import { leaderboardEnabled } from "@/lib/firebase";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
 import Store, { useWallet } from "./Store";
@@ -102,7 +102,7 @@ export default function Game() {
         setStoreOpen(true);
         return;
       }
-      if (e.code === "KeyL" && accountsEnabled && engine.status !== "playing") {
+      if (e.code === "KeyL" && leaderboardEnabled && engine.status !== "playing") {
         setBoardOpen(true);
         return;
       }
@@ -259,7 +259,7 @@ export default function Game() {
             <span>Store</span>
             <kbd>S</kbd>
           </button>
-          {accountsEnabled && (
+          {leaderboardEnabled && (
             <button
               aria-label="Leaderboard"
               onPointerDown={stop}
@@ -323,7 +323,7 @@ export default function Game() {
             >
               <kbd>S</kbd> Store
             </button>
-            {accountsEnabled && (
+            {leaderboardEnabled && (
               <button
                 onPointerDown={stop}
                 onPointerUp={(e) => {

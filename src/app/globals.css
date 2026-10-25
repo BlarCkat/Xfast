@@ -1071,12 +1071,6 @@ kbd {
   background: rgba(16, 20, 24, 0.18);
 }
 
-.board-me-text {
-  flex: 1;
-  font-size: 14px;
-  font-weight: 700;
-}
-
 .board-me button {
   flex: none;
   border: 1px solid rgba(255, 255, 255, 0.35);

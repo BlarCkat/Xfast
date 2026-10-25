@@ -1,19 +1,29 @@
-import { GoogleAuthProvider, connectAuthEmulator, getAuth, onAuthStateChanged, signInWithPopup, signOut, type Auth, type User } from "firebase/auth";
-import { connectFirestoreEmulator, doc, getDoc, getFirestore, onSnapshot, serverTimestamp, setDoc, type Firestore } from "firebase/firestore";
+import {
+  GoogleAuthProvider,
+  connectAuthEmulator,
+  getAuth,
+  linkWithPopup,
+  onAuthStateChanged,
+  signInAnonymously,
+  signInWithCredential,
+  signInWithPopup,
+  signOut,
+  type Auth,
+  type User,
+} from "firebase/auth";
+import { connectFirestoreEmulator, doc, getDoc, getFirestore, serverTimestamp, setDoc, type Firestore } from "firebase/firestore";
 import { BEST_KEY, readBest } from "@/game/engine";
-import type { PackId } from "@/game/coinPacks";
 import { USERNAME_RULE, type Board, type LeaderboardResponse, type Profile } from "@/game/leaderboard";
 import { fresh, merge, normalize, wallet, type WalletState } from "@/game/wallet";
-import { accountsEnabled, firebaseApp, useEmulators } from "./firebase";
+import { accountsEnabled, firebaseApp, leaderboardEnabled, useEmulators } from "./firebase";
 
+/** "guest" players have no Google account, but still have an anonymous uid for the leaderboards once it loads. */
 export type CloudStatus = "off" | "loading" | "guest" | "signed-in";
 
 export interface CloudState {
   status: CloudStatus;
   uid: string | null;
   name: string | null;
-  /** A checkout is being created. */
-  busy: boolean;
   /** Username and picture, once loaded. An empty username means the player hasn't picked one. */
   profile: Profile | null;
   /** While the profile editor is open, what it starts from. */
@@ -59,20 +69,27 @@ function writeBest(best: number) {
 }
 
 /**
- * Accounts and cloud saves. Guests keep playing on local storage as before;
- * signing in with Google mirrors the wallet and top score to players/{uid} in
- * Firestore, folding any guest progress in the first time. Coins bought through
- * Lemon Squeezy are credited server-side to purchases/{uid} and claimed here.
+ * Identity, cloud saves and leaderboards. Guests keep playing on local storage
+ * as before, under an anonymous Firebase identity that their usernames and
+ * leaderboard points hang off. Signing in with Google upgrades that identity and
+ * mirrors the wallet and top score to players/{uid} in Firestore, folding any
+ * guest progress in the first time.
  */
 class Cloud {
-  private state: CloudState = { status: accountsEnabled ? "loading" : "off", uid: null, name: null, busy: false, notice: null, profile: null, editing: null };
+  private state: CloudState = {
+    status: leaderboardEnabled || accountsEnabled ? "loading" : "off",
+    uid: null,
+    name: null,
+    notice: null,
+    profile: null,
+    editing: null,
+  };
   private listeners = new Set<() => void>();
   private auth: Auth | null = null;
   private db: Firestore | null = null;
   private started = false;
   private loaded = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
-  private stopPurchases: (() => void) | null = null;
   private noticeId = 0;
 
   subscribe = (fn: () => void) => {
@@ -93,7 +110,7 @@ class Cloud {
 
   /** Called once on the client when the game mounts. */
   start() {
-    if (this.started || !accountsEnabled) return;
+    if (this.started || this.state.status === "off") return;
     this.started = true;
     this.auth = getAuth(firebaseApp());
     this.db = getFirestore(firebaseApp());
@@ -106,14 +123,6 @@ class Cloud {
     const flush = () => document.visibilityState === "hidden" && void this.save();
     document.addEventListener("visibilitychange", flush);
     window.addEventListener("pagehide", () => void this.save());
-
-    // Back from a Lemon Squeezy checkout. The coins arrive once its webhook has run.
-    const url = new URL(window.location.href);
-    if (url.searchParams.has("purchase")) {
-      this.notify("THANKS! YOUR COINS ARE ON THEIR WAY");
-      url.searchParams.delete("purchase");
-      window.history.replaceState(null, "", url);
-    }
   }
 
   /** Progress changed locally: remember when, and push it to the cloud shortly. */
@@ -125,11 +134,16 @@ class Cloud {
   }
 
   private async onUser(user: User | null) {
-    this.stopPurchases?.();
-    this.stopPurchases = null;
     this.loaded = false;
     if (!user) {
       this.setState({ status: "guest", uid: null, name: null, profile: null, editing: null });
+      // Every player gets an identity to put their leaderboard points against, no sign-in needed.
+      if (leaderboardEnabled) signInAnonymously(this.auth!).catch((err) => console.error("Anonymous sign-in failed", err));
+      return;
+    }
+    if (user.isAnonymous) {
+      this.setState({ status: "guest", uid: user.uid, name: null, editing: null });
+      void this.loadProfile(user, false);
       return;
     }
     this.setState({ status: "loading", uid: user.uid, name: user.displayName ?? user.email });
@@ -162,12 +176,8 @@ class Cloud {
       this.loaded = true;
       writeSync({ uid: user.uid, at: Date.now() });
       await this.save();
-      this.stopPurchases = onSnapshot(doc(this.db!, "purchases", user.uid), (s) => {
-        const added = wallet.credit(Number(s.data()?.coins) || 0);
-        if (added > 0) this.notify(`+${added} COINS`);
-      });
       this.setState({ status: "signed-in" });
-      void this.loadProfile(user);
+      void this.loadProfile(user, true);
     } catch (err) {
       console.error("Cloud save failed to load", err);
       this.setState({ status: "signed-in" });
@@ -205,12 +215,12 @@ class Cloud {
     return json;
   }
 
-  /** New players are asked to pick a username, starting from their Google name and photo. */
-  private async loadProfile(user: User) {
+  /** Players who sign in with Google are asked to pick a username, starting from their Google name and photo. */
+  private async loadProfile(user: User, prompt: boolean) {
     try {
       const profile = await this.api<Profile>("/api/profile");
       this.setState({ profile });
-      if (!profile.username) {
+      if (prompt && !profile.username) {
         const name = (user.displayName ?? "").replace(/[^A-Za-z0-9_]/g, "").slice(0, 16);
         this.setState({ editing: { username: USERNAME_RULE.test(name) ? name : "", photo: profile.photo || (user.photoURL ?? "") } });
       }
@@ -220,7 +230,7 @@ class Cloud {
   }
 
   editProfile() {
-    if (this.state.status === "signed-in") this.setState({ editing: this.state.profile ?? { username: "", photo: "" } });
+    if (this.state.uid) this.setState({ editing: this.state.profile ?? { username: "", photo: "" } });
   }
 
   closeProfile() {
@@ -238,9 +248,9 @@ class Cloud {
     }
   }
 
-  /** Count a finished run towards the weekly and global leaderboards. Guests' runs aren't counted. */
+  /** Count a finished run towards the weekly and global leaderboards. */
   submitRun(score: number) {
-    if (this.state.status !== "signed-in" || score < 1) return;
+    if (!this.auth?.currentUser || score < 1) return;
     this.api("/api/runs", { method: "POST", body: JSON.stringify({ score }) }).catch((err) =>
       console.error("Run not counted", err),
     );
@@ -252,8 +262,24 @@ class Cloud {
 
   async signIn() {
     if (!this.auth) return;
+    const provider = new GoogleAuthProvider();
+    const current = this.auth.currentUser;
     try {
-      await signInWithPopup(this.auth, new GoogleAuthProvider());
+      if (current?.isAnonymous) {
+        // Upgrade the anonymous identity, so its username and leaderboard points carry over.
+        try {
+          await linkWithPopup(current, provider);
+          // Linking keeps the same user, so the auth listener doesn't fire on its own.
+          await this.onUser(this.auth.currentUser);
+        } catch (err) {
+          // That Google account already has its own player: switch to it.
+          const credential = GoogleAuthProvider.credentialFromError(err as never);
+          if ((err as { code?: string }).code !== "auth/credential-already-in-use" || !credential) throw err;
+          await signInWithCredential(this.auth, credential);
+        }
+      } else {
+        await signInWithPopup(this.auth, provider);
+      }
     } catch (err) {
       // Closing the popup is not an error worth showing.
       if ((err as { code?: string }).code !== "auth/popup-closed-by-user") {
@@ -272,22 +298,6 @@ class Cloud {
     wallet.replace(fresh());
     writeBest(0);
     writeSync({ uid: null, at: 0 });
-  }
-
-  /** Send the player to a Lemon Squeezy checkout for a coin pack. */
-  async buy(pack: PackId) {
-    const user = this.auth?.currentUser;
-    if (!user) return this.signIn();
-    this.setState({ busy: true });
-    try {
-      await this.save();
-      const { url } = await this.api<{ url: string }>("/api/checkout", { method: "POST", body: JSON.stringify({ pack }) });
-      window.location.assign(url);
-    } catch (err) {
-      console.error(err);
-      this.notify("CHECKOUT UNAVAILABLE");
-      this.setState({ busy: false });
-    }
   }
 }
 

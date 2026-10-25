@@ -12,10 +12,17 @@ const config = {
 export const firebaseEnabled = Boolean(config.apiKey && config.authDomain && config.projectId && config.appId);
 
 /**
- * Sign-in, cloud saves, leaderboards and coin packs. Off until NEXT_PUBLIC_ACCOUNTS=on,
- * so they can stay switched off even once Firebase is configured.
+ * Google sign-in and cloud saves. Off until NEXT_PUBLIC_ACCOUNTS=on, so they can
+ * stay switched off even once Firebase is configured.
  */
 export const accountsEnabled = firebaseEnabled && process.env.NEXT_PUBLIC_ACCOUNTS === "on";
+
+/**
+ * Leaderboards and usernames. On whenever Firebase is configured, unless
+ * NEXT_PUBLIC_LEADERBOARD=off. Players don't need to sign in: each browser gets
+ * an anonymous Firebase identity, which Google sign-in upgrades in place.
+ */
+export const leaderboardEnabled = firebaseEnabled && process.env.NEXT_PUBLIC_LEADERBOARD !== "off";
 
 export function firebaseApp(): FirebaseApp {
   return getApps().length ? getApp() : initializeApp(config);
