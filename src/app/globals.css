@@ -29,6 +29,9 @@
   --ui-text-dim: rgba(255, 255, 255, 0.72);
   --ui-shadow: rgba(20, 50, 90, 0.28);
   --font-ui: "Roadmasters Digits", "Just Another Hand", "Helvetica Neue", Arial, sans-serif;
+  /* Subtexts and captions: Geist Sans at 32px by default, digits still pixel. */
+  --font-caption: "Roadmasters Digits", var(--font-geist-sans, "Geist"), "Helvetica Neue", Arial, sans-serif;
+  --caption-size: 32px;
   --font-score: var(--font-geist-pixel-circle, "Geist Pixel Circle"), ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
@@ -517,7 +520,9 @@ kbd {
 
 .curtain-title p {
   margin: 0;
-  font-size: 24px;
+  font-family: var(--font-caption);
+  font-size: var(--caption-size);
+  letter-spacing: 0;
   color: var(--ui-text-dim);
   animation: pulse 1.2s ease-in-out infinite;
 }
@@ -584,9 +589,11 @@ kbd {
 
 .menu-trait {
   margin: 14px 0 0 14px;
-  max-width: 340px;
-  font-size: 20px;
+  max-width: 360px;
+  font-family: var(--font-caption);
+  font-size: var(--caption-size);
   line-height: 1.1;
+  letter-spacing: 0;
   color: var(--ui-text-dim);
 }
 
@@ -847,19 +854,25 @@ kbd {
 
 .shop-card-kind {
   margin: 0;
-  font-size: 15px;
+  font-family: var(--font-caption);
+  /* The card panel is about 200px wide, too narrow for the 32px default. */
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--ui-gold);
 }
 
 .shop-card-desc {
   margin: 0;
-  font-size: 15px;
-  line-height: 1.05;
+  font-family: var(--font-caption);
+  font-size: 12px;
+  line-height: 1.25;
+  letter-spacing: 0;
   color: rgba(255, 255, 255, 0.8);
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
-  max-height: 3.15em;
+  max-height: 3.75em;
   overflow: hidden;
 }
 
@@ -974,6 +987,13 @@ kbd {
   pointer-events: none;
 }
 
+.icon-art {
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.shop-tile.locked .icon-art,
 .shop-tile.locked .shop-tile-art {
   opacity: 0.45;
 }

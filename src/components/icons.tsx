@@ -67,7 +67,15 @@ const PATHS: Record<IconId, React.ReactNode> = {
   ),
 };
 
+/** Illustrated icons that replace a glyph wherever it appears (store, HUD, inventory). */
+const ART: Partial<Record<IconId, string>> = {
+  wings: "/powerups/wings.png",
+};
+
 export function Icon({ id, size = 24 }: { id: IconId; size?: number }) {
+  const art = ART[id];
+  // Painted art reads smaller than a solid glyph, so give it a little more room.
+  if (art) return <img src={art} width={size * 1.3} height={size * 1.3} alt="" draggable={false} className="icon-art" />;
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true">
       {PATHS[id]}

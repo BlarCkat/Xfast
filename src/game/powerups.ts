@@ -21,7 +21,7 @@ export const POWERUPS: PowerUpInfo[] = [
   { key: "superhop", label: "SUPER HOP", color: "#2e9e4f", price: 35, description: "Forward hops jump 2 rows." },
   { key: "shield", label: "SHIELD", color: "#1fa3b8", price: 45, description: "A bubble that absorbs one hit from a car or train." },
   { key: "freeze", label: "FREEZE", color: "#5bc0eb", price: 40, description: "Stop all traffic and trains." },
-  { key: "wings", label: "WINGS", color: "#9aa5b1", price: 35, description: "Hover over water without drowning." },
+  { key: "wings", label: "FLIGHT", color: "#9aa5b1", price: 35, description: "Hover over water without drowning." },
   { key: "scarecrow", label: "SCARECROW", color: "#a0692e", price: 30, description: "Keep the eagle away, however slow you go." },
   { key: "ghost", label: "GHOST", color: "#b9a7e8", price: 50, description: "Cars and trains pass straight through you." },
   { key: "tiny", label: "TINY", color: "#f28fb1", price: 30, description: "Shrink so traffic has to miss by less." },
