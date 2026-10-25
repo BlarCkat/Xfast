@@ -67,5 +67,7 @@ export const COIN_RAIN_ROWS = 12;
 export const MAGNET_RADIUS = 2;
 /** World speed while slowmo is active; the chicken keeps hopping at full speed. */
 export const SLOWMO_SCALE = 0.35;
+/** Seconds the world takes to ease into slowmo, and back up to full speed when it ends. */
+export const SLOWMO_EASE = 0.8;
 /** How far ahead (seconds) the foresight ghosts show traffic. */
 export const FORESIGHT_STEPS = [0.6, 1.2];

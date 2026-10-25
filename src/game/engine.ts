@@ -10,6 +10,7 @@ import {
   MAX_ROWS_BEHIND_CAMERA,
   RESPAWN_DELAY,
   RESPAWN_SHIELD,
+  SLOWMO_EASE,
   SLOWMO_SCALE,
   START_LIVES,
   CAT_LIVES,
@@ -140,6 +141,8 @@ export class Engine {
   biome: BiomeId = biomeAt(0);
   /** Multiplier on car, truck and train speed, raised every STEPS_PER_SPEEDUP hops. */
   speedScale = 1;
+  /** How far into slowmo the world is, 0 (full speed) to 1 (fully slowed); eases rather than snapping. */
+  slowmoBlend = 0;
 
   player: PlayerState = {
     row: 0,
@@ -625,8 +628,12 @@ export class Engine {
 
   update(rawDt: number) {
     const dt = Math.min(rawDt, 1 / 20);
-    // Slowmo slows the world down; the chicken's own hops stay at full speed.
-    const worldDt = this.effects.slowmo > 0 ? dt * SLOWMO_SCALE : dt;
+    // Slowmo slows the world down, easing in and out; the chicken's own hops stay at full speed.
+    const step = dt / SLOWMO_EASE;
+    this.slowmoBlend = this.effects.slowmo > 0 ? Math.min(1, this.slowmoBlend + step) : Math.max(0, this.slowmoBlend - step);
+    const b = this.slowmoBlend;
+    const eased = b * b * (3 - 2 * b);
+    const worldDt = dt * (1 - (1 - SLOWMO_SCALE) * eased);
     this.time += dt;
     const playing = this.ui.status === "playing";
     const p = this.player;
