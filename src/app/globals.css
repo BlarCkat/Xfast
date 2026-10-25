@@ -7,6 +7,13 @@
   size-adjust: 135%;
 }
 
+/* Both pixel faces point at the same file, so the browser fetches it once. */
+@font-face {
+  font-family: "Geist Pixel Circle";
+  src: url("/fonts/GeistPixel-Circle.woff2") format("woff2");
+  font-display: swap;
+}
+
 @font-face {
   font-family: "Roadmasters Digits";
   src: url("/fonts/GeistPixel-Circle.woff2") format("woff2");
@@ -32,7 +39,7 @@
   /* Subtexts and captions: Geist Sans at 32px by default, digits still pixel. */
   --font-caption: "Roadmasters Digits", var(--font-geist-sans, "Geist"), "Helvetica Neue", Arial, sans-serif;
   --caption-size: 32px;
-  --font-score: var(--font-geist-pixel-circle, "Geist Pixel Circle"), ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-score: "Geist Pixel Circle", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
 * {
