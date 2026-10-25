@@ -70,6 +70,10 @@ const PATHS: Record<IconId, React.ReactNode> = {
 /** Illustrated icons that replace a glyph wherever it appears (store, HUD, inventory). */
 const ART: Partial<Record<IconId, string>> = {
   wings: "/powerups/wings.png",
+  // Snapshots of the 3D models in PowerupArt.
+  superhop: "/powerups/superhop.png",
+  freeze: "/powerups/freeze.png",
+  magnet: "/powerups/magnet.png",
 };
 
 export function Icon({ id, size = 24 }: { id: IconId; size?: number }) {

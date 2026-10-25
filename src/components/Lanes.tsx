@@ -11,6 +11,7 @@ import { trainLength } from "@/game/lanes";
 import { BIOMES, type BiomeId } from "@/game/biomes";
 import { Floater, Obstacle, Vehicle } from "./biomeModels";
 import { Baked, Box, Coin, PickupModel, Train } from "./models";
+import { ART_POWERUPS, PickupArt } from "./PowerupArt";
 import { groundTexture, type GroundTexture } from "./textures";
 
 function Ground({
@@ -272,9 +273,13 @@ function PickupView({ lane }: { lane: Lane }) {
   if (!pickup) return null;
   return (
     <group ref={ref} position={[pickup.x, 0.45, 0]}>
-      <Baked>
-        <PickupModel kind={pickup.kind} />
-      </Baked>
+      {pickup.kind !== "life" && ART_POWERUPS[pickup.kind] ? (
+        <PickupArt kind={pickup.kind} />
+      ) : (
+        <Baked>
+          <PickupModel kind={pickup.kind} />
+        </Baked>
+      )}
     </group>
   );
 }

@@ -408,7 +408,7 @@ export function Eagle() {
   );
 }
 
-/** Collectibles: a heart for lives, and one icon per power-up. */
+/** Collectibles: a heart for lives, and one icon per power-up (the illustrated ones live in PowerupArt). */
 export function PickupModel({ kind }: { kind: PickupKind }) {
   if (kind === "life") {
     return (
@@ -430,17 +430,6 @@ export function PickupModel({ kind }: { kind: PickupKind }) {
       </group>
     );
   }
-  if (kind === "magnet") {
-    return (
-      <group>
-        <Box size={[0.12, 0.34, 0.14]} position={[-0.16, 0.02, 0]} color="#d63c3c" />
-        <Box size={[0.12, 0.34, 0.14]} position={[0.16, 0.02, 0]} color="#d63c3c" />
-        <Box size={[0.44, 0.12, 0.14]} position={[0, -0.18, 0]} color="#d63c3c" />
-        <Box size={[0.12, 0.1, 0.15]} position={[-0.16, 0.22, 0]} color="#e0e0e0" />
-        <Box size={[0.12, 0.1, 0.15]} position={[0.16, 0.22, 0]} color="#e0e0e0" />
-      </group>
-    );
-  }
   if (kind === "double") {
     return (
       <group>
@@ -453,16 +442,7 @@ export function PickupModel({ kind }: { kind: PickupKind }) {
       </group>
     );
   }
-  if (kind === "superhop") {
-    return (
-      <group>
-        <Box size={[0.14, 0.3, 0.14]} position={[0, -0.08, 0]} color="#2e9e4f" />
-        <Box size={[0.4, 0.1, 0.14]} position={[0, 0.1, 0]} color="#2e9e4f" />
-        <Box size={[0.24, 0.1, 0.14]} position={[0, 0.2, 0]} color="#2e9e4f" />
-        <Box size={[0.1, 0.1, 0.14]} position={[0, 0.3, 0]} color="#2e9e4f" />
-      </group>
-    );
-  }
+
   if (kind === "shield") {
     return (
       <group>
@@ -472,18 +452,7 @@ export function PickupModel({ kind }: { kind: PickupKind }) {
       </group>
     );
   }
-  if (kind === "freeze") {
-    return (
-      <group>
-        <Box size={[0.12, 0.5, 0.12]} position={[0, 0, 0]} color="#bfe9ff" />
-        <Box size={[0.5, 0.12, 0.12]} position={[0, 0, 0]} color="#bfe9ff" />
-        <group rotation={[0, 0, Math.PI / 4]}>
-          <Box size={[0.1, 0.42, 0.1]} position={[0, 0, 0]} color="#5bc0eb" />
-          <Box size={[0.42, 0.1, 0.1]} position={[0, 0, 0]} color="#5bc0eb" />
-        </group>
-      </group>
-    );
-  }
+
   if (kind === "wings") {
     return <Wings />;
   }

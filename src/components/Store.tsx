@@ -7,6 +7,7 @@ import { TIER_SIZE, isInstant, nextUpgrade, strengthAt, tierOf, type PowerUp } f
 import { CHARACTERS, STORE_ITEMS, wallet, type CharacterId, type StoreItemId, type WalletState } from "@/game/wallet";
 import { Icon } from "./icons";
 import { CharacterModel } from "./models";
+import { ART_POWERUPS } from "./PowerupArt";
 
 export type StoreTab = "characters" | "powerups";
 
@@ -46,25 +47,33 @@ const cellsFor = (tab: StoreTab, w: WalletState): Cell[] =>
         description: i.description,
       }));
 
-function Spinner({ id }: { id: CharacterId }) {
+function Spinner({ y, children }: { y: number; children: React.ReactNode }) {
   const ref = useRef<Group>(null);
   useFrame((_, dt) => {
     if (ref.current) ref.current.rotation.y += dt * 1.2;
   });
   return (
-    <group ref={ref} position={[0, -0.7, 0]}>
-      <CharacterModel id={id} />
+    <group ref={ref} position={[0, y, 0]}>
+      {children}
     </group>
   );
 }
 
-function Preview({ id }: { id: CharacterId }) {
+/** A slowly turning model: a character, or one of the illustrated power-ups. */
+function Preview({ id }: { id: CharacterId | PowerUp }) {
+  const art = ART_POWERUPS[id as PowerUp];
   return (
     <div className="menu-preview">
       <Canvas orthographic camera={{ position: [0, 1.2, 3], zoom: 72 }}>
         <hemisphereLight args={["#ffffff", "#9fc3e8", 1.8]} />
         <directionalLight position={[-2, 4, 3]} intensity={1.6} />
-        <Spinner id={id} />
+        {art ? (
+          <Spinner y={0.25}>{art()}</Spinner>
+        ) : (
+          <Spinner y={-0.7}>
+            <CharacterModel id={id as CharacterId} />
+          </Spinner>
+        )}
       </Canvas>
     </div>
   );
@@ -188,8 +197,8 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
           <CardFrame />
           <h2 className="shop-card-title">{cell.name.toUpperCase()}</h2>
           <div className="shop-card-body">
-            {isChar ? (
-              <Preview id={cell.id as CharacterId} />
+            {isChar || ART_POWERUPS[cell.id as PowerUp] ? (
+              <Preview id={cell.id as CharacterId | PowerUp} />
             ) : (
               <span className="shop-card-icon">
                 <Icon id={cell.id} size={64} />
