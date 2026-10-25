@@ -231,7 +231,11 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
               className={`shop-tile${focused ? " on" : ""}${locked ? " locked" : ""}${equipped ? " equipped" : ""}`}
               onClick={() => (focused ? act.run?.() : setFocus(i))}
             >
-              <Icon id={c.id} size={34} />
+              {isChar && CHARACTER_ART[c.id as CharacterId] ? (
+                <img className="shop-tile-art" src={CHARACTER_ART[c.id as CharacterId]} alt="" draggable={false} />
+              ) : (
+                <Icon id={c.id} size={34} />
+              )}
               {count > 0 && <span className="shop-tile-badge">{count}</span>}
               <span className="shop-tile-price">{mine ? (equipped ? "ON" : "OWNED") : c.price}</span>
             </button>
@@ -243,6 +247,10 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
 }
 
 const GRID_COLS = 3;
+/** Illustrated portraits that replace the glyph on a character's tile. */
+const CHARACTER_ART: Partial<Record<CharacterId, string>> = {
+  chicken: "/characters/chicken.png",
+};
 const PIPS = 7;
 
 /** The purple backdrop with its darker diagonal bands and thin swirl lines. */

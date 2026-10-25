@@ -964,6 +964,17 @@ kbd {
   outline: 3px solid var(--ui-gold);
 }
 
+.shop-tile-art {
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.shop-tile.locked .shop-tile-art {
+  opacity: 0.45;
+}
+
 .shop-tile-price {
   position: absolute;
   bottom: 3px;
