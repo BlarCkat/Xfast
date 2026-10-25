@@ -241,6 +241,27 @@ export function coin(double = false) {
   bell(t + 0.13, 1870 * k, 1.1);
 }
 
+/** One sweep of the upgrade dot grid takes this long; the card's CSS animation matches it. */
+export const UPGRADE_SWEEP = 2 / 3;
+
+/**
+ * Upgrading a power-up: three rising sweeps of quick ticks, one per row of the dot grid as it passes
+ * up the card, each sweep a step higher than the last.
+ */
+export function upgrade() {
+  const ac = audio();
+  if (!ac) return;
+  const rows = 8;
+  for (let sweep = 0; sweep < 3; sweep++) {
+    for (let row = 0; row < rows; row++) {
+      const t = ac.currentTime + sweep * UPGRADE_SWEEP + (row / rows) * UPGRADE_SWEEP;
+      const f = 660 * 2 ** ((sweep * 4 + row * 1.5) / 12);
+      tone(ac, t, { type: "triangle", from: f, peak: 0.1 + row * 0.01, length: 0.07, attack: 0.002 });
+      tone(ac, t, { type: "sine", from: f * 2, peak: 0.03, length: 0.05, attack: 0.002 });
+    }
+  }
+}
+
 /**
  * A car going past the player: a swell of road noise whose pitch drops as it passes (a little
  * Doppler), over a low engine note. Trucks and buses sound lower. `rows` is how far the lane is.

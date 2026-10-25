@@ -9,6 +9,7 @@ import { Icon } from "./icons";
 import { CharacterModel } from "./models";
 import { CurrencyHeap } from "./CurrencyArt";
 import { ART_POWERUPS } from "./PowerupArt";
+import * as sound from "@/game/sound";
 import { GoalList } from "./Achievements";
 
 export type StoreTab = "characters" | "powerups" | "bank" | "achievements";
@@ -167,6 +168,19 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
   const cell = cells[Math.min(focus, cells.length - 1)];
   const act = action(tab, cell, w);
   const up = upgradeAction(tab, cell, w);
+  // An upgrade turns the card blue and sweeps a dot grid up it three times, with a ticking sound.
+  const [boosting, setBoosting] = useState(0);
+  const boostTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const doUpgrade = up?.run
+    ? () => {
+        up.run!();
+        sound.upgrade();
+        setBoosting((n) => n + 1);
+        clearTimeout(boostTimer.current);
+        boostTimer.current = setTimeout(() => setBoosting(0), 3 * sound.UPGRADE_SWEEP * 1000 + 250);
+      }
+    : null;
+  useEffect(() => () => clearTimeout(boostTimer.current), []);
 
   const switchTab = (next: StoreTab) => {
     setTab(next);
@@ -174,11 +188,11 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
   };
 
   // Keyboard: arrows move through the grid, Enter buys or equips, Q/E switch tabs, Esc closes.
-  const latest = useRef({ act, up, cells, tab });
-  latest.current = { act, up, cells, tab };
+  const latest = useRef({ act, doUpgrade, cells, tab });
+  latest.current = { act, doUpgrade, cells, tab };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const { act, up, cells, tab } = latest.current;
+      const { act, doUpgrade, cells, tab } = latest.current;
       const n = cells.length;
       const moves: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -GRID_COLS, ArrowDown: GRID_COLS };
       if (e.code in moves) {
@@ -188,7 +202,7 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
         e.preventDefault();
         act.run?.();
       } else if (e.code === "KeyU") {
-        up?.run?.();
+        doUpgrade?.();
       } else if (e.code === "KeyQ" || e.code === "KeyE") {
         const i = TABS.findIndex((t) => t.id === tab) + (e.code === "KeyE" ? 1 : -1);
         switchTab(TABS[(i + TABS.length) % TABS.length].id);
@@ -257,7 +271,7 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
       <>
       <div className="shop-pin" ref={pin}>
         <section className="shop-card" aria-live="polite">
-          <CardFrame wide={size.units - 256} />
+          <CardFrame wide={size.units - 256} boost={boosting} />
           <h2 className="shop-card-title">{cell.name.toUpperCase()}</h2>
           <div className="shop-card-body">
             {hasPreview(cell.id) ? (
@@ -277,7 +291,7 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
                 {act.label}
               </button>
               {up?.next && (
-                <button className={`shop-card-up${up.run ? " ready" : ""}`} disabled={!up.run} onClick={() => up.run?.()} aria-label={up.label}>
+                <button className={`shop-card-up${up.run ? " ready" : ""}`} disabled={!doUpgrade} onClick={() => doUpgrade?.()} aria-label={up.label}>
                   <svg viewBox="0 0 24 24" width={16} height={16} aria-hidden="true">
                     <path d="M12 4 4 13h5v7h6v-7h5Z" fill="currentColor" />
                   </svg>
@@ -375,16 +389,18 @@ const PIPS = TIER_SIZE;
 
 /** The purple backdrop with its darker diagonal bands and thin swirl lines. */
 export function ShopBackdrop() {
+  // Each shape drifts slowly on its own path and timing (see .drift in globals.css), so the
+  // background never quite repeats.
   return (
     <svg className="shop-backdrop" viewBox="0 0 393 852" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <rect width="393" height="852" fill="#7048e8" />
-      <path d="M-40 250 C 120 300 260 330 440 420 L 440 520 C 260 430 120 400 -40 350 Z" fill="#5f3bd6" />
-      <path d="M120 -20 C 180 60 300 110 440 120 L 440 40 C 320 30 230 0 200 -20 Z" fill="#5f3bd6" />
-      <path d="M-40 560 C 100 620 260 640 440 610 L 440 680 C 260 720 100 700 -40 640 Z" fill="#6440dc" />
-      <path d="M-40 140 C 60 120 160 160 230 240" fill="none" stroke="#5a37cc" strokeWidth="2" />
-      <path d="M-40 660 C 80 650 200 690 300 760 S 420 820 440 800" fill="none" stroke="#5a37cc" strokeWidth="2" />
-      <circle cx="392" cy="98" r="18" fill="#5f3bd6" />
-      <circle cx="340" cy="628" r="18" fill="#5f3bd6" />
+      <path className="drift drift-1" d="M-40 250 C 120 300 260 330 440 420 L 440 520 C 260 430 120 400 -40 350 Z" fill="#5f3bd6" />
+      <path className="drift drift-2" d="M120 -20 C 180 60 300 110 440 120 L 440 40 C 320 30 230 0 200 -20 Z" fill="#5f3bd6" />
+      <path className="drift drift-3" d="M-40 560 C 100 620 260 640 440 610 L 440 680 C 260 720 100 700 -40 640 Z" fill="#6440dc" />
+      <path className="drift drift-4" d="M-40 140 C 60 120 160 160 230 240" fill="none" stroke="#5a37cc" strokeWidth="2" />
+      <path className="drift drift-5" d="M-40 660 C 80 650 200 690 300 760 S 420 820 440 800" fill="none" stroke="#5a37cc" strokeWidth="2" />
+      <circle className="drift drift-6" cx="392" cy="98" r="18" fill="#5f3bd6" />
+      <circle className="drift drift-7" cx="340" cy="628" r="18" fill="#5f3bd6" />
     </svg>
   );
 }
@@ -395,7 +411,7 @@ export function ShopBackdrop() {
  * to show a whole character, and points right of the middle are pushed right by `wide` so the card
  * can fill the screen's width; the corners keep their shape.
  */
-function CardFrame({ wide }: { wide: number }) {
+function CardFrame({ wide, boost = 0 }: { wide: number; boost?: number }) {
   const e = CARD_STRETCH;
   const x = (v: number) => (v > 128 ? v + wide : v);
   const W = 256 + wide;
@@ -425,12 +441,32 @@ function CardFrame({ wide }: { wide: number }) {
     232.739,
   )} 95.0306H${x(181.44)}C${x(178.777)} 97.6937 ${x(172.904)} 103.693 ${x(170.717)} 106.384Z`;
   return (
-    <svg className="shop-card-frame" viewBox={`0 0 ${W} ${H}`} fill="none" aria-hidden="true">
-      <path d={paper} fill="#F3EED1" />
+    <svg className={`shop-card-frame${boost ? " boosting" : ""}`} viewBox={`0 0 ${W} ${H}`} fill="none" aria-hidden="true">
+      <defs>
+        <pattern id="shop-card-dots" width="10" height="10" patternUnits="userSpaceOnUse">
+          <circle cx="5" cy="5" r="2.4" fill="#F2E38C" />
+        </pattern>
+        {/* Fades the band of dots out towards its top and bottom edges. */}
+        <linearGradient id="shop-card-dots-fade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0.5" stopColor="#fff" stopOpacity="1" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
+        <mask id="shop-card-dots-mask" maskContentUnits="objectBoundingBox">
+          <rect width="1" height="1" fill="url(#shop-card-dots-fade)" />
+        </mask>
+      </defs>
+      <path className="shop-card-paper" d={paper} />
       <mask id="shop-card-paper" style={{ maskType: "alpha" }} maskUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
         <path d={paper} fill="#F3EED1" />
       </mask>
       <g mask="url(#shop-card-paper)">
+        {boost > 0 && (
+          // Keyed by the upgrade count, so a second upgrade restarts the sweeps.
+          <g key={boost} className="shop-card-dots">
+            <rect x="0" y="0" width={W} height="130" fill="url(#shop-card-dots)" mask="url(#shop-card-dots-mask)" />
+          </g>
+        )}
         <g className="shop-card-shine">
           <rect x="-24.9609" y="52.293" width={350.672 + wide} height="43.31" transform="rotate(18.5736 -24.9609 52.293)" fill="#F2E38C" />
         </g>
