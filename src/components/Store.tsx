@@ -5,10 +5,18 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 import { MAX_LEVEL, isInstant, strengthAt, upgradeCost, type PowerUp } from "@/game/powerups";
 import { CHARACTERS, STORE_ITEMS, wallet, type CharacterId, type StoreItemId, type WalletState } from "@/game/wallet";
+import { cloud, type CloudState } from "@/lib/cloud";
+import { accountsEnabled } from "@/lib/firebase";
 import { Hex, Icon } from "./icons";
 import { CharacterModel } from "./models";
+import { Avatar } from "./Profile";
 
 type Tab = "characters" | "powerups";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "characters", label: "Characters" },
+  { id: "powerups", label: "Power-ups" },
+];
 
 interface Cell {
   id: CharacterId | StoreItemId;
@@ -99,8 +107,32 @@ function upgradeAction(tab: Tab, cell: Cell, w: WalletState) {
   };
 }
 
+function Account({ account }: { account: CloudState }) {
+  if (!accountsEnabled || account.status === "off") return null;
+  if (account.status === "signed-in") {
+    const name = account.profile?.username || account.name || "Signed in";
+    return (
+      <div className="account">
+        <button className="account-me" title="Edit profile" onClick={() => cloud.editProfile()}>
+          <Avatar photo={account.profile?.photo ?? ""} name={name} size={22} />
+          <span>{name}</span>
+        </button>
+        <button onClick={() => void cloud.signOut()}>Sign out</button>
+      </div>
+    );
+  }
+  return (
+    <div className="account">
+      <button disabled={account.status === "loading"} onClick={() => void cloud.signIn()}>
+        {account.status === "loading" ? "Loading…" : "Sign in to save"}
+      </button>
+    </div>
+  );
+}
+
 export default function Store({ onClose }: { onClose: () => void }) {
   const w = useWallet();
+  const account = useSyncExternalStore(cloud.subscribe, cloud.get, cloud.get);
   const [tab, setTab] = useState<Tab>("characters");
   const cells = cellsFor(tab, w);
   const [focus, setFocus] = useState(() => Math.max(0, CHARACTERS.findIndex((c) => c.id === w.selected)));
@@ -109,6 +141,7 @@ export default function Store({ onClose }: { onClose: () => void }) {
   const up = upgradeAction(tab, cell, w);
   const selected = CHARACTERS.find((c) => c.id === w.selected)!;
 
+  const nextTab = (t: Tab) => TABS[(TABS.findIndex((x) => x.id === t) + 1) % TABS.length].id;
   const switchTab = (next: Tab) => {
     setTab(next);
     setFocus(0);
@@ -131,7 +164,7 @@ export default function Store({ onClose }: { onClose: () => void }) {
       } else if (e.code === "KeyU") {
         up?.run?.();
       } else if (e.code === "KeyQ" || e.code === "KeyE") {
-        switchTab(tab === "characters" ? "powerups" : "characters");
+        switchTab(nextTab(tab));
       } else if (e.code === "Escape") {
         onClose();
       }
@@ -155,12 +188,11 @@ export default function Store({ onClose }: { onClose: () => void }) {
       <header className="menu-head">
         <nav className="crumbs">
           <span className="crumb-root">STORE /</span>
-          <button className={tab === "characters" ? "on" : ""} onClick={() => switchTab("characters")}>
-            CHARACTERS
-          </button>
-          <button className={tab === "powerups" ? "on" : ""} onClick={() => switchTab("powerups")}>
-            POWER-UPS
-          </button>
+          {TABS.map((t) => (
+            <button key={t.id} className={tab === t.id ? "on" : ""} onClick={() => switchTab(t.id)}>
+              {t.label.toUpperCase()}
+            </button>
+          ))}
         </nav>
         <div className="wallet-card">
           <div>
@@ -181,9 +213,10 @@ export default function Store({ onClose }: { onClose: () => void }) {
           <strong>{selected.name}</strong>
           <small>PLAYING AS</small>
         </div>
+        <Account account={account} />
       </div>
 
-      <div className="comb" role="listbox" aria-label={tab === "characters" ? "Characters" : "Power-ups"}>
+      <div className="comb" role="listbox" aria-label={TABS.find((t) => t.id === tab)!.label}>
         <div className="comb-inner">
           {rows.map((row, r) => (
             <div key={r} className={`comb-row comb-row-${r}`}>
@@ -246,8 +279,8 @@ export default function Store({ onClose }: { onClose: () => void }) {
       </section>
 
       <footer className="menu-hints">
-        <button onClick={() => switchTab(tab === "characters" ? "powerups" : "characters")}>
-          <kbd>Q</kbd> {tab === "characters" ? "Power-ups" : "Characters"}
+        <button onClick={() => switchTab(nextTab(tab))}>
+          <kbd>Q</kbd> {TABS.find((t) => t.id === nextTab(tab))!.label}
         </button>
         <button className="primary" disabled={!act.run} onClick={() => act.run?.()}>
           <kbd>↵</kbd> {act.label}

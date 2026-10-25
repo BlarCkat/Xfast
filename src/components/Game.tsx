@@ -6,9 +6,13 @@ import { Engine, type Direction } from "@/game/engine";
 import { CHICKEN_POWERUP_BONUS } from "@/game/config";
 import { POWERUPS, durationAt, hotkeyFor, type PowerUp } from "@/game/powerups";
 import { CHARACTERS, wallet } from "@/game/wallet";
+import { cloud } from "@/lib/cloud";
+import { leaderboardEnabled } from "@/lib/firebase";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
 import Store, { useWallet } from "./Store";
+import Leaderboard from "./Leaderboard";
+import ProfileEditor from "./Profile";
 
 const KEYS: Record<string, Direction> = {
   ArrowUp: "up",
@@ -41,7 +45,9 @@ export default function Game() {
   const [engine, setEngine] = useState(() => new Engine(wallet.get().selected));
   const ui = useSyncExternalStore(engine.subscribe, engine.getSnapshot, engine.getSnapshot);
   const w = useWallet();
+  const account = useSyncExternalStore(cloud.subscribe, cloud.get, cloud.get);
   const [storeOpen, setStoreOpen] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
   const [fx, setFx] = useState(readFx);
   const toggleFx = useCallback(() => {
     setFx((on) => {
@@ -57,34 +63,47 @@ export default function Game() {
     durationAt(key, w.levels[key]) * (engine.character === "chicken" ? CHICKEN_POWERUP_BONUS : 1);
   const character = CHARACTERS.find((c) => c.id === engine.character) ?? CHARACTERS[0];
 
-  // Show a newly picked character straight away on the start screen.
+  useEffect(() => cloud.start(), []);
+
+  // Show a newly picked character, or a just-loaded account's top score, straight away on the start screen.
+  const engineUid = useRef(account.uid);
   useEffect(() => {
-    if (engine.status === "ready" && engine.character !== w.selected) setEngine(new Engine(w.selected));
-  }, [engine, w.selected]);
+    const switched = engineUid.current !== account.uid && account.status !== "loading";
+    if (engine.status === "ready" && (engine.character !== w.selected || switched)) {
+      engineUid.current = account.uid;
+      setEngine(new Engine(w.selected));
+    }
+  }, [engine, w.selected, account.uid, account.status]);
 
   useEffect(() => {
-    if (ui.status === "dead") diedAt.current = performance.now();
-  }, [ui.status]);
+    if (ui.status !== "dead") return;
+    diedAt.current = performance.now();
+    // The top score may have changed.
+    cloud.touch();
+    cloud.submitRun(engine.getSnapshot().score);
+  }, [ui.status, engine]);
 
   const restart = useCallback(() => {
     if (performance.now() - diedAt.current < RESTART_DELAY) return;
     setStoreOpen(false);
+    setBoardOpen(false);
     setEngine(new Engine(wallet.get().selected));
   }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      if (storeOpen) {
-        if (e.code === "Escape") setStoreOpen(false);
-        return;
-      }
+      // The store, leaderboard and profile editor handle their own keys.
+      if (e.repeat || storeOpen || boardOpen || cloud.get().editing) return;
       if (e.code === "KeyB") {
         toggleFx();
         return;
       }
       if (e.code === "KeyS" && engine.status !== "playing") {
         setStoreOpen(true);
+        return;
+      }
+      if (e.code === "KeyL" && leaderboardEnabled && engine.status !== "playing") {
+        setBoardOpen(true);
         return;
       }
       const power = POWERUPS.find((_, i) => hotkeyFor(i) === e.code);
@@ -104,7 +123,7 @@ export default function Game() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [engine, restart, storeOpen, toggleFx]);
+  }, [engine, restart, storeOpen, boardOpen, toggleFx]);
 
   // Tap to hop forward, swipe to hop in any direction.
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -207,6 +226,12 @@ export default function Game() {
         </div>
       )}
 
+      {account.notice && (
+        <div key={`cloud-${account.notice.id}`} className="toast toast-cloud">
+          {account.notice.text}
+        </div>
+      )}
+
       {ui.status === "ready" && (
         <div className="overlay">
           <h1 className="title">XFAST</h1>
@@ -221,6 +246,7 @@ export default function Game() {
       {ui.status === "ready" && (
         <nav className="start-nav" aria-label="Main menu">
           <button
+            aria-label="Store"
             onPointerDown={stop}
             onPointerUp={(e) => {
               e.stopPropagation();
@@ -233,6 +259,22 @@ export default function Game() {
             <span>Store</span>
             <kbd>S</kbd>
           </button>
+          {leaderboardEnabled && (
+            <button
+              aria-label="Leaderboard"
+              onPointerDown={stop}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                setBoardOpen(true);
+              }}
+            >
+              <span className="start-coin">
+                <Icon id="trophy" size={22} />
+              </span>
+              <span>Ranks</span>
+              <kbd>L</kbd>
+            </button>
+          )}
           <button
             className="start-play"
             onPointerDown={stop}
@@ -247,6 +289,7 @@ export default function Game() {
             <span>Play</span>
           </button>
           <button
+            aria-label={`Graphics: ${fx ? "Realistic" : "Classic"}`}
             onPointerDown={stop}
             onPointerUp={(e) => {
               e.stopPropagation();
@@ -280,6 +323,17 @@ export default function Game() {
             >
               <kbd>S</kbd> Store
             </button>
+            {leaderboardEnabled && (
+              <button
+                onPointerDown={stop}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  setBoardOpen(true);
+                }}
+              >
+                <kbd>L</kbd> Ranks
+              </button>
+            )}
             <button
               className="primary"
               onPointerDown={stop}
@@ -295,6 +349,8 @@ export default function Game() {
       )}
 
       {storeOpen && <Store onClose={() => setStoreOpen(false)} />}
+      {boardOpen && <Leaderboard onClose={() => setBoardOpen(false)} />}
+      {account.editing && <ProfileEditor start={account.editing} first={!account.profile?.username} />}
     </div>
   );
 }
