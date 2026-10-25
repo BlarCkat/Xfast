@@ -3,6 +3,7 @@ import {
   COLS,
   HOP_DURATION,
   IDLE_LIMIT,
+  MAGNET_PULL_TIME,
   MAGNET_RADIUS,
   MAX_SPEED_SCALE,
   SPEEDUP_STEP,
@@ -134,6 +135,9 @@ export class Engine {
   /** Bumped whenever lanes are added or removed so React can re-render the list. */
   laneVersion = 0;
   eagle: null | { t: number; startZ: number } = null;
+  /** Coins the magnet has pulled off their lanes, flying to the player; banked when they arrive. */
+  pulled: { id: number; x: number; row: number; t: number }[] = [];
+  private pullId = 0;
   /** Exact seconds left on each power-up. */
   effects: Effects = noEffects();
   private toastId = 0;
@@ -386,9 +390,20 @@ export class Engine {
     return true;
   }
 
+  /** The magnet lifts a coin off its lane; it flies to the player and is banked on arrival. */
+  private pullCoin(lane: Lane) {
+    this.pulled.push({ id: ++this.pullId, x: lane.coin!, row: lane.row, t: 0 });
+    lane.coin = null;
+  }
+
   private collectCoin(lane: Lane) {
     lane.coin = null;
+    this.bankCoin();
+  }
+
+  private bankCoin() {
     const n = this.effects.double > 0 ? 2 : 1;
+    sound.coin(n > 1);
     wallet.addCoins(n);
     this.setUi({ coins: this.ui.coins + n });
     if (this.character === "mario") {
@@ -697,8 +712,14 @@ export class Engine {
     if ((this.effects.magnet > 0 || this.character === "luigi") && !p.death) {
       for (let r = p.row - MAGNET_RADIUS; r <= p.row + MAGNET_RADIUS; r++) {
         const lane = this.lanes.get(r);
-        if (lane && lane.coin !== null && Math.abs(lane.coin - p.x) <= MAGNET_RADIUS + 0.5) this.collectCoin(lane);
+        if (lane && lane.coin !== null && Math.abs(lane.coin - p.x) <= MAGNET_RADIUS + 0.5) this.pullCoin(lane);
       }
+    }
+
+    for (const c of this.pulled) c.t += dt / MAGNET_PULL_TIME;
+    if (this.pulled.some((c) => c.t >= 1)) {
+      for (const c of this.pulled) if (c.t >= 1) this.bankCoin();
+      this.pulled = this.pulled.filter((c) => c.t < 1);
     }
 
     if (playing && !p.death) {

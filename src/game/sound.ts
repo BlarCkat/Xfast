@@ -1,25 +1,112 @@
-// Sound effects, synthesised with the Web Audio API so there are no audio files to download.
+// Sound: effects synthesised with the Web Audio API (so they add nothing to the download), plus the
+// background music track. Volumes and the music switch live in Options and are remembered.
+
+export interface AudioSettings {
+  /** Sound effects volume, 0 to 1. */
+  sfx: number;
+  /** Music volume, 0 to 1. */
+  music: number;
+  musicOn: boolean;
+}
+
+const SETTINGS_KEY = "xfast-audio";
+const MUSIC_URL = "/audio/pixel-pulse.mp3";
+const DEFAULTS: AudioSettings = { sfx: 0.8, music: 0.5, musicOn: true };
+
+let settings: AudioSettings = DEFAULTS;
+const listeners = new Set<() => void>();
+
+function loadSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}") as Partial<AudioSettings>;
+    settings = { ...DEFAULTS, ...saved };
+  } catch {
+    settings = DEFAULTS;
+  }
+}
+if (typeof window !== "undefined") loadSettings();
+
+export const audioSettings = () => settings;
+export function onAudioSettings(fn: () => void) {
+  listeners.add(fn);
+  return () => void listeners.delete(fn);
+}
+
+export function setAudioSettings(next: Partial<AudioSettings>) {
+  settings = { ...settings, ...next };
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    // Settings still apply for this visit.
+  }
+  applyVolumes();
+  if (settings.musicOn) startMusic();
+  listeners.forEach((fn) => fn());
+}
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
+let musicBus: GainNode | null = null;
+let music: HTMLAudioElement | null = null;
 let noiseBuffer: AudioBuffer | null = null;
 
-/** The shared audio context, made on first use (always inside a tap or key press, which browsers require). */
+function applyVolumes() {
+  if (!ctx || !master || !musicBus) return;
+  // Squared, so the sliders feel even to the ear rather than all the change bunching at the top.
+  master.gain.setTargetAtTime(settings.sfx ** 2, ctx.currentTime, 0.05);
+  musicBus.gain.setTargetAtTime(settings.musicOn ? settings.music ** 2 * 0.8 : 0, ctx.currentTime, 0.05);
+  if (music && !settings.musicOn) music.pause();
+}
+
+/** The shared audio context. Browsers only allow sound after a tap or key press; see unlock(). */
 function audio() {
   if (typeof window === "undefined" || !("AudioContext" in window)) return null;
   if (!ctx) {
+    // On iPhones this lets the game play even with the silent switch on, like other games.
+    const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+    if (session) session.type = "playback";
     ctx = new AudioContext();
     master = ctx.createGain();
-    master.gain.value = 0.9;
     master.connect(ctx.destination);
-    // Go quiet with the tab, so the river doesn't keep running in the background.
+    musicBus = ctx.createGain();
+    musicBus.connect(ctx.destination);
+    applyVolumes();
+    // Go quiet with the tab, so the music and the river don't keep running in the background.
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) void ctx?.suspend();
-      else void ctx?.resume();
+      if (document.hidden) {
+        void ctx?.suspend();
+        music?.pause();
+      } else {
+        void ctx?.resume();
+        if (settings.musicOn) void music?.play().catch(() => {});
+      }
     });
   }
   if (ctx.state === "suspended" && !document.hidden) void ctx.resume();
   return ctx;
+}
+
+/** Stream the background track on a loop, through the music volume. */
+function startMusic() {
+  const ac = audio();
+  if (!ac || !musicBus) return;
+  if (!music) {
+    music = new Audio(MUSIC_URL);
+    music.loop = true;
+    music.crossOrigin = "anonymous";
+    ac.createMediaElementSource(music).connect(musicBus);
+  }
+  if (music.paused) void music.play().catch(() => {});
+}
+
+// The first tap or key press anywhere starts the audio (and the music), as browsers require.
+if (typeof window !== "undefined") {
+  const unlock = () => {
+    if (!audio()) return;
+    if (settings.musicOn) startMusic();
+    for (const e of ["pointerdown", "pointerup", "keydown", "touchend"]) window.removeEventListener(e, unlock, true);
+  };
+  for (const e of ["pointerdown", "pointerup", "keydown", "touchend"]) window.addEventListener(e, unlock, true);
 }
 
 /** Two seconds of white noise, shared by every hiss, whoosh and splash. */
@@ -102,6 +189,21 @@ export function pop(big = false) {
 }
 
 let lastCar = 0;
+
+let lastCoin = 0;
+
+/** Picking up a coin: a bright two-note chime, a little higher for double coins. */
+export function coin(double = false) {
+  const ac = audio();
+  if (!ac) return;
+  // Magnet pulls can land several at once; let the chimes overlap but not pile up.
+  const t = Math.max(ac.currentTime, lastCoin + 0.06);
+  lastCoin = t;
+  const k = double ? 1.12 : 1;
+  tone(ac, t, { type: "triangle", from: 988 * k, peak: 0.16, length: 0.09, attack: 0.002 });
+  tone(ac, t + 0.07, { type: "triangle", from: 1319 * k, peak: 0.16, length: 0.3, attack: 0.002 });
+  tone(ac, t + 0.07, { type: "sine", from: 2638 * k, peak: 0.04, length: 0.18, attack: 0.002 });
+}
 
 /**
  * A car going past the player: a swell of road noise whose pitch drops as it passes (a little

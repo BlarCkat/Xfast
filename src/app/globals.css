@@ -651,6 +651,24 @@ kbd {
   color: var(--ui-teal);
 }
 
+.options-slider {
+  cursor: default;
+}
+
+.options-slider input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--ui-teal);
+}
+
+.options-slider .options-value {
+  width: 2.2em;
+  margin-left: 0;
+  text-align: right;
+  font-family: var(--font-score);
+  font-size: 18px;
+}
+
 .options-back {
   align-self: flex-start;
   margin-top: 6px;

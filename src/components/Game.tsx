@@ -5,6 +5,7 @@ import { Canvas } from "@react-three/fiber";
 import { Engine, type Direction } from "@/game/engine";
 import { CHICKEN_POWERUP_BONUS } from "@/game/config";
 import { POWERUPS, durationAt, hotkeyFor, type PowerUp } from "@/game/powerups";
+import { audioSettings, onAudioSettings, setAudioSettings } from "@/game/sound";
 import { CHARACTERS, wallet } from "@/game/wallet";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
@@ -37,6 +38,24 @@ function readFx() {
   }
 }
 
+/** A labelled volume slider for the options panel. */
+function Volume({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <label className="options-row options-slider">
+      <span>{label}</span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={Math.round(value * 100)}
+        onChange={(e) => onChange(Number(e.target.value) / 100)}
+        aria-label={label}
+      />
+      <span className="options-value">{Math.round(value * 100)}</span>
+    </label>
+  );
+}
+
 export interface GameProps {
   /** Called once the first frame of the scene has rendered. */
   onReady?: () => void;
@@ -58,6 +77,7 @@ const MENU: { id: MenuItem; label: string }[] = [
 export default function Game({ onReady, onExit, locked = false }: GameProps) {
   const [engine, setEngine] = useState(() => new Engine(wallet.get().selected));
   const ui = useSyncExternalStore(engine.subscribe, engine.getSnapshot, engine.getSnapshot);
+  const sound = useSyncExternalStore(onAudioSettings, audioSettings, audioSettings);
   const w = useWallet();
   const [storeOpen, setStoreOpen] = useState(false);
   const [storeTab, setStoreTab] = useState<StoreTab>("characters");
@@ -286,6 +306,12 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
               <span className="options-value">{fx ? "Realistic" : "Classic"}</span>
               <kbd>B</kbd>
             </button>
+            <Volume label="Sound effects" value={sound.sfx} onChange={(sfx) => setAudioSettings({ sfx })} />
+            <button className="options-row" onClick={() => setAudioSettings({ musicOn: !sound.musicOn })}>
+              <span>Music</span>
+              <span className="options-value">{sound.musicOn ? "On" : "Off"}</span>
+            </button>
+            {sound.musicOn && <Volume label="Music volume" value={sound.music} onChange={(music) => setAudioSettings({ music })} />}
             <button className="options-back" onClick={() => setOptionsOpen(false)}>
               BACK
             </button>

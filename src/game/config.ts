@@ -65,6 +65,8 @@ export const MAX_SPEED_SCALE = 3;
 export const WARP_ROWS = 6;
 export const COIN_RAIN_ROWS = 12;
 export const MAGNET_RADIUS = 2;
+/** Seconds a magnetised coin takes to fly to the player. */
+export const MAGNET_PULL_TIME = 0.35;
 /** World speed while slowmo is active; the chicken keeps hopping at full speed. */
 export const SLOWMO_SCALE = 0.35;
 /** How far ahead (seconds) the foresight ghosts show traffic. */
