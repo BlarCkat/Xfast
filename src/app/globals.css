@@ -222,7 +222,7 @@ kbd {
   flex-wrap: wrap-reverse;
   justify-content: flex-end;
   max-width: min(70vw, 340px);
-  gap: 6px 4px;
+  gap: 14px 8px;
 }
 
 .use-power {
@@ -243,29 +243,46 @@ kbd {
   font-size: 10px;
 }
 
-.cell-badge {
+/* Round power-up buttons with a segmented ring (see PowerRing). */
+.ring {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+
+.ring-shape {
   position: absolute;
-  top: -4px;
-  left: 50%;
-  z-index: 1;
-  transform: translateX(-50%);
-  width: 20px;
-  height: 20px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.ring-seg {
+  fill: none;
+  stroke: #dcdce4;
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+
+.ring-icon {
+  position: relative;
   display: grid;
   place-items: center;
   color: var(--ui-ink);
-  font: 800 10px var(--font-ui);
 }
 
-/* Diamond marker behind the count, like the reference's unlock pips. */
-.cell-badge::before {
-  content: "";
+.ring-label {
   position: absolute;
-  inset: 2px;
-  z-index: -1;
-  background: var(--ui-gold);
-  border-radius: 3px;
-  transform: rotate(45deg);
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 7px;
+  border-radius: 6px;
+  color: #fff;
+  font: 13px/1.2 var(--font-score);
+  white-space: nowrap;
 }
 
 .toast {
@@ -302,21 +319,6 @@ kbd {
 
 /* ---- Start and game over -------------------------------------------- */
 
-.overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  pointer-events: none;
-  color: var(--ui-text);
-  text-align: center;
-  padding: 0 16px;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
-}
-
 .title {
   margin: 0;
   font-weight: 400;
@@ -324,48 +326,6 @@ kbd {
   letter-spacing: 2px;
   line-height: 0.85;
   text-shadow: 0 6px 0 rgba(16, 20, 24, 0.35);
-}
-
-.panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 22px 40px 18px;
-  border-radius: 24px;
-  background: linear-gradient(180deg, rgba(95, 159, 226, 0.92), rgba(140, 190, 238, 0.92));
-  box-shadow: 0 10px 30px var(--ui-shadow);
-}
-
-.panel p {
-  margin: 0;
-}
-
-.panel-score {
-  font-family: var(--font-score);
-  font-size: 84px;
-  line-height: 1;
-}
-
-.panel-best {
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  color: var(--ui-gold);
-}
-
-.panel-coins {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 800;
-  color: var(--ui-gold);
-}
-
-.overlay-hints {
-  pointer-events: auto;
-  position: static;
-  margin-top: 14px;
 }
 
 .menu-kind {
@@ -405,11 +365,6 @@ kbd {
 .menu-hints button:disabled {
   opacity: 0.5;
   cursor: default;
-}
-
-.overlay-hints {
-  justify-content: center;
-  gap: 16px;
 }
 
 @keyframes pulse {
@@ -612,6 +567,7 @@ kbd {
 }
 
 .options-title {
+  min-width: 0;
   margin: 0 auto 0 0;
   font-weight: 400;
   font-size: 30px;
@@ -672,6 +628,191 @@ kbd {
   .curtain,
   .curtain-returning {
     transition: none;
+    animation: none;
+  }
+}
+
+/* ---- Achievements --------------------------------------------------- */
+
+.goals-top {
+  flex-wrap: nowrap;
+}
+
+.goals-top .options-title {
+  font-size: 26px;
+}
+
+.goals-pill {
+  gap: 6px;
+  padding: 4px 14px;
+}
+
+.goals-pill svg + svg {
+  margin-left: 8px;
+}
+
+.goals {
+  gap: 12px;
+}
+
+.goals-head {
+  margin: 10px 0 0;
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.goals-note {
+  margin: -8px 0 0;
+  color: var(--ui-text-dim);
+  font-size: 18px;
+}
+
+.goal {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px 14px;
+  border-radius: 14px;
+  background: #1f1b45;
+}
+
+.goal-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.goal-title {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.goal-desc {
+  color: var(--ui-text-dim);
+  font-size: 18px;
+}
+
+.goal-check {
+  margin-left: auto;
+  color: var(--ui-gold);
+  font-size: 20px;
+  white-space: nowrap;
+}
+
+/* ---- Game over: full purple screen ------------------------------------- */
+
+/* Slides up over the scene a moment after the crash, with Store over Play docked at the bottom. */
+.game-over {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--ui-text);
+  padding-block: calc(24px + env(safe-area-inset-top, 0px)) calc(20px + env(safe-area-inset-bottom, 0px));
+  padding-inline: 16px;
+  isolation: isolate;
+  overflow: hidden;
+  animation: game-over-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.1) 0.35s both;
+}
+
+.game-over .shop-backdrop {
+  position: absolute;
+}
+
+@keyframes game-over-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.game-over-score {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.game-over-score p {
+  margin: 0;
+}
+
+.game-over-kind {
+  font-size: 30px;
+  letter-spacing: 3px;
+  color: var(--ui-text-dim);
+}
+
+.game-over-value {
+  font-family: var(--font-score);
+  font-size: clamp(110px, 34vw, 220px);
+  line-height: 1;
+  text-shadow: 0 8px 0 #4a2bb0;
+}
+
+.game-over-best {
+  margin-top: 8px !important;
+  font-size: 28px;
+  color: var(--ui-gold);
+}
+
+.game-over-coins {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px !important;
+  padding: 4px 16px;
+  border-radius: 999px;
+  background: #1f1b45;
+  font-family: var(--font-score);
+  font-size: 22px;
+  color: var(--ui-gold);
+}
+
+.game-over-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.game-over-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: none;
+  border-radius: 18px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+}
+
+.game-over-actions kbd {
+  opacity: 0.7;
+}
+
+.game-over-store {
+  padding: 10px;
+  background: #1f1b45;
+  color: var(--ui-text);
+  font-size: 28px;
+}
+
+.game-over-play {
+  padding: 16px;
+  background: var(--ui-teal);
+  color: var(--ui-ink);
+  font-size: 40px;
+  box-shadow: 0 6px 0 var(--ui-teal-deep);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-over {
     animation: none;
   }
 }

@@ -4,11 +4,13 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { Canvas } from "@react-three/fiber";
 import { Engine, type Direction } from "@/game/engine";
 import { CHICKEN_POWERUP_BONUS } from "@/game/config";
-import { POWERUPS, durationAt, hotkeyFor, type PowerUp } from "@/game/powerups";
+import { POWERUPS, TIER_SIZE, durationAt, hotkeyFor, tierOf, type PowerUp } from "@/game/powerups";
 import { TRACKS, audioSettings, onAudioSettings, setAudioSettings, type TrackId } from "@/game/sound";
 import { CHARACTERS, wallet } from "@/game/wallet";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
+import { PowerRing } from "./PowerRing";
+import Achievements from "./Achievements";
 import Store, { ShopBackdrop, useWallet, type StoreTab } from "./Store";
 
 const KEYS: Record<string, Direction> = {
@@ -68,11 +70,12 @@ export interface GameProps {
   locked?: boolean;
 }
 
-type MenuItem = "play" | "characters" | "store" | "options" | "exit";
+type MenuItem = "play" | "characters" | "store" | "achievements" | "options" | "exit";
 const MENU: { id: MenuItem; label: string }[] = [
   { id: "play", label: "PLAY" },
   { id: "characters", label: "CHARACTERS" },
   { id: "store", label: "STORE" },
+  { id: "achievements", label: "ACHIEVEMENTS" },
   { id: "options", label: "OPTIONS" },
   { id: "exit", label: "EXIT" },
 ];
@@ -85,6 +88,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   const [storeOpen, setStoreOpen] = useState(false);
   const [storeTab, setStoreTab] = useState<StoreTab>("characters");
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [goalsOpen, setGoalsOpen] = useState(false);
   const [hovered, setHovered] = useState<MenuItem>("play");
   const openStore = useCallback((tab: StoreTab) => {
     setStoreTab(tab);
@@ -132,6 +136,10 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
         if (e.code === "Escape") setStoreOpen(false);
         return;
       }
+      if (goalsOpen) {
+        if (e.code === "Escape") setGoalsOpen(false);
+        return;
+      }
       if (e.code === "KeyB") {
         toggleFx();
         return;
@@ -161,12 +169,13 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [engine, restart, storeOpen, optionsOpen, locked, toggleFx, openStore]);
+  }, [engine, restart, storeOpen, optionsOpen, goalsOpen, locked, toggleFx, openStore]);
 
   const pick = (item: MenuItem) => {
     if (item === "play") engine.move("up");
     else if (item === "characters") openStore("characters");
     else if (item === "store") openStore("powerups");
+    else if (item === "achievements") setGoalsOpen(true);
     else if (item === "options") setOptionsOpen(true);
     else onExit?.();
   };
@@ -220,13 +229,12 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
         </div>
         <div className="effects">
           {POWERUPS.map(
-            ({ key, label }) =>
+            ({ key, label, color }) =>
               ui.effects[key] > 0 && (
                 <div key={key} className="effect" title={label}>
-                  <Hex tone="teal" size={40} ring={ui.effects[key] / fullDuration(key)}>
-                    <Icon id={key} size={17} />
-                  </Hex>
-                  <span>{ui.effects[key]}s</span>
+                  <PowerRing color={color} size={46} lit={ui.effects[key] / fullDuration(key)} label={`${ui.effects[key]}s`} active>
+                    <Icon id={key} size={20} />
+                  </PowerRing>
                 </div>
               ),
           )}
@@ -244,7 +252,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
 
       {ui.status === "playing" && (
         <div className="inventory">
-          {POWERUPS.map(({ key, label }, i) =>
+          {POWERUPS.map(({ key, label, color }, i) =>
             w.inventory[key] + ui.stash[key] > 0 ? (
               <button
                 key={key}
@@ -256,10 +264,16 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
                   engine.activate(key);
                 }}
               >
-                <span className="cell-badge">{w.inventory[key] + ui.stash[key]}</span>
-                <Hex tone={ui.effects[key] > 0 ? "teal" : "white"} size={54}>
-                  <Icon id={key} size={22} />
-                </Hex>
+                {/* The ring drains while the power-up runs; otherwise it shows the progress through its upgrade tier. */}
+                <PowerRing
+                  color={color}
+                  size={58}
+                  active={ui.effects[key] > 0}
+                  lit={ui.effects[key] > 0 ? ui.effects[key] / fullDuration(key) : tierOf(w.upgrades[key]).filled / TIER_SIZE}
+                  label={`×${w.inventory[key] + ui.stash[key]}`}
+                >
+                  <Icon id={key} size={26} />
+                </PowerRing>
                 {hotkeyFor(i) && <kbd>{hotkeyFor(i)!.slice(-1)}</kbd>}
               </button>
             ) : null,
@@ -336,39 +350,28 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
       )}
 
       {ui.status === "dead" && (
-        <div className="overlay">
-          <div className="panel">
-            <p className="menu-kind">SCORE</p>
-            <p className="panel-score">{ui.score}</p>
-            <p className="panel-best">{ui.score >= ui.best && ui.score > 0 ? "NEW TOP SCORE" : `TOP ${ui.best}`}</p>
-            <p className="panel-coins">
-              <Icon id="coin" size={16} /> +{ui.coins}
+        <div className="game-over" role="dialog" aria-label="Run over" onPointerDown={stop} onPointerUp={stop}>
+          <ShopBackdrop />
+          <div className="game-over-score">
+            <p className="game-over-kind">SCORE</p>
+            <p className="game-over-value">{ui.score}</p>
+            <p className="game-over-best">{ui.score >= ui.best && ui.score > 0 ? "NEW TOP SCORE!" : `TOP ${ui.best}`}</p>
+            <p className="game-over-coins">
+              <Icon id="coin" size={22} /> +{ui.coins}
             </p>
           </div>
-          <div className="menu-hints overlay-hints">
-            <button
-              onPointerDown={stop}
-              onPointerUp={(e) => {
-                e.stopPropagation();
-                openStore("powerups");
-              }}
-            >
-              <kbd>S</kbd> Store
+          <div className="game-over-actions">
+            <button className="game-over-store" onClick={() => openStore("powerups")}>
+              STORE <kbd>S</kbd>
             </button>
-            <button
-              className="primary"
-              onPointerDown={stop}
-              onPointerUp={(e) => {
-                e.stopPropagation();
-                restart();
-              }}
-            >
-              <kbd>↵</kbd> Play again
+            <button className="game-over-play" onClick={restart}>
+              PLAY <kbd>↵</kbd>
             </button>
           </div>
         </div>
       )}
 
+      {goalsOpen && <Achievements onClose={() => setGoalsOpen(false)} />}
       {storeOpen && <Store initialTab={storeTab} onClose={() => setStoreOpen(false)} />}
     </div>
   );

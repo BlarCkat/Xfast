@@ -1,3 +1,4 @@
+import { achievements, type Goal } from "./achievements";
 import { BIOMES, biomeAt, type BiomeId } from "./biomes";
 import {
   COLS,
@@ -209,6 +210,7 @@ export class Engine {
     if (this.ui.status === "ready") {
       // Extra lives bought in the store are spent when a run starts.
       this.setUi({ status: "playing", lives: this.ui.lives + wallet.takeLives() });
+      achievements.startRun(this.biome);
       if (this.character === "penguin") {
         this.apply("shield");
         this.syncEffects(true);
@@ -289,6 +291,7 @@ export class Engine {
     if (lane && lane.biome !== this.biome) {
       this.biome = lane.biome;
       this.setUi({ toast: { text: BIOMES[lane.biome].label.toUpperCase(), id: ++this.toastId } });
+      this.award(achievements.enteredBiome(lane.biome));
       // Mario finds a fresh Super Mushroom in every new biome.
       if (this.character === "mario") this.big = true;
     }
@@ -344,6 +347,7 @@ export class Engine {
     p.shield = Math.max(p.shield, 1);
     this.biome = "underwater";
     this.setUi({ toast: { text: "DIVE!", id: ++this.toastId } });
+    this.award(achievements.enteredBiome("underwater"));
   }
 
   /** Lumberjack, and Bowser always, go straight through trees and rocks. */
@@ -406,6 +410,7 @@ export class Engine {
     sound.coin(n > 1);
     wallet.addCoins(n);
     this.setUi({ coins: this.ui.coins + n });
+    this.award(achievements.coins(n));
     if (this.character === "mario") {
       this.marioCoins += n;
       if (this.marioCoins >= MARIO_COINS_PER_LIFE) {
@@ -449,6 +454,7 @@ export class Engine {
   }
 
   private countStep() {
+    this.award(achievements.hop());
     if (this.character === "cat") this.catRefill();
     const steps = this.ui.steps + 1;
     // Sparrow and snail bend time every so many hops.
@@ -472,6 +478,7 @@ export class Engine {
   private collect(lane: Lane) {
     const kind = lane.pickup!.kind;
     lane.pickup = null;
+    const found = kind === "life" ? [] : achievements.pickedUp(kind);
     if (kind === "life") this.setUi({ lives: this.ui.lives + 1 });
     else if (this.character === "duck") {
       // The duck pockets power-ups for later in the run instead of using them straight away.
@@ -479,10 +486,20 @@ export class Engine {
         stash: { ...this.ui.stash, [kind]: this.ui.stash[kind] + 1 },
         toast: { text: `${PICKUP_LABEL[kind]} SAVED`, id: ++this.toastId },
       });
+      this.award(found);
       return;
     } else this.apply(kind);
     this.syncEffects(true);
     this.setUi({ toast: { text: PICKUP_LABEL[kind], id: ++this.toastId } });
+    this.award([...found, ...(kind === "life" ? [] : achievements.usedPowerup())]);
+  }
+
+  /** Announce goals just earned; a later toast replaces an earlier one, so these go last. */
+  private award(goals: Goal[]) {
+    for (const g of goals) {
+      sound.coin(true);
+      this.setUi({ toast: { text: `${g.kind === "daily" ? "★" : "BADGE:"} ${g.title.toUpperCase()}`, id: ++this.toastId } });
+    }
   }
 
   /** Use a power-up bought in the store. */
@@ -494,6 +511,7 @@ export class Engine {
     this.apply(kind);
     this.syncEffects(true);
     this.setUi({ toast: { text: PICKUP_LABEL[kind], id: ++this.toastId } });
+    this.award(achievements.usedPowerup());
     return true;
   }
 
