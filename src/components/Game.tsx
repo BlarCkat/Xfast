@@ -8,7 +8,7 @@ import { POWERUPS, durationAt, hotkeyFor, type PowerUp } from "@/game/powerups";
 import { CHARACTERS, wallet } from "@/game/wallet";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
-import Store, { useWallet } from "./Store";
+import Store, { useWallet, type StoreTab } from "./Store";
 
 const KEYS: Record<string, Direction> = {
   ArrowUp: "up",
@@ -37,11 +37,36 @@ function readFx() {
   }
 }
 
-export default function Game() {
+export interface GameProps {
+  /** Called once the first frame of the scene has rendered. */
+  onReady?: () => void;
+  /** Called when the player picks Exit on the main menu. */
+  onExit?: () => void;
+  /** Ignore keyboard input while something covers the game. */
+  locked?: boolean;
+}
+
+type MenuItem = "play" | "characters" | "store" | "options" | "exit";
+const MENU: { id: MenuItem; label: string }[] = [
+  { id: "play", label: "PLAY" },
+  { id: "characters", label: "CHARACTERS" },
+  { id: "store", label: "STORE" },
+  { id: "options", label: "OPTIONS" },
+  { id: "exit", label: "EXIT" },
+];
+
+export default function Game({ onReady, onExit, locked = false }: GameProps) {
   const [engine, setEngine] = useState(() => new Engine(wallet.get().selected));
   const ui = useSyncExternalStore(engine.subscribe, engine.getSnapshot, engine.getSnapshot);
   const w = useWallet();
   const [storeOpen, setStoreOpen] = useState(false);
+  const [storeTab, setStoreTab] = useState<StoreTab>("characters");
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [hovered, setHovered] = useState<MenuItem>("play");
+  const openStore = useCallback((tab: StoreTab) => {
+    setStoreTab(tab);
+    setStoreOpen(true);
+  }, []);
   const [fx, setFx] = useState(readFx);
   const toggleFx = useCallback(() => {
     setFx((on) => {
@@ -74,7 +99,12 @@ export default function Game() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
+      if (e.repeat || locked) return;
+      if (optionsOpen) {
+        if (e.code === "Escape") setOptionsOpen(false);
+        else if (e.code === "KeyB") toggleFx();
+        return;
+      }
       if (storeOpen) {
         if (e.code === "Escape") setStoreOpen(false);
         return;
@@ -84,7 +114,11 @@ export default function Game() {
         return;
       }
       if (e.code === "KeyS" && engine.status !== "playing") {
-        setStoreOpen(true);
+        openStore("powerups");
+        return;
+      }
+      if (e.code === "KeyC" && engine.status !== "playing") {
+        openStore("characters");
         return;
       }
       const power = POWERUPS.find((_, i) => hotkeyFor(i) === e.code);
@@ -104,7 +138,15 @@ export default function Game() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [engine, restart, storeOpen, toggleFx]);
+  }, [engine, restart, storeOpen, optionsOpen, locked, toggleFx, openStore]);
+
+  const pick = (item: MenuItem) => {
+    if (item === "play") engine.move("up");
+    else if (item === "characters") openStore("characters");
+    else if (item === "store") openStore("powerups");
+    else if (item === "options") setOptionsOpen(true);
+    else onExit?.();
+  };
 
   // Tap to hop forward, swipe to hop in any direction.
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -133,6 +175,7 @@ export default function Game() {
         shadows
         dpr={[1, 2]}
         camera={{ position: [3, 11, 7.5], zoom: 50, near: -50, far: 200 }}
+        onCreated={() => requestAnimationFrame(() => onReady?.())}
       >
         <Scene key={engine.id} engine={engine} fx={fx} />
       </Canvas>
@@ -208,56 +251,46 @@ export default function Game() {
       )}
 
       {ui.status === "ready" && (
-        <div className="overlay">
-          <h1 className="title">XFAST</h1>
-          <p className="hint">Tap or press ↑ to hop</p>
-          <p className="sub">Swipe or use arrows / WASD. Grab coins, hearts and power-ups.</p>
-          <p className="sub">
-            <strong>{character.name}:</strong> {character.trait}
+        <div className="main-menu">
+          {/* Text stand-in until the Roadmasters logo arrives. */}
+          <h1 className="title">ROADMASTERS</h1>
+          <nav className="menu-list" aria-label="Main menu">
+            {MENU.map(({ id, label }) => (
+              <button
+                key={id}
+                className={hovered === id ? "on" : ""}
+                onPointerEnter={() => setHovered(id)}
+                onFocus={() => setHovered(id)}
+                onPointerDown={stop}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  pick(id);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+          <p className="menu-trait">
+            {character.name}: {character.trait}
           </p>
         </div>
       )}
 
-      {ui.status === "ready" && (
-        <nav className="start-nav" aria-label="Main menu">
-          <button
-            onPointerDown={stop}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              setStoreOpen(true);
-            }}
-          >
-            <span className="start-coin">
-              <Icon id="coin" size={22} />
-            </span>
-            <span>Store</span>
-            <kbd>S</kbd>
-          </button>
-          <button
-            className="start-play"
-            onPointerDown={stop}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              engine.move("up");
-            }}
-          >
-            <svg viewBox="0 0 24 24" width={26} height={26} fill="currentColor" aria-hidden="true">
-              <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5Z" />
-            </svg>
-            <span>Play</span>
-          </button>
-          <button
-            onPointerDown={stop}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              toggleFx();
-            }}
-          >
-            <Icon id="foresight" size={22} />
-            <span>{fx ? "Realistic" : "Classic"}</span>
-            <kbd>B</kbd>
-          </button>
-        </nav>
+      {optionsOpen && (
+        <div className="options" onPointerDown={stop} onPointerUp={stop}>
+          <div className="options-panel">
+            <h2>OPTIONS</h2>
+            <button className="options-row" onClick={toggleFx}>
+              <span>Graphics</span>
+              <span className="options-value">{fx ? "Realistic" : "Classic"}</span>
+              <kbd>B</kbd>
+            </button>
+            <button className="options-back" onClick={() => setOptionsOpen(false)}>
+              BACK
+            </button>
+          </div>
+        </div>
       )}
 
       {ui.status === "dead" && (
@@ -275,7 +308,7 @@ export default function Game() {
               onPointerDown={stop}
               onPointerUp={(e) => {
                 e.stopPropagation();
-                setStoreOpen(true);
+                openStore("powerups");
               }}
             >
               <kbd>S</kbd> Store
@@ -294,7 +327,7 @@ export default function Game() {
         </div>
       )}
 
-      {storeOpen && <Store onClose={() => setStoreOpen(false)} />}
+      {storeOpen && <Store initialTab={storeTab} onClose={() => setStoreOpen(false)} />}
     </div>
   );
 }

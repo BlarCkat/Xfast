@@ -1,3 +1,19 @@
+/* Readable text is hand-lettered; digits anywhere switch to the pixel face via unicode-range. */
+@font-face {
+  font-family: "Just Another Hand";
+  src: url("/fonts/JustAnotherHand.woff2") format("woff2");
+  font-display: swap;
+  /* The face draws small for its em box, so scale it up to sit level with the old UI sizes. */
+  size-adjust: 135%;
+}
+
+@font-face {
+  font-family: "Roadmasters Digits";
+  src: url("/fonts/GeistPixel-Circle.woff2") format("woff2");
+  font-display: swap;
+  unicode-range: U+0030-0039;
+}
+
 /* Sky-blue game menus: white honeycomb cells, teal for active, frosted grey for locked. */
 :root {
   --ui-sky-top: #5f9fe2;
@@ -12,7 +28,7 @@
   --ui-text: #ffffff;
   --ui-text-dim: rgba(255, 255, 255, 0.72);
   --ui-shadow: rgba(20, 50, 90, 0.28);
-  --font-ui: var(--font-geist-sans, "Geist"), "Helvetica Neue", Arial, sans-serif;
+  --font-ui: "Roadmasters Digits", "Just Another Hand", "Helvetica Neue", Arial, sans-serif;
   --font-score: var(--font-geist-pixel-circle, "Geist Pixel Circle"), ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
@@ -27,6 +43,9 @@ body {
   overflow: hidden;
   background: #7fd0f5;
   font-family: var(--font-ui);
+  /* Just Another Hand has one weight; faux bold smears it. */
+  font-synthesis: none;
+  letter-spacing: 0.5px;
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -289,27 +308,12 @@ kbd {
 }
 
 .title {
-  margin: 0 0 14vh;
-  font-family: var(--font-score);
-  font-weight: 500;
-  font-size: clamp(56px, 16vw, 120px);
-  letter-spacing: 4px;
-  line-height: 1;
+  margin: 0;
+  font-weight: 400;
+  font-size: clamp(48px, 13vw, 120px);
+  letter-spacing: 2px;
+  line-height: 0.85;
   text-shadow: 0 6px 0 rgba(16, 20, 24, 0.35);
-}
-
-.hint {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 800;
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-.sub {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-text-dim);
 }
 
 .panel {
@@ -685,7 +689,6 @@ kbd {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hint,
   .comb-cell.bounce .hex {
     animation: none;
   }
@@ -715,65 +718,221 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- Start screen navbar --------------------------------------------- */
+/* ---- Loading curtain ------------------------------------------------- */
 
-.start-nav {
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #2b2a28;
+  color: var(--ui-text);
+  transition: transform 0.5s cubic-bezier(0.7, 0, 0.3, 1);
+}
+
+.curtain-leaving {
+  transform: translateX(-100%);
+}
+
+.curtain-returning {
+  animation: curtain-in 0.5s cubic-bezier(0.7, 0, 0.3, 1);
+}
+
+.curtain-paused {
+  cursor: pointer;
+}
+
+@keyframes curtain-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+.loading {
   position: absolute;
-  left: 50%;
-  bottom: calc(16px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
+  right: max(24px, env(safe-area-inset-right, 0px));
+  bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.loading-label {
+  font-size: 26px;
+  line-height: 1;
+}
+
+/* Slanted bar: a parallelogram track with a red fill growing from the left. */
+.loading-bar {
+  width: min(200px, 52vw);
+  height: 34px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  transform: skewX(-14deg);
+  background: rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.loading-fill {
+  height: 100%;
+  background: #ef3b2d;
+  transform-origin: left;
+}
+
+.curtain-title {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.curtain-title h1 {
+  margin: 0;
+  font-weight: 400;
+  font-size: clamp(64px, 17vw, 132px);
+  line-height: 0.85;
+}
+
+.curtain-title p {
+  margin: 0;
+  font-size: 24px;
+  color: var(--ui-text-dim);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+/* ---- Main menu ------------------------------------------------------- */
+
+.main-menu {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-block: calc(110px + env(safe-area-inset-top, 0px)) calc(40px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
+  pointer-events: none;
+  color: var(--ui-text);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.main-menu .title {
+  text-align: center;
+}
+
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: auto;
+}
+
+.menu-list button {
+  position: relative;
+  /* Keeps the slab below the label but above the game canvas. */
+  z-index: 0;
+  padding: 2px 22px 0 14px;
+  border: none;
+  background: none;
+  font-size: 40px;
+  line-height: 1.05;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* The picked item sits on a dark slanted slab, like the mockup's CHARACTERS row. */
+.menu-list button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(24, 24, 22, 0.88);
+  transform: skewX(-12deg) scaleX(0);
+  transform-origin: left;
+  transition: transform 0.15s ease-out;
+}
+
+.menu-list button.on::before {
+  transform: skewX(-12deg) scaleX(1);
+}
+
+.menu-list button:focus-visible {
+  outline: none;
+}
+
+.menu-trait {
+  margin: 14px 0 0 14px;
+  max-width: 340px;
+  font-size: 20px;
+  line-height: 1.1;
+  color: var(--ui-text-dim);
+}
+
+/* ---- Options --------------------------------------------------------- */
+
+.options {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(24, 24, 22, 0.55);
+}
+
+.options-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(320px, 100%);
+  padding: 20px 22px;
+  background: rgba(24, 24, 22, 0.94);
+  color: var(--ui-text);
+}
+
+.options-panel h2 {
+  margin: 0 0 4px;
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1;
+}
+
+.options-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  max-width: calc(100% - 32px);
-}
-
-.start-nav button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
+  gap: 10px;
+  padding: 8px 0;
   border: none;
-  border-radius: 999px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   background: none;
-  color: var(--ui-text);
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 26px;
   cursor: pointer;
-  white-space: nowrap;
+  text-align: left;
 }
 
-.start-nav button:hover {
-  background: rgba(255, 255, 255, 0.16);
+.options-value {
+  margin-left: auto;
+  color: var(--ui-teal);
 }
 
-.start-nav .start-play {
-  padding: 12px 26px;
-  background: var(--ui-teal);
-  color: var(--ui-ink);
-  font-size: 17px;
+.options-back {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 2px 16px;
+  border: none;
+  background: #ef3b2d;
+  font-size: 26px;
+  transform: skewX(-12deg);
+  cursor: pointer;
 }
 
-.start-nav .start-play:hover {
-  background: var(--ui-teal-deep);
-}
-
-@media (max-width: 420px) {
-  .start-nav kbd {
-    display: none;
+@media (prefers-reduced-motion: reduce) {
+  .curtain,
+  .curtain-returning {
+    transition: none;
+    animation: none;
   }
-  .start-nav button {
-    padding: 10px 12px;
-  }
-}
-
-.start-coin {
-  display: inline-flex;
-  color: var(--ui-gold);
 }

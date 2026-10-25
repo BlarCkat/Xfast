@@ -8,7 +8,7 @@ import { CHARACTERS, STORE_ITEMS, wallet, type CharacterId, type StoreItemId, ty
 import { Hex, Icon } from "./icons";
 import { CharacterModel } from "./models";
 
-type Tab = "characters" | "powerups";
+export type StoreTab = "characters" | "powerups";
 
 interface Cell {
   id: CharacterId | StoreItemId;
@@ -32,7 +32,7 @@ const CHARACTER_BLURB: Record<CharacterId, string> = {
   bowser: "King of the Koopas. Does not wait for the green man.",
 };
 
-const cellsFor = (tab: Tab, w: WalletState): Cell[] =>
+const cellsFor = (tab: StoreTab, w: WalletState): Cell[] =>
   tab === "characters"
     ? CHARACTERS.map((c) => ({ id: c.id, name: c.name, price: c.price, kind: "Character", description: `${c.trait} ${CHARACTER_BLURB[c.id]}` }))
     : STORE_ITEMS.map((i) => ({
@@ -74,7 +74,7 @@ export function useWallet() {
   return useSyncExternalStore(wallet.subscribe, wallet.get, wallet.get);
 }
 
-function action(tab: Tab, cell: Cell, w: WalletState) {
+function action(tab: StoreTab, cell: Cell, w: WalletState) {
   if (tab === "characters") {
     const id = cell.id as CharacterId;
     if (w.selected === id) return { label: "Equipped", run: null };
@@ -86,7 +86,7 @@ function action(tab: Tab, cell: Cell, w: WalletState) {
 }
 
 /** Upgrading a power-up: longer duration, or more rows for the instant ones. */
-function upgradeAction(tab: Tab, cell: Cell, w: WalletState) {
+function upgradeAction(tab: StoreTab, cell: Cell, w: WalletState) {
   if (tab !== "powerups" || cell.id === "life") return null;
   const id = cell.id as PowerUp;
   const level = w.levels[id];
@@ -99,17 +99,19 @@ function upgradeAction(tab: Tab, cell: Cell, w: WalletState) {
   };
 }
 
-export default function Store({ onClose }: { onClose: () => void }) {
+export default function Store({ onClose, initialTab = "characters" }: { onClose: () => void; initialTab?: StoreTab }) {
   const w = useWallet();
-  const [tab, setTab] = useState<Tab>("characters");
+  const [tab, setTab] = useState<StoreTab>(initialTab);
   const cells = cellsFor(tab, w);
-  const [focus, setFocus] = useState(() => Math.max(0, CHARACTERS.findIndex((c) => c.id === w.selected)));
+  const [focus, setFocus] = useState(() =>
+    tab === "characters" ? Math.max(0, CHARACTERS.findIndex((c) => c.id === w.selected)) : 0,
+  );
   const cell = cells[Math.min(focus, cells.length - 1)];
   const act = action(tab, cell, w);
   const up = upgradeAction(tab, cell, w);
   const selected = CHARACTERS.find((c) => c.id === w.selected)!;
 
-  const switchTab = (next: Tab) => {
+  const switchTab = (next: StoreTab) => {
     setTab(next);
     setFocus(0);
   };
