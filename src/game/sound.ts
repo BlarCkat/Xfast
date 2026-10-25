@@ -10,7 +10,6 @@ export interface AudioSettings {
 }
 
 const SETTINGS_KEY = "xfast-audio";
-const MUSIC_URL = "/audio/pixel-pulse.mp3";
 const DEFAULTS: AudioSettings = { sfx: 0.8, music: 0.5, musicOn: true };
 
 let settings: AudioSettings = DEFAULTS;
@@ -91,7 +90,9 @@ function startMusic() {
   const ac = audio();
   if (!ac || !musicBus) return;
   if (!music) {
-    music = new Audio(MUSIC_URL);
+    // Opus is about a third smaller at the same quality; older Safari falls back to MP3.
+    const opus = new Audio().canPlayType('audio/webm; codecs="opus"') !== "";
+    music = new Audio(opus ? "/audio/pixel-pulse.webm" : "/audio/pixel-pulse.mp3");
     music.loop = true;
     music.crossOrigin = "anonymous";
     ac.createMediaElementSource(music).connect(musicBus);
