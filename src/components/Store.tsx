@@ -5,7 +5,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 import { MAX_LEVEL, isInstant, strengthAt, upgradeCost, type PowerUp } from "@/game/powerups";
 import { CHARACTERS, STORE_ITEMS, wallet, type CharacterId, type StoreItemId, type WalletState } from "@/game/wallet";
-import { Hex, Icon } from "./icons";
+import { Icon } from "./icons";
 import { CharacterModel } from "./models";
 
 export type StoreTab = "characters" | "powerups";
@@ -109,21 +109,20 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
   const cell = cells[Math.min(focus, cells.length - 1)];
   const act = action(tab, cell, w);
   const up = upgradeAction(tab, cell, w);
-  const selected = CHARACTERS.find((c) => c.id === w.selected)!;
 
   const switchTab = (next: StoreTab) => {
     setTab(next);
     setFocus(0);
   };
 
-  // Keyboard: arrows move through the honeycomb, Enter buys or equips, Q/E switch tabs, Esc closes.
+  // Keyboard: arrows move through the grid, Enter buys or equips, Q/E switch tabs, Esc closes.
   const latest = useRef({ act, up, cells, tab });
   latest.current = { act, up, cells, tab };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const { act, up, cells, tab } = latest.current;
       const n = cells.length;
-      const moves: Record<string, number> = { ArrowLeft: -2, ArrowRight: 2, ArrowUp: -1, ArrowDown: 1 };
+      const moves: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -GRID_COLS, ArrowDown: GRID_COLS };
       if (e.code in moves) {
         e.preventDefault();
         setFocus((f) => Math.max(0, Math.min(n - 1, f + moves[e.code])));
@@ -142,127 +141,139 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Cells alternate between the top and bottom rows, so the strip reads left to right as a honeycomb.
-  const rows = [cells.filter((_, i) => i % 2 === 0), cells.filter((_, i) => i % 2 === 1)];
+  const isChar = tab === "characters";
+  const owned = isChar && w.owned.includes(cell.id as CharacterId);
+  // The pips under the card: upgrade level for power-ups, savings toward the price for anything locked.
+  const level = !isChar && cell.id !== "life" ? w.levels[cell.id as PowerUp] : 0;
+  const filled = owned ? PIPS : level ? Math.round((level / MAX_LEVEL) * PIPS) : Math.min(PIPS, Math.floor((w.coins / cell.price) * PIPS));
 
   return (
     <div
-      className="menu"
+      className="shop"
       role="dialog"
       aria-label="Store"
       // Keep taps inside the store from moving the chicken underneath.
       onPointerDown={(e) => e.stopPropagation()}
       onPointerUp={(e) => e.stopPropagation()}
     >
-      <header className="menu-head">
-        <nav className="crumbs">
-          <span className="crumb-root">STORE /</span>
-          <button className={tab === "characters" ? "on" : ""} onClick={() => switchTab("characters")}>
+      <ShopBackdrop />
+
+      <header className="shop-head">
+        <button className="shop-back" onClick={onClose} aria-label="Back">
+          <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden="true">
+            <path d="M15 4 7 12l8 8" fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <nav className="shop-tabs">
+          <button className={isChar ? "on" : ""} onClick={() => switchTab("characters")}>
             CHARACTERS
           </button>
-          <button className={tab === "powerups" ? "on" : ""} onClick={() => switchTab("powerups")}>
+          <button className={!isChar ? "on" : ""} onClick={() => switchTab("powerups")}>
             POWER-UPS
           </button>
         </nav>
-        <div className="wallet-card">
-          <div>
-            <span className="wallet-label">COINS</span>
-            <span className="wallet-coins">{w.coins}</span>
-          </div>
-          <Hex tone="teal" size={46}>
-            <Icon id={selected.id} size={22} />
-          </Hex>
+        <div className="shop-pill" aria-label={`${w.coins} coins`}>
+          <span>{w.coins}</span>
+          <span className="shop-pill-coin">
+            <Icon id="coin" size={16} />
+          </span>
         </div>
       </header>
 
-      <div className="menu-sub">
-        <Hex tone="white" size={34}>
-          <Icon id={selected.id} size={16} />
-        </Hex>
-        <div>
-          <strong>{selected.name}</strong>
-          <small>PLAYING AS</small>
+      <section className="shop-card" aria-live="polite">
+        <CardFrame />
+        <h2 className="shop-card-title">{cell.name.toUpperCase()}</h2>
+        <div className="shop-card-body">
+          {isChar ? (
+            <Preview id={cell.id as CharacterId} />
+          ) : (
+            <span className="shop-card-icon">
+              <Icon id={cell.id} size={64} />
+            </span>
+          )}
+          <p className="shop-card-kind">{cell.kind}</p>
+          <p className="shop-card-desc">
+            {cell.description}
+            {up?.next && ` Next level: ${up.next}.`}
+          </p>
         </div>
-      </div>
-
-      <div className="comb" role="listbox" aria-label={tab === "characters" ? "Characters" : "Power-ups"}>
-        <div className="comb-inner">
-          {rows.map((row, r) => (
-            <div key={r} className={`comb-row comb-row-${r}`}>
-              {row.map((c) => {
-                const i = cells.indexOf(c);
-                const isChar = tab === "characters";
-                const owned = isChar && w.owned.includes(c.id as CharacterId);
-                const equipped = isChar && w.selected === c.id;
-                const count = isChar ? 0 : w.inventory[c.id as StoreItemId];
-                const affordable = w.coins >= c.price;
-                const tone = equipped || count > 0 ? "teal" : owned || affordable ? "white" : "locked";
-                const focused = i === focus;
-                const showProgress = !owned && !equipped && !affordable;
-                const level = isChar || c.id === "life" ? 0 : w.levels[c.id as PowerUp];
-                return (
-                  <button
-                    key={c.id}
-                    ref={focused ? (el) => el?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" }) : undefined}
-                    role="option"
-                    aria-selected={focused}
-                    aria-label={c.name}
-                    className={`comb-cell ${focused ? "focused" : ""} ${focused && tone !== "locked" ? "bounce" : ""}`}
-                    onClick={() => (focused ? act.run?.() : setFocus(i))}
-                  >
-                    {focused && showProgress && (
-                      <span className="cell-progress">
-                        {w.coins} / {c.price}
-                      </span>
-                    )}
-                    {count > 0 && <span className="cell-badge">{count}</span>}
-                    {level > 1 && <span className="cell-level">Lv{level}</span>}
-                    <Hex
-                      tone={tone}
-                      size={96}
-                      outline={focused}
-                      ring={showProgress ? w.coins / c.price : level > 1 ? level / MAX_LEVEL : undefined}
-                      ringColor={showProgress ? undefined : "var(--ui-gold)"}
-                    >
-                      <Icon id={c.id} size={focused ? 40 : 34} />
-                    </Hex>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <section className="menu-details" aria-live="polite">
-        <div className="menu-rule">
-          <span style={{ left: `${(focus / Math.max(1, cells.length - 1)) * 80}%` }} />
-        </div>
-        {tab === "characters" && <Preview id={cell.id as CharacterId} />}
-        <h2>{cell.name}</h2>
-        <p className="menu-kind">{cell.kind.toUpperCase()}</p>
-        <p className="menu-desc">
-          {cell.description}
-          {up?.next && ` Next level: ${up.next}.`}
-        </p>
-      </section>
-
-      <footer className="menu-hints">
-        <button onClick={() => switchTab(tab === "characters" ? "powerups" : "characters")}>
-          <kbd>Q</kbd> {tab === "characters" ? "Power-ups" : "Characters"}
-        </button>
-        <button className="primary" disabled={!act.run} onClick={() => act.run?.()}>
-          <kbd>↵</kbd> {act.label}
-        </button>
+        <button
+          className="shop-card-act"
+          disabled={!act.run}
+          onClick={() => act.run?.()}
+          aria-label={act.label}
+          title={act.label}
+        />
+        <span className="shop-card-act-label">{act.label}</span>
         {up && (
-          <button disabled={!up.run} onClick={() => up.run?.()}>
-            <kbd>U</kbd> {up.label}
+          <button className="shop-card-up" disabled={!up.run} onClick={() => up.run?.()}>
+            {up.label}
           </button>
         )}
-        <button onClick={onClose}>
-          Back <kbd>Esc</kbd>
-        </button>
-      </footer>
+      </section>
+
+      <div className="shop-pips" aria-hidden="true">
+        {Array.from({ length: PIPS }, (_, i) => (
+          <span key={i} className={i < filled ? "full" : i === filled ? "next" : ""} />
+        ))}
+      </div>
+
+      <div className="shop-grid" role="listbox" aria-label={isChar ? "Characters" : "Power-ups"}>
+        {cells.map((c, i) => {
+          const mine = isChar && w.owned.includes(c.id as CharacterId);
+          const equipped = isChar && w.selected === c.id;
+          const count = isChar ? 0 : w.inventory[c.id as StoreItemId];
+          const locked = !mine && w.coins < c.price;
+          const focused = i === focus;
+          return (
+            <button
+              key={c.id}
+              ref={focused ? (el) => el?.scrollIntoView({ block: "nearest", behavior: "smooth" }) : undefined}
+              role="option"
+              aria-selected={focused}
+              aria-label={c.name}
+              className={`shop-tile${focused ? " on" : ""}${locked ? " locked" : ""}${equipped ? " equipped" : ""}`}
+              onClick={() => (focused ? act.run?.() : setFocus(i))}
+            >
+              <Icon id={c.id} size={34} />
+              {count > 0 && <span className="shop-tile-badge">{count}</span>}
+              <span className="shop-tile-price">{mine ? (equipped ? "ON" : "OWNED") : c.price}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
+  );
+}
+
+const GRID_COLS = 3;
+const PIPS = 7;
+
+/** The purple backdrop with its darker diagonal bands and thin swirl lines. */
+function ShopBackdrop() {
+  return (
+    <svg className="shop-backdrop" viewBox="0 0 393 852" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <rect width="393" height="852" fill="#7048e8" />
+      <path d="M-40 250 C 120 300 260 330 440 420 L 440 520 C 260 430 120 400 -40 350 Z" fill="#5f3bd6" />
+      <path d="M120 -20 C 180 60 300 110 440 120 L 440 40 C 320 30 230 0 200 -20 Z" fill="#5f3bd6" />
+      <path d="M-40 560 C 100 620 260 640 440 610 L 440 680 C 260 720 100 700 -40 640 Z" fill="#6440dc" />
+      <path d="M-40 140 C 60 120 160 160 230 240" fill="none" stroke="#5a37cc" strokeWidth="2" />
+      <path d="M-40 660 C 80 650 200 690 300 760 S 420 820 440 800" fill="none" stroke="#5a37cc" strokeWidth="2" />
+      <circle cx="392" cy="98" r="18" fill="#5f3bd6" />
+      <circle cx="340" cy="628" r="18" fill="#5f3bd6" />
+    </svg>
+  );
+}
+
+/** The card: cream torn-paper frame, tape strips, teal title banner and dark notched panel. */
+function CardFrame() {
+  return (
+    <svg className="shop-card-frame" viewBox="0 0 260 320" aria-hidden="true">
+      <path d="M25 12 252 4 259 18 251 306 22 316 4 290 20 282 17 60Z" fill="#f6f0d8" />
+      <path d="M8 58 30 62 29 128 12 124Z" fill="#f2df8c" />
+      <path d="M249 138 262 140 258 196 247 192Z" fill="#f2df8c" />
+      <path d="M30 26 241 22 237 266 199 298 30 298Z" fill="#22203a" />
+      <path d="M38 30 234 27 232 96 186 98 172 108 38 102Z" fill="#2edfcf" />
+    </svg>
   );
 }

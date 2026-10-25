@@ -358,266 +358,11 @@ kbd {
   margin-top: 14px;
 }
 
-/* ---- Store ----------------------------------------------------------- */
-
-.menu {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(180deg, var(--ui-sky-top), var(--ui-sky-bottom));
-  color: var(--ui-text);
-  padding-block: calc(16px + env(safe-area-inset-top, 0px)) calc(12px + env(safe-area-inset-bottom, 0px));
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  touch-action: auto;
-  overflow: hidden;
-}
-
-.menu-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.crumbs {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-}
-
-.crumb-root {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-text-dim);
-}
-
-.crumbs button {
-  border: none;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-text-dim);
-  letter-spacing: 0.5px;
-}
-
-.crumbs button.on {
-  font-size: clamp(22px, 5vw, 30px);
-  font-weight: 500;
-  color: var(--ui-text);
-}
-
-.wallet-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-align: right;
-}
-
-.wallet-card > div {
-  display: flex;
-  flex-direction: column;
-}
-
-.wallet-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  color: var(--ui-text-dim);
-}
-
-.wallet-coins {
-  font-family: var(--font-score);
-  font-size: 24px;
-  color: var(--ui-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.menu-sub {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.menu-sub div {
-  display: flex;
-  flex-direction: column;
-}
-
-.menu-sub strong {
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.menu-sub small {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  color: var(--ui-text-dim);
-}
-
-.comb {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 28px 8px 8px;
-  scrollbar-width: none;
-}
-
-.comb-inner {
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Cells sit edge to edge: the visible hexagon is about 80px wide inside its 96px box. */
-.comb-row {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  min-height: 96px;
-}
-
-/* Offset the second row by half a cell and tuck it up so the two rows interlock. */
-.comb-row-1 {
-  margin-top: -22px;
-  padding-left: 43px;
-}
-
-.comb-cell {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 86px;
-  height: 96px;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-}
-
-.comb-cell .hex {
-  transition: transform 0.18s ease;
-}
-
-.comb-cell.focused {
-  z-index: 2;
-}
-
-.comb-cell.focused .hex {
-  transform: scale(1.15);
-}
-
-/* Selecting an available cell pops it to 1.5x and lets it spring back. */
-.comb-cell.bounce .hex {
-  animation: hex-bounce 0.6s cubic-bezier(0.3, 0, 0.3, 1) both;
-}
-
-@keyframes hex-bounce {
-  0% {
-    transform: scale(1);
-  }
-  30% {
-    transform: scale(1.5);
-  }
-  52% {
-    transform: scale(1.04);
-  }
-  70% {
-    transform: scale(1.24);
-  }
-  86% {
-    transform: scale(1.12);
-  }
-  100% {
-    transform: scale(1.15);
-  }
-}
-
-.comb-cell:focus-visible {
-  outline: none;
-}
-
-.comb-cell:focus-visible .hex-outline {
-  stroke: var(--ui-teal);
-}
-
-.comb-cell .cell-badge {
-  top: -8px;
-}
-
-.cell-progress {
-  position: absolute;
-  top: -22px;
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.menu-details {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 4px;
-  padding-bottom: 8px;
-}
-
-.menu-rule {
-  position: relative;
-  width: min(420px, 90%);
-  height: 2px;
-  background: rgba(255, 255, 255, 0.4);
-  margin-bottom: 6px;
-}
-
-.menu-rule span {
-  position: absolute;
-  top: -1px;
-  width: 20%;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--ui-paper);
-  transition: left 0.2s ease;
-}
-
-.menu-preview {
-  width: 120px;
-  height: 110px;
-}
-
-.menu-details h2 {
-  margin: 0;
-  font-size: clamp(22px, 5vw, 28px);
-  font-weight: 600;
-  text-wrap: balance;
-}
-
 .menu-kind {
   margin: 0;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 1.8px;
-}
-
-.menu-desc {
-  margin: 4px 0 0;
-  max-width: 44ch;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--ui-text-dim);
 }
 
 .menu-hints {
@@ -657,12 +402,6 @@ kbd {
   gap: 16px;
 }
 
-@media (max-height: 640px) {
-  .menu-preview {
-    display: none;
-  }
-}
-
 @keyframes pulse {
   50% {
     transform: scale(1.08);
@@ -689,33 +428,13 @@ kbd {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .comb-cell.bounce .hex {
-    animation: none;
-  }
-  .hex,
-  .menu-rule span {
+  .hex {
     transition: none;
   }
 }
 
 .hud-speed {
   color: #ff8a65;
-}
-
-/* Upgrade level tag under a power-up cell. */
-.cell-level {
-  position: absolute;
-  bottom: -2px;
-  left: 50%;
-  z-index: 1;
-  transform: translateX(-50%);
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--ui-gold);
-  color: var(--ui-ink);
-  font-size: 11px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
 }
 
 /* ---- Loading curtain ------------------------------------------------- */
@@ -849,7 +568,7 @@ kbd {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: rgba(24, 24, 22, 0.88);
+  background: #583bca;
   transform: skewX(-12deg) scaleX(0);
   transform-origin: left;
   transition: transform 0.15s ease-out;
@@ -935,4 +654,303 @@ kbd {
     transition: none;
     animation: none;
   }
+}
+
+/* ---- Store: purple card screen ---------------------------------------- */
+
+.shop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--ui-text);
+  padding-block: calc(14px + env(safe-area-inset-top, 0px)) 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  touch-action: auto;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.shop-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+}
+
+.shop-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 520px;
+}
+
+.shop-back {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: #1f1b45;
+  cursor: pointer;
+}
+
+.shop-tabs {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.shop-tabs button {
+  padding: 0;
+  white-space: nowrap;
+  border: none;
+  background: none;
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+}
+
+.shop-tabs button.on {
+  color: var(--ui-text);
+  font-size: 26px;
+}
+
+.shop-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  padding: 3px 4px 3px 18px;
+  border-radius: 999px;
+  background: #1f1b45;
+  font-size: 20px;
+}
+
+.shop-pill-coin {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #2b9df4;
+  color: var(--ui-gold);
+}
+
+/* The card keeps the SVG's 260x320 shape; everything on it is placed in percentages of that box. */
+.shop-card {
+  position: relative;
+  flex: none;
+  width: min(68vw, 300px, calc(40vh * 0.8125));
+  aspect-ratio: 260 / 320;
+  margin-top: 14px;
+}
+
+.shop-card-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 6px 0 rgba(30, 20, 80, 0.25));
+}
+
+.shop-card-title {
+  position: absolute;
+  left: 14.6%;
+  right: 10%;
+  top: 9.4%;
+  height: 21%;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font-weight: 400;
+  font-size: clamp(26px, 8vw, 40px);
+  line-height: 0.9;
+  text-align: center;
+  color: #fff;
+  -webkit-text-stroke: 5px #15142a;
+  paint-order: stroke fill;
+  text-shadow: 0 3px 0 #15142a;
+}
+
+.shop-card-body {
+  position: absolute;
+  left: 11.5%;
+  right: 9%;
+  top: 34%;
+  height: 46%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 8px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.shop-card-body .menu-preview {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+.shop-card-icon {
+  display: grid;
+  place-items: center;
+  color: var(--ui-teal);
+}
+
+.shop-card-kind {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ui-gold);
+}
+
+.shop-card-desc {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.05;
+  color: rgba(255, 255, 255, 0.8);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  max-height: 3.15em;
+  overflow: hidden;
+}
+
+/* The red action button sits on the frame's bottom-left corner. */
+.shop-card-act {
+  position: absolute;
+  left: 14.2%;
+  top: 91.25%;
+  width: 17%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: radial-gradient(circle, #f6533f 55%, #e23a2a 56%, #e23a2a 64%, #f6533f 66%);
+  box-shadow: 0 3px 0 rgba(30, 20, 80, 0.35);
+  cursor: pointer;
+}
+
+.shop-card-act:disabled {
+  filter: brightness(0.75);
+  cursor: default;
+}
+
+.shop-card-act-label {
+  position: absolute;
+  left: 25%;
+  top: 84%;
+  font-size: 22px;
+  pointer-events: none;
+}
+
+.shop-card-up {
+  position: absolute;
+  left: 4%;
+  top: calc(100% + 8px);
+  padding: 0 12px;
+  border: none;
+  background: #1f1b45;
+  font-size: 18px;
+  transform: skewX(-12deg);
+  cursor: pointer;
+}
+
+.shop-card-up:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.shop-pips {
+  display: flex;
+  gap: 2px;
+  align-self: center;
+  justify-content: flex-end;
+  width: min(68vw, 300px, calc(40vh * 0.8125));
+  margin-top: 8px;
+}
+
+.shop-pips span {
+  width: 13px;
+  height: 14px;
+  background: #8c6cf2;
+  transform: skewX(-12deg);
+}
+
+.shop-pips .full {
+  background: #f2867a;
+}
+
+.shop-pips .next {
+  background: #f6f0d8;
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px 8px;
+  width: 100%;
+  max-width: 320px;
+  margin-top: 28px;
+  padding: 4px 8px calc(24px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  flex: 1;
+  align-content: start;
+}
+
+.shop-tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 95 / 86;
+  border: none;
+  background: #dcdcdc;
+  color: #2a2546;
+  transform: skewX(-6deg);
+  cursor: pointer;
+}
+
+.shop-tile > * {
+  transform: skewX(6deg);
+}
+
+.shop-tile.locked {
+  color: rgba(42, 37, 70, 0.4);
+}
+
+.shop-tile.equipped {
+  background: #f6f0d8;
+}
+
+.shop-tile.on {
+  background: var(--ui-teal);
+  color: #15142a;
+  outline: 3px solid #fff;
+}
+
+.shop-tile:focus-visible {
+  outline: 3px solid var(--ui-gold);
+}
+
+.shop-tile-price {
+  position: absolute;
+  bottom: 3px;
+  right: 8px;
+  font-size: 15px;
+}
+
+.shop-tile-badge {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  font-size: 15px;
 }
