@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import type { DirectionalLight, Group, Material, Mesh, OrthographicCamera } from "three";
 import { COLS, HOP_HEIGHT, ROWS_AHEAD, ROWS_BEHIND } from "@/game/config";
 import type { Engine } from "@/game/engine";
+import { CoinArt } from "./CurrencyArt";
 import { Effects } from "./Effects";
 import { LaneView } from "./Lanes";
 import {
@@ -276,6 +277,40 @@ function useQuality() {
   return tier;
 }
 
+/** Enough slots for every coin a magnet can pull at once (one per lane within its reach). */
+const PULL_SLOTS = 8;
+
+/**
+ * Coins pulled in by the magnet: each one lifts off its lane, arcs over and speeds up into the
+ * player, shrinking as it lands.
+ */
+function PulledCoins({ engine }: { engine: Engine }) {
+  const slots = useRef<(Group | null)[]>([]);
+  useFrame(({ clock }) => {
+    const p = engine.player;
+    slots.current.forEach((g, i) => {
+      if (!g) return;
+      const c = engine.pulled[i];
+      g.visible = !!c;
+      if (!c) return;
+      const k = c.t * c.t;
+      const toY = p.y * HOP_HEIGHT + 0.45;
+      g.position.set(c.x + (p.x - c.x) * k, 0.35 + (toY - 0.35) * k + Math.sin(Math.PI * c.t) * 0.6, -c.row + (c.row - p.z) * k);
+      g.scale.setScalar(0.5 * (1 - 0.6 * k));
+      g.rotation.y = clock.elapsedTime * 12 + c.id;
+    });
+  });
+  return (
+    <>
+      {Array.from({ length: PULL_SLOTS }, (_, i) => (
+        <group key={i} ref={(g) => void (slots.current[i] = g)} visible={false}>
+          <CoinArt />
+        </group>
+      ))}
+    </>
+  );
+}
+
 export function Scene({ engine, fx }: { engine: Engine; fx: boolean }) {
   const tier = useQuality();
   const [, setVersion] = useState(0);
@@ -300,6 +335,7 @@ export function Scene({ engine, fx }: { engine: Engine; fx: boolean }) {
       <EdgeShade engine={engine} />
       <Player engine={engine} />
       <EagleView engine={engine} />
+      <PulledCoins engine={engine} />
       {fx && tier > 0 && <Effects full={tier === 2} />}
     </>
   );

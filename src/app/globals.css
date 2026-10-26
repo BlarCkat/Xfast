@@ -1,3 +1,26 @@
+/* Readable text is hand-lettered; digits anywhere switch to the pixel face via unicode-range. */
+@font-face {
+  font-family: "Just Another Hand";
+  src: url("/fonts/JustAnotherHand.woff2") format("woff2");
+  font-display: swap;
+  /* The face draws small for its em box, so scale it up to sit level with the old UI sizes. */
+  size-adjust: 135%;
+}
+
+/* Both pixel faces point at the same file, so the browser fetches it once. */
+@font-face {
+  font-family: "Geist Pixel Circle";
+  src: url("/fonts/GeistPixel-Circle.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roadmasters Digits";
+  src: url("/fonts/GeistPixel-Circle.woff2") format("woff2");
+  font-display: swap;
+  unicode-range: U+0030-0039;
+}
+
 /* Sky-blue game menus: white honeycomb cells, teal for active, frosted grey for locked. */
 :root {
   --ui-sky-top: #5f9fe2;
@@ -12,8 +35,11 @@
   --ui-text: #ffffff;
   --ui-text-dim: rgba(255, 255, 255, 0.72);
   --ui-shadow: rgba(20, 50, 90, 0.28);
-  --font-ui: var(--font-geist-sans, "Geist"), "Helvetica Neue", Arial, sans-serif;
-  --font-score: var(--font-geist-pixel-circle, "Geist Pixel Circle"), ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-ui: "Roadmasters Digits", "Just Another Hand", "Helvetica Neue", Arial, sans-serif;
+  /* Subtexts and captions: Geist Sans at 32px by default, digits still pixel. */
+  --font-caption: "Roadmasters Digits", var(--font-geist-sans, "Geist"), "Helvetica Neue", Arial, sans-serif;
+  --caption-size: 32px;
+  --font-score: "Geist Pixel Circle", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
 * {
@@ -27,6 +53,9 @@ body {
   overflow: hidden;
   background: #7fd0f5;
   font-family: var(--font-ui);
+  /* Just Another Hand has one weight; faux bold smears it. */
+  font-synthesis: none;
+  letter-spacing: 0.5px;
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -193,7 +222,7 @@ kbd {
   flex-wrap: wrap-reverse;
   justify-content: flex-end;
   max-width: min(70vw, 340px);
-  gap: 6px 4px;
+  gap: 14px 8px;
 }
 
 .use-power {
@@ -214,29 +243,46 @@ kbd {
   font-size: 10px;
 }
 
-.cell-badge {
+/* Round power-up buttons with a segmented ring (see PowerRing). */
+.ring {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+
+.ring-shape {
   position: absolute;
-  top: -4px;
-  left: 50%;
-  z-index: 1;
-  transform: translateX(-50%);
-  width: 20px;
-  height: 20px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.ring-seg {
+  fill: none;
+  stroke: #dcdce4;
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+
+.ring-icon {
+  position: relative;
   display: grid;
   place-items: center;
   color: var(--ui-ink);
-  font: 800 10px var(--font-ui);
 }
 
-/* Diamond marker behind the count, like the reference's unlock pips. */
-.cell-badge::before {
-  content: "";
+.ring-label {
   position: absolute;
-  inset: 2px;
-  z-index: -1;
-  background: var(--ui-gold);
-  border-radius: 3px;
-  transform: rotate(45deg);
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 7px;
+  border-radius: 6px;
+  color: #fff;
+  font: 13px/1.2 var(--font-score);
+  white-space: nowrap;
 }
 
 .toast {
@@ -251,6 +297,14 @@ kbd {
   white-space: nowrap;
   text-shadow: 0 3px 0 rgba(16, 20, 24, 0.45);
   animation: toast 1.4s ease-out forwards;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toast-icon {
+  width: 44px;
+  height: 44px;
 }
 
 .tint {
@@ -273,332 +327,13 @@ kbd {
 
 /* ---- Start and game over -------------------------------------------- */
 
-.overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  pointer-events: none;
-  color: var(--ui-text);
-  text-align: center;
-  padding: 0 16px;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
-}
-
 .title {
-  margin: 0 0 14vh;
-  font-family: var(--font-score);
-  font-weight: 500;
-  font-size: clamp(56px, 16vw, 120px);
-  letter-spacing: 4px;
-  line-height: 1;
-  text-shadow: 0 6px 0 rgba(16, 20, 24, 0.35);
-}
-
-.hint {
   margin: 0;
-  font-size: 20px;
-  font-weight: 800;
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-.sub {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-text-dim);
-}
-
-.panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 22px 40px 18px;
-  border-radius: 24px;
-  background: linear-gradient(180deg, rgba(95, 159, 226, 0.92), rgba(140, 190, 238, 0.92));
-  box-shadow: 0 10px 30px var(--ui-shadow);
-}
-
-.panel p {
-  margin: 0;
-}
-
-.panel-score {
-  font-family: var(--font-score);
-  font-size: 84px;
-  line-height: 1;
-}
-
-.panel-best {
-  font-size: 13px;
-  font-weight: 800;
+  font-weight: 400;
+  font-size: clamp(48px, 13vw, 120px);
   letter-spacing: 2px;
-  color: var(--ui-gold);
-}
-
-.panel-coins {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 800;
-  color: var(--ui-gold);
-}
-
-.overlay-hints {
-  pointer-events: auto;
-  position: static;
-  margin-top: 14px;
-}
-
-/* ---- Store ----------------------------------------------------------- */
-
-.menu {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(180deg, var(--ui-sky-top), var(--ui-sky-bottom));
-  color: var(--ui-text);
-  padding-block: calc(16px + env(safe-area-inset-top, 0px)) calc(12px + env(safe-area-inset-bottom, 0px));
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  touch-action: auto;
-  overflow: hidden;
-}
-
-.menu-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.crumbs {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-}
-
-.crumb-root {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-text-dim);
-}
-
-.crumbs button {
-  border: none;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-text-dim);
-  letter-spacing: 0.5px;
-}
-
-.crumbs button.on {
-  font-size: clamp(22px, 5vw, 30px);
-  font-weight: 500;
-  color: var(--ui-text);
-}
-
-.wallet-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-align: right;
-}
-
-.wallet-card > div {
-  display: flex;
-  flex-direction: column;
-}
-
-.wallet-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  color: var(--ui-text-dim);
-}
-
-.wallet-coins {
-  font-family: var(--font-score);
-  font-size: 24px;
-  color: var(--ui-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.menu-sub {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.menu-sub div {
-  display: flex;
-  flex-direction: column;
-}
-
-.menu-sub strong {
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.menu-sub small {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  color: var(--ui-text-dim);
-}
-
-.comb {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 28px 8px 8px;
-  scrollbar-width: none;
-}
-
-.comb-inner {
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Cells sit edge to edge: the visible hexagon is about 80px wide inside its 96px box. */
-.comb-row {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  min-height: 96px;
-}
-
-/* Offset the second row by half a cell and tuck it up so the two rows interlock. */
-.comb-row-1 {
-  margin-top: -22px;
-  padding-left: 43px;
-}
-
-.comb-cell {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 86px;
-  height: 96px;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-}
-
-.comb-cell .hex {
-  transition: transform 0.18s ease;
-}
-
-.comb-cell.focused {
-  z-index: 2;
-}
-
-.comb-cell.focused .hex {
-  transform: scale(1.15);
-}
-
-/* Selecting an available cell pops it to 1.5x and lets it spring back. */
-.comb-cell.bounce .hex {
-  animation: hex-bounce 0.6s cubic-bezier(0.3, 0, 0.3, 1) both;
-}
-
-@keyframes hex-bounce {
-  0% {
-    transform: scale(1);
-  }
-  30% {
-    transform: scale(1.5);
-  }
-  52% {
-    transform: scale(1.04);
-  }
-  70% {
-    transform: scale(1.24);
-  }
-  86% {
-    transform: scale(1.12);
-  }
-  100% {
-    transform: scale(1.15);
-  }
-}
-
-.comb-cell:focus-visible {
-  outline: none;
-}
-
-.comb-cell:focus-visible .hex-outline {
-  stroke: var(--ui-teal);
-}
-
-.comb-cell .cell-badge {
-  top: -8px;
-}
-
-.cell-progress {
-  position: absolute;
-  top: -22px;
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.menu-details {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 4px;
-  padding-bottom: 8px;
-}
-
-.menu-rule {
-  position: relative;
-  width: min(420px, 90%);
-  height: 2px;
-  background: rgba(255, 255, 255, 0.4);
-  margin-bottom: 6px;
-}
-
-.menu-rule span {
-  position: absolute;
-  top: -1px;
-  width: 20%;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--ui-paper);
-  transition: left 0.2s ease;
-}
-
-.menu-preview {
-  width: 120px;
-  height: 110px;
-}
-
-.menu-details h2 {
-  margin: 0;
-  font-size: clamp(22px, 5vw, 28px);
-  font-weight: 600;
-  text-wrap: balance;
+  line-height: 0.85;
+  text-shadow: 0 6px 0 rgba(16, 20, 24, 0.35);
 }
 
 .menu-kind {
@@ -606,14 +341,6 @@ kbd {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 1.8px;
-}
-
-.menu-desc {
-  margin: 4px 0 0;
-  max-width: 44ch;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--ui-text-dim);
 }
 
 .menu-hints {
@@ -648,17 +375,6 @@ kbd {
   cursor: default;
 }
 
-.overlay-hints {
-  justify-content: center;
-  gap: 16px;
-}
-
-@media (max-height: 640px) {
-  .menu-preview {
-    display: none;
-  }
-}
-
 @keyframes pulse {
   50% {
     transform: scale(1.08);
@@ -685,12 +401,7 @@ kbd {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hint,
-  .comb-cell.bounce .hex {
-    animation: none;
-  }
-  .hex,
-  .menu-rule span {
+  .hex {
     transition: none;
   }
 }
@@ -699,81 +410,966 @@ kbd {
   color: #ff8a65;
 }
 
-/* Upgrade level tag under a power-up cell. */
-.cell-level {
-  position: absolute;
-  bottom: -2px;
-  left: 50%;
-  z-index: 1;
-  transform: translateX(-50%);
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--ui-gold);
-  color: var(--ui-ink);
-  font-size: 11px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
+/* ---- Loading curtain ------------------------------------------------- */
+
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #2b2a28;
+  color: var(--ui-text);
+  transition: transform 0.5s cubic-bezier(0.7, 0, 0.3, 1);
 }
 
-/* ---- Start screen navbar --------------------------------------------- */
+.curtain-leaving {
+  transform: translateX(-100%);
+}
 
-.start-nav {
+.curtain-returning {
+  animation: curtain-in 0.5s cubic-bezier(0.7, 0, 0.3, 1);
+}
+
+.curtain-paused {
+  cursor: pointer;
+}
+
+@keyframes curtain-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+.loading {
   position: absolute;
-  left: 50%;
-  bottom: calc(16px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
+  right: max(24px, env(safe-area-inset-right, 0px));
+  bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.loading-label {
+  font-size: 26px;
+  line-height: 1;
+}
+
+/* Slanted bar: a parallelogram track with a red fill growing from the left. */
+.loading-bar {
+  width: min(200px, 52vw);
+  height: 34px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  transform: skewX(-14deg);
+  background: rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.loading-fill {
+  height: 100%;
+  background: #ef3b2d;
+  transform-origin: left;
+}
+
+.curtain-title {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.curtain-title h1 {
+  margin: 0;
+  font-weight: 400;
+  font-size: clamp(64px, 17vw, 132px);
+  line-height: 0.85;
+}
+
+.curtain-title p {
+  margin: 0;
+  font-family: var(--font-caption);
+  font-size: var(--caption-size);
+  letter-spacing: 0;
+  color: var(--ui-text-dim);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+/* ---- Main menu ------------------------------------------------------- */
+
+.main-menu {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-block: calc(110px + env(safe-area-inset-top, 0px)) calc(40px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
+  pointer-events: none;
+  color: var(--ui-text);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.main-menu .title {
+  text-align: center;
+}
+
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: auto;
+}
+
+.menu-list button {
+  position: relative;
+  /* Keeps the slab below the label but above the game canvas. */
+  z-index: 0;
+  padding: 2px 22px 0 14px;
+  border: none;
+  background: none;
+  font-size: 40px;
+  line-height: 1.05;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* The picked item sits on a dark slanted slab, like the mockup's CHARACTERS row. */
+.menu-list button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: #583bca;
+  transform: skewX(-12deg) scaleX(0);
+  transform-origin: left;
+  transition: transform 0.15s ease-out;
+}
+
+.menu-list button.on::before {
+  transform: skewX(-12deg) scaleX(1);
+}
+
+.menu-list button:focus-visible {
+  outline: none;
+}
+
+/* ---- Options --------------------------------------------------------- */
+
+/* Options use the store's full-screen purple backdrop, with a column of settings instead of a card. */
+.options-screen .shop-back {
+  margin-right: 0;
+}
+
+.options-title {
+  min-width: 0;
+  margin: 0 auto 0 0;
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 520px;
+  margin-top: 24px;
+}
+
+.options-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  max-width: calc(100% - 32px);
+  gap: 10px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 14px;
+  background: #1f1b45;
+  color: var(--ui-text);
+  font-size: 26px;
+  cursor: pointer;
+  text-align: left;
 }
 
-.start-nav button {
-  display: inline-flex;
+.options-value {
+  margin-left: auto;
+  color: var(--ui-teal);
+}
+
+.options-slider {
+  cursor: default;
+}
+
+.options-slider input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--ui-teal);
+}
+
+.options-slider .options-value {
+  width: 2.2em;
+  margin-left: 0;
+  text-align: right;
+  font-family: var(--font-score);
+  font-size: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drift,
+  .shop-card-dots,
+  .shop-card-shine,
+  .shop-card-up {
+    animation: none;
+  }
+  .curtain,
+  .curtain-returning {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* ---- Achievements --------------------------------------------------- */
+
+.goals-top {
+  flex-wrap: nowrap;
+}
+
+.goals-top .options-title {
+  font-size: 26px;
+}
+
+.goals-pill {
+  gap: 6px;
+  padding: 4px 14px;
+}
+
+.goals-pill img + img {
+  margin-left: 8px;
+}
+
+.goals {
+  gap: 12px;
+}
+
+.goal-art-off {
+  filter: grayscale(1) brightness(1.15);
+  opacity: 0.7;
+}
+
+.goals-head {
+  margin: 10px 0 0;
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.goals-note {
+  margin: -8px 0 0;
+  color: var(--ui-text-dim);
+  font-size: 18px;
+}
+
+.goal {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border: none;
-  border-radius: 999px;
-  background: none;
-  color: var(--ui-text);
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
+  gap: 16px;
+  padding: 12px 16px 14px;
+  border-radius: 14px;
+  background: #1f1b45;
+}
+
+.goal-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.goal-title {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.goal-desc {
+  color: var(--ui-text-dim);
+  font-size: 18px;
+}
+
+.goal-check {
+  margin-left: auto;
+  color: var(--ui-gold);
+  font-size: 20px;
   white-space: nowrap;
 }
 
-.start-nav button:hover {
-  background: rgba(255, 255, 255, 0.16);
+/* ---- Game over: full purple screen ------------------------------------- */
+
+/* Slides up over the scene a moment after the crash, with Store over Play docked at the bottom. */
+.game-over {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--ui-text);
+  padding-block: calc(24px + env(safe-area-inset-top, 0px)) calc(20px + env(safe-area-inset-bottom, 0px));
+  padding-inline: 16px;
+  isolation: isolate;
+  overflow: hidden;
+  animation: game-over-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.1) 0.35s both;
 }
 
-.start-nav .start-play {
-  padding: 12px 26px;
+.game-over .shop-backdrop {
+  position: absolute;
+}
+
+@keyframes game-over-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.game-over-score {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.game-over-score p {
+  margin: 0;
+}
+
+.game-over-kind {
+  font-size: 30px;
+  letter-spacing: 3px;
+  color: var(--ui-text-dim);
+}
+
+.game-over-value {
+  font-family: var(--font-score);
+  font-size: clamp(110px, 34vw, 220px);
+  line-height: 1;
+  text-shadow: 0 8px 0 #4a2bb0;
+}
+
+.game-over-best {
+  margin-top: 8px !important;
+  font-size: 28px;
+  color: var(--ui-gold);
+}
+
+.game-over-coins {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px !important;
+  padding: 4px 16px;
+  border-radius: 999px;
+  background: #1f1b45;
+  font-family: var(--font-score);
+  font-size: 22px;
+  color: var(--ui-gold);
+}
+
+.game-over-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 420px;
+}
+
+/* Slanted like the selected tile in the store. */
+.game-over-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  font-family: var(--font-ui);
+  transform: skewX(-6deg);
+  cursor: pointer;
+}
+
+.game-over-actions button > span {
+  transform: skewX(6deg);
+}
+
+.game-over-store {
+  padding: 10px;
+  background: #1f1b45;
+  color: var(--ui-text);
+  font-size: 28px;
+}
+
+.game-over-play {
+  padding: 16px;
   background: var(--ui-teal);
   color: var(--ui-ink);
-  font-size: 17px;
+  font-size: 40px;
+  outline: 3px solid #fff;
 }
 
-.start-nav .start-play:hover {
-  background: var(--ui-teal-deep);
+/* The score screen builds up line by line: label, count, best, coins, then the buttons. */
+.game-over-score > *,
+.game-over-actions > * {
+  animation: game-over-line 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+  animation-delay: calc(0.75s + var(--i) * 0.12s);
 }
 
-@media (max-width: 420px) {
-  .start-nav kbd {
-    display: none;
+@keyframes game-over-line {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.9);
   }
-  .start-nav button {
-    padding: 10px 12px;
+}
+
+.game-over-actions > * {
+  animation-name: game-over-button;
+}
+
+@keyframes game-over-button {
+  from {
+    opacity: 0;
+    transform: translateY(24px) skewX(-6deg);
   }
 }
 
-.start-coin {
-  display: inline-flex;
+@media (prefers-reduced-motion: reduce) {
+  .game-over,
+  .game-over-score > *,
+  .game-over-actions > * {
+    animation: none;
+  }
+}
+
+/* ---- Store: purple card screen ---------------------------------------- */
+
+/* The whole screen scrolls; only the card (and its pips) stays pinned at the top. */
+.shop {
+  /* The card is 256 wide by 392 tall (312 from the mockup plus an 80-unit stretch in the middle). */
+  --card-w: min(62vw, 270px, calc(52vh * 0.653));
+  --card-h: calc(var(--card-w) * 392 / 256);
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--ui-text);
+  padding-block: calc(14px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  touch-action: pan-y;
+  overflow-x: hidden;
+  overflow-y: auto;
+  isolation: isolate;
+}
+
+.shop-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+}
+
+/* The backdrop's bands, lines and dots wander slowly. Every shape has its own path, length and
+   start, and the lengths share no common beat, so together they never line up the same way twice. */
+.drift {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: drift-a 23s ease-in-out infinite alternate;
+}
+
+.drift-2 {
+  animation-name: drift-b;
+  animation-duration: 29s;
+  animation-delay: -7s;
+}
+
+.drift-3 {
+  animation-name: drift-c;
+  animation-duration: 31s;
+  animation-delay: -13s;
+}
+
+.drift-4 {
+  animation-name: drift-b;
+  animation-duration: 19s;
+  animation-delay: -4s;
+}
+
+.drift-5 {
+  animation-name: drift-a;
+  animation-duration: 26s;
+  animation-delay: -17s;
+}
+
+.drift-6 {
+  animation-name: drift-c;
+  animation-duration: 17s;
+  animation-delay: -9s;
+}
+
+.drift-7 {
+  animation-name: drift-a;
+  animation-duration: 21s;
+  animation-delay: -3s;
+}
+
+@keyframes drift-a {
+  25% {
+    transform: translate(14px, -10px) rotate(1.5deg);
+  }
+  50% {
+    transform: translate(-8px, 12px) rotate(-1deg);
+  }
+  75% {
+    transform: translate(10px, 18px) rotate(0.5deg);
+  }
+  100% {
+    transform: translate(-16px, -6px) rotate(-1.5deg);
+  }
+}
+
+@keyframes drift-b {
+  30% {
+    transform: translate(-12px, 14px) rotate(-1.2deg);
+  }
+  60% {
+    transform: translate(16px, 4px) rotate(1deg);
+  }
+  100% {
+    transform: translate(-4px, -16px) rotate(0.8deg);
+  }
+}
+
+@keyframes drift-c {
+  20% {
+    transform: translate(8px, 16px) scale(1.04);
+  }
+  55% {
+    transform: translate(-14px, -8px) scale(0.97);
+  }
+  100% {
+    transform: translate(12px, -14px) scale(1.02);
+  }
+}
+
+.shop-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 520px;
+}
+
+.shop-back {
+  margin-right: auto;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: #1f1b45;
+  cursor: pointer;
+}
+
+/* The tabs get a row of their own under the back button and wallet. */
+.shop-tabs {
+  order: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px clamp(6px, 2vw, 10px);
+  align-items: baseline;
+  width: 100%;
+  justify-content: center;
+}
+
+.shop-tabs button {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: clamp(14px, 4vw, 18px);
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+}
+
+.shop-tabs button.on {
+  color: var(--ui-text);
+  font-size: clamp(19px, 5.3vw, 24px);
+}
+
+.shop-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 4px 3px 18px;
+  border-radius: 999px;
+  background: #1f1b45;
+  font-size: 20px;
+}
+
+.shop-pill-coin {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #2b9df4;
   color: var(--ui-gold);
+}
+
+.shop-pin {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: none;
+  padding-top: 14px;
+  pointer-events: none;
+}
+
+.shop-pin > * {
+  pointer-events: auto;
+}
+
+/* The card keeps the SVG's 256x312 shape; everything on it is placed in percentages of that box. */
+/* Store.tsx widens the card to fit the screen: --card-units is its width in SVG units (256 at the
+   mockup's size), so insets measured on the mockup are scaled by 256 / --card-units to stay put. */
+.shop-card {
+  position: relative;
+  width: var(--card-w);
+  aspect-ratio: calc(var(--card-units, 256) / 392);
+}
+
+.shop-card-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 6px 0 rgba(30, 20, 80, 0.25));
+}
+
+/* The yellow shine sweeps up the paper from below the card to above it, once every 5s. */
+.shop-card-shine {
+  animation: shine 5s linear infinite;
+}
+
+.shop-card-paper {
+  fill: #f3eed1;
+  transition: fill 0.35s ease;
+}
+
+/* Upgrading: the paper turns the new tier's colour (set on the frame by Store) and the shine gives way to a band of faded yellow dots that
+   sweeps up the card three times in 2s, in time with the upgrade sound (UPGRADE_SWEEP in sound.ts). */
+.boosting .shop-card-paper {
+  fill: var(--boost-color, #b4e33d);
+}
+
+.shop-card-shine {
+  transition: opacity 0.2s;
+}
+
+.boosting .shop-card-shine {
+  opacity: 0;
+}
+
+.shop-card-dots {
+  animation: dots-sweep 0.667s linear 3 both;
+}
+
+@keyframes dots-sweep {
+  from {
+    transform: translateY(410px);
+  }
+  to {
+    transform: translateY(-140px);
+  }
+}
+
+@keyframes shine {
+  from {
+    transform: translateY(380px);
+  }
+  to {
+    transform: translateY(-200px);
+  }
+}
+
+.shop-card-title {
+  position: absolute;
+  left: calc(15% * 256 / var(--card-units, 256));
+  right: calc(8.5% * 256 / var(--card-units, 256));
+  top: 6%;
+  height: 18.3%;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font-weight: 400;
+  font-size: clamp(26px, 8vw, 40px);
+  line-height: 0.9;
+  text-align: center;
+  color: #fff;
+  -webkit-text-stroke: 5px #000;
+  paint-order: stroke fill;
+}
+
+.shop-card-body {
+  position: absolute;
+  left: calc(12% * 256 / var(--card-units, 256));
+  right: calc(9.5% * 256 / var(--card-units, 256));
+  top: 27.8%;
+  height: 65%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 8px 6px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.shop-card-body .menu-preview {
+  flex: 1;
+  width: 100%;
+  min-height: 120px;
+}
+
+.shop-card-icon {
+  display: grid;
+  place-items: center;
+  color: var(--ui-teal);
+}
+
+.shop-card-kind {
+  margin: 0;
+  font-family: var(--font-caption);
+  /* The card panel is about 200px wide, too narrow for the 32px default. */
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ui-gold);
+}
+
+.shop-card-desc {
+  margin: 0;
+  font-family: var(--font-caption);
+  font-size: 12px;
+  line-height: 1.25;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.8);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  max-height: 3.75em;
+  overflow: hidden;
+}
+
+.shop-card-buy {
+  flex: none;
+  margin-top: 4px;
+  padding: 0 14px;
+  border: none;
+  background: #2dded3;
+  color: #15142a;
+  font-size: 22px;
+  transform: skewX(-10deg);
+  cursor: pointer;
+}
+
+.shop-card-buy:disabled {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.75);
+  cursor: default;
+}
+
+.shop-card-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.shop-card-actions .shop-card-buy {
+  margin-top: 0;
+}
+
+/* Red upgrade button beside Buy: an arrow and the cost, pulsing when it can be afforded. */
+.shop-card-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  border: none;
+  background: #f6533f;
+  color: #fff;
+  font-size: 22px;
+  font-family: var(--font-score);
+  transform: skewX(-10deg);
+  cursor: pointer;
+}
+
+.shop-card-up.ready {
+  animation: up-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes up-pulse {
+  50% {
+    transform: skewX(-10deg) scale(1.08);
+  }
+}
+
+.shop-card-up:disabled {
+  background: rgba(246, 83, 63, 0.35);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: default;
+}
+
+.shop-pips {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  justify-content: flex-end;
+  width: var(--card-w);
+  margin-top: 8px;
+}
+
+.shop-pips-tier {
+  margin-right: 6px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.shop-pips .pip {
+  width: 13px;
+  height: 14px;
+  background: #8c6cf2;
+  transform: skewX(-12deg);
+}
+
+/* Filled boxes take the tier's colour: savings and tier 2 light red, tier 1 lime, tier 3 gold. */
+.shop-pips .full {
+  background: #f2867a;
+}
+
+.shop-pips.tier-1 .full {
+  background: #b4e33d;
+}
+
+.shop-pips.tier-3 .full {
+  background: #f4c542;
+}
+
+.shop-pips .next {
+  background: #f6f0d8;
+}
+
+.shop-grid {
+  position: relative;
+  z-index: 1;
+  /* The tiles' opacity is set as they scroll under the card (see fadeTiles). */
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  flex: none;
+  width: 100%;
+  max-width: var(--card-w, 320px);
+  margin-top: 28px;
+  padding: 0 8px;
+}
+
+.shop-tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 95 / 86;
+  border: none;
+  background: #dcdcdc;
+  color: #2a2546;
+  transform: skewX(-6deg);
+  cursor: pointer;
+}
+
+.shop-tile > * {
+  transform: skewX(6deg);
+}
+
+.shop-tile.locked {
+  color: rgba(42, 37, 70, 0.4);
+}
+
+.shop-tile.equipped {
+  background: #f6f0d8;
+}
+
+.shop-tile.on {
+  background: var(--ui-teal);
+  color: #15142a;
+  outline: 3px solid #fff;
+}
+
+.shop-tile:focus-visible {
+  outline: 3px solid var(--ui-gold);
+}
+
+.shop-tile-art {
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* Currency heaps leave room for the amount in the corner. */
+.shop-tile-art.pack {
+  width: 60%;
+  height: 60%;
+  margin-bottom: 10%;
+}
+
+.icon-art {
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.shop-tile.locked .icon-art,
+.shop-tile.locked .shop-tile-art {
+  opacity: 0.45;
+}
+
+.shop-tile-price {
+  position: absolute;
+  bottom: 3px;
+  right: 8px;
+  font-size: 15px;
+}
+
+.shop-tile-badge {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  font-size: 15px;
+}
+
+/* Arrow-key focus scrolls a tile into view below the pinned card, not under it. */
+.shop-tile {
+  scroll-margin-top: calc(var(--card-h) + 60px);
 }

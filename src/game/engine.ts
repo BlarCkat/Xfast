@@ -1,8 +1,11 @@
+import { achievements, type Goal } from "./achievements";
+import { traitsAt, type Traits } from "./characters";
 import { BIOMES, biomeAt, type BiomeId } from "./biomes";
 import {
   COLS,
   HOP_DURATION,
   IDLE_LIMIT,
+  MAGNET_PULL_TIME,
   MAGNET_RADIUS,
   MAX_SPEED_SCALE,
   SPEEDUP_STEP,
@@ -14,13 +17,6 @@ import {
   SLOWMO_SCALE,
   START_LIVES,
   CAT_LIVES,
-  CAT_REFILL_HOPS,
-  CHICKEN_POWERUP_BONUS,
-  TIME_TRAIT_HOPS,
-  LEAP_TRAIT_HOPS,
-  MARIO_COINS_PER_LIFE,
-  BOWSER_FIRE_HOPS,
-  BOWSER_FIRE_ROWS,
   ROWS_AHEAD,
   ROWS_BEHIND,
   TRAIN_SPEED,
@@ -30,6 +26,7 @@ import {
 import { Lane, LaneGenerator, Mover, PickupKind, trainLength } from "./lanes";
 import {
   POWERUPS,
+  POWERUP_KEYS,
   coinRainRowsAt,
   durationAt,
   isInstant,
@@ -38,6 +35,7 @@ import {
   type Effects,
   type PowerUp,
 } from "./powerups";
+import * as sound from "./sound";
 import { type CharacterId, wallet } from "./wallet";
 
 export type { Effects, PowerUp };
@@ -99,7 +97,8 @@ export interface UiSnapshot {
   coins: number;
   /** Whole seconds left on each power-up (0 = inactive); only changes once a second. */
   effects: Effects;
-  toast: null | { text: string; id: number };
+  /** `icon` is an image shown before the text, such as an achievement star. */
+  toast: null | { text: string; id: number; icon?: string };
   /** Cat only: progress (0-1) towards regrowing the next life, or null for other characters. */
   refill: number | null;
   /** Duck only: power-ups picked up this run and saved for later. */
@@ -135,6 +134,9 @@ export class Engine {
   /** Bumped whenever lanes are added or removed so React can re-render the list. */
   laneVersion = 0;
   eagle: null | { t: number; startZ: number } = null;
+  /** Coins the magnet has pulled off their lanes, flying to the player; banked when they arrive. */
+  pulled: { id: number; x: number; row: number; t: number }[] = [];
+  private pullId = 0;
   /** Exact seconds left on each power-up. */
   effects: Effects = noEffects();
   private toastId = 0;
@@ -164,9 +166,15 @@ export class Engine {
   private listeners = new Set<() => void>();
 
   readonly character: CharacterId;
+  /** The character's trait numbers at the tier it has been upgraded to. */
+  readonly traits: Traits;
+  /** The character's upgrade tier this run plays at. */
+  readonly tier: number;
 
   constructor(character: CharacterId = "chicken", seed = Math.floor(Math.random() * 1e9)) {
     this.character = character;
+    this.tier = wallet.tierOf(character);
+    this.traits = traitsAt(character, this.tier);
     this.generator = new LaneGenerator(seed);
     this.ui = {
       status: "ready",
@@ -208,9 +216,20 @@ export class Engine {
     if (this.ui.status === "ready") {
       // Extra lives bought in the store are spent when a run starts.
       this.setUi({ status: "playing", lives: this.ui.lives + wallet.takeLives() });
+      achievements.startRun(this.biome);
       if (this.character === "penguin") {
         this.apply("shield");
+        this.effects.shield *= this.traits.penguinShield;
         this.syncEffects(true);
+      }
+      // An upgraded duck starts the run with a few random power-ups already saved.
+      if (this.character === "duck" && this.traits.duckStart > 0) {
+        const stash = { ...this.ui.stash };
+        for (let i = 0; i < this.traits.duckStart; i++) {
+          const kind = POWERUP_KEYS[Math.floor(Math.random() * POWERUP_KEYS.length)];
+          stash[kind]++;
+        }
+        this.setUi({ stash });
       }
     }
     const p = this.player;
@@ -257,6 +276,7 @@ export class Engine {
 
     p.hop = { fromX: p.x, toX, fromZ: p.z, toZ: toRow, t: 0, drift, span };
     p.row = toRow;
+    sound.pop(span > 1);
     p.ride = null;
 
     this.countStep();
@@ -283,10 +303,13 @@ export class Engine {
       // Wings let the chicken hover over open water.
       if (this.effects.wings <= 0 && this.splash(lane)) return;
     }
+    // An upgraded frog sometimes catches a coin as it lands on a log.
+    if (lane?.type === "river" && p.ride && this.character === "frog" && Math.random() < this.traits.frogCoin) this.bankCoin();
 
     if (lane && lane.biome !== this.biome) {
       this.biome = lane.biome;
       this.setUi({ toast: { text: BIOMES[lane.biome].label.toUpperCase(), id: ++this.toastId } });
+      this.award(achievements.enteredBiome(lane.biome));
       // Mario finds a fresh Super Mushroom in every new biome.
       if (this.character === "mario") this.big = true;
     }
@@ -323,8 +346,11 @@ export class Engine {
       p.x = Math.max(-COLS, Math.min(COLS, p.x));
       return false;
     }
-    if (this.character === "duck") this.dive();
-    else this.die("water");
+    // The duck dives under water, but lava is lava.
+    if (this.character === "duck" && lane.biome !== "volcano") {
+      sound.splash();
+      this.dive();
+    } else this.die("water");
     return true;
   }
 
@@ -340,6 +366,7 @@ export class Engine {
     p.shield = Math.max(p.shield, 1);
     this.biome = "underwater";
     this.setUi({ toast: { text: "DIVE!", id: ++this.toastId } });
+    this.award(achievements.enteredBiome("underwater"));
   }
 
   /** Lumberjack, and Bowser always, go straight through trees and rocks. */
@@ -386,15 +413,29 @@ export class Engine {
     return true;
   }
 
+  /** The magnet lifts a coin off its lane; it flies to the player and is banked on arrival. */
+  private pullCoin(lane: Lane) {
+    this.pulled.push({ id: ++this.pullId, x: lane.coin!, row: lane.row, t: 0 });
+    lane.coin = null;
+  }
+
   private collectCoin(lane: Lane) {
     lane.coin = null;
-    const n = this.effects.double > 0 || this.character === "human" ? 2 : 1;
+    this.bankCoin();
+  }
+
+  private bankCoin() {
+    // The human always doubles coins, and at higher tiers sometimes triples them.
+    const human = this.character === "human";
+    const n = human && Math.random() < this.traits.humanTriple ? 3 : this.effects.double > 0 || human ? 2 : 1;
+    sound.coin(n > 1);
     wallet.addCoins(n);
     this.setUi({ coins: this.ui.coins + n });
+    this.award(achievements.coins(n));
     if (this.character === "mario") {
       this.marioCoins += n;
-      if (this.marioCoins >= MARIO_COINS_PER_LIFE) {
-        this.marioCoins -= MARIO_COINS_PER_LIFE;
+      if (this.marioCoins >= this.traits.marioCoinsPerLife) {
+        this.marioCoins -= this.traits.marioCoinsPerLife;
         this.setUi({ lives: this.ui.lives + 1, toast: { text: "1-UP", id: ++this.toastId } });
       }
     }
@@ -411,7 +452,7 @@ export class Engine {
 
   get catRefillHops() {
     // The first life spent refills at the base rate; each one after that doubles it.
-    return CAT_REFILL_HOPS * 2 ** Math.max(0, this.catLivesSpent - 1);
+    return this.traits.catRefillHops * 2 ** Math.max(0, this.catLivesSpent - 1);
   }
 
   private catRefill() {
@@ -434,19 +475,21 @@ export class Engine {
   }
 
   private countStep() {
+    this.award(achievements.hop());
     if (this.character === "cat") this.catRefill();
     const steps = this.ui.steps + 1;
     // Sparrow and snail bend time every so many hops.
     const timeTrait = this.character === "sparrow" ? "freeze" : this.character === "snail" ? "slowmo" : null;
-    if (this.character === "bowser" && steps % BOWSER_FIRE_HOPS === 0) this.breatheFire();
-    if (timeTrait && steps % TIME_TRAIT_HOPS === 0) {
+    if (this.character === "bowser" && steps % this.traits.bowserFireHops === 0) this.breatheFire();
+    if (this.character === "robot" && this.traits.robotCoinHops && steps % this.traits.robotCoinHops === 0) this.bankCoin();
+    if (timeTrait && steps % this.traits.timeTraitHops === 0) {
       this.apply(timeTrait);
       this.syncEffects(true);
       this.setUi({ toast: { text: PICKUP_LABEL[timeTrait], id: ++this.toastId } });
     }
     // The leopard pounces ahead and the owl takes to the air every so many hops.
     const leapTrait = this.character === "leopard" ? "warp" : this.character === "owl" ? "wings" : null;
-    if (leapTrait && steps % LEAP_TRAIT_HOPS === 0) {
+    if (leapTrait && steps % this.traits.leapHops === 0) {
       this.apply(leapTrait);
       this.syncEffects(true);
       this.setUi({ toast: { text: leapTrait === "warp" ? "POUNCE!" : PICKUP_LABEL[leapTrait], id: ++this.toastId } });
@@ -464,6 +507,7 @@ export class Engine {
   private collect(lane: Lane) {
     const kind = lane.pickup!.kind;
     lane.pickup = null;
+    const found = kind === "life" ? [] : achievements.pickedUp(kind);
     if (kind === "life") this.setUi({ lives: this.ui.lives + 1 });
     else if (this.character === "duck") {
       // The duck pockets power-ups for later in the run instead of using them straight away.
@@ -471,10 +515,21 @@ export class Engine {
         stash: { ...this.ui.stash, [kind]: this.ui.stash[kind] + 1 },
         toast: { text: `${PICKUP_LABEL[kind]} SAVED`, id: ++this.toastId },
       });
+      this.award(found);
       return;
     } else this.apply(kind);
     this.syncEffects(true);
     this.setUi({ toast: { text: PICKUP_LABEL[kind], id: ++this.toastId } });
+    this.award([...found, ...(kind === "life" ? [] : achievements.usedPowerup())]);
+  }
+
+  /** Announce goals just earned; a later toast replaces an earlier one, so these go last. */
+  private award(goals: Goal[]) {
+    for (const g of goals) {
+      sound.coin(true);
+      const icon = g.kind === "daily" ? "/achievements/star.png" : `/achievements/medal-${g.id}.png`;
+      this.setUi({ toast: { text: g.title.toUpperCase(), icon, id: ++this.toastId } });
+    }
   }
 
   /** Use a power-up bought in the store. */
@@ -486,13 +541,14 @@ export class Engine {
     this.apply(kind);
     this.syncEffects(true);
     this.setUi({ toast: { text: PICKUP_LABEL[kind], id: ++this.toastId } });
+    this.award(achievements.usedPowerup());
     return true;
   }
 
   private apply(kind: PowerUp) {
     if (!isInstant(kind)) {
-      const level = wallet.get().levels[kind];
-      this.effects[kind] = durationAt(kind, level) * (this.character === "chicken" ? CHICKEN_POWERUP_BONUS : 1);
+      const upgrades = wallet.get().upgrades[kind];
+      this.effects[kind] = durationAt(kind, upgrades) * (this.character === "chicken" ? this.traits.powerupBonus : 1);
       return;
     }
     if (kind === "warp") this.warp();
@@ -503,7 +559,7 @@ export class Engine {
   private warp() {
     const p = this.player;
     const want = Math.max(-COLS, Math.min(COLS, Math.round(p.x)));
-    const rows = warpRowsAt(wallet.get().levels.warp);
+    const rows = warpRowsAt(wallet.get().upgrades.warp);
     for (let row = p.row + rows; row < p.row + rows + 15; row++) {
       const lane = this.lanes.get(row);
       if (lane?.type !== "grass") continue;
@@ -520,7 +576,7 @@ export class Engine {
 
   private coinRain() {
     const p = this.player;
-    for (let row = p.row + 1; row <= p.row + coinRainRowsAt(wallet.get().levels.coinrain); row++) {
+    for (let row = p.row + 1; row <= p.row + coinRainRowsAt(wallet.get().upgrades.coinrain); row++) {
       const lane = this.lanes.get(row);
       if (!lane || lane.coin !== null || (lane.type !== "grass" && lane.type !== "road")) continue;
       lane.coin = this.freeColumn(lane, Math.floor(Math.random() * (COLS * 2 + 1)) - COLS);
@@ -540,7 +596,7 @@ export class Engine {
   /** Wreck every vehicle in view on the next few road lanes. */
   private breatheFire() {
     const p = this.player;
-    for (let row = p.row + 1; row <= p.row + BOWSER_FIRE_ROWS; row++) {
+    for (let row = p.row + 1; row <= p.row + this.traits.bowserFireRows; row++) {
       const lane = this.lanes.get(row);
       if (lane?.type !== "road") continue;
       for (const m of lane.movers) if (m.wrecked === null && Math.abs(m.x) < COLS + 3) m.wrecked = 0;
@@ -570,6 +626,12 @@ export class Engine {
     if (p.death) return;
     const revive = this.ui.lives > 0;
     p.death = { kind, t: 0, pushX, revive };
+    if (kind === "car") sound.crash();
+    else if (kind === "train") sound.crash(true);
+    else if (kind === "water") {
+      if (this.lanes.get(p.row)?.biome === "volcano") sound.sizzle();
+      else sound.splash();
+    }
     p.queued = null;
     p.ride = null;
     if (kind !== "eagle") p.hop = null;
@@ -649,6 +711,7 @@ export class Engine {
     // Freeze stops traffic and trains outright.
     const trafficDt = this.effects.freeze > 0 ? 0 : worldDt;
     for (const lane of this.lanes.values()) this.updateLane(lane, trafficDt);
+    if (this.audible) this.hearRivers();
 
     for (const k of Object.keys(this.effects) as PowerUp[]) this.effects[k] = Math.max(0, this.effects[k] - dt);
     p.shield = Math.max(0, p.shield - dt);
@@ -699,10 +762,18 @@ export class Engine {
     }
 
     if ((this.effects.magnet > 0 || this.character === "luigi") && !p.death) {
-      for (let r = p.row - MAGNET_RADIUS; r <= p.row + MAGNET_RADIUS; r++) {
+      // Luigi's Poltergust reaches further as he is upgraded; the magnet power-up keeps its own reach.
+      const reach = Math.max(this.effects.magnet > 0 ? MAGNET_RADIUS : 0, this.character === "luigi" ? this.traits.luigiRadius : 0);
+      for (let r = p.row - Math.ceil(reach); r <= p.row + Math.ceil(reach); r++) {
         const lane = this.lanes.get(r);
-        if (lane && lane.coin !== null && Math.abs(lane.coin - p.x) <= MAGNET_RADIUS + 0.5) this.collectCoin(lane);
+        if (lane && lane.coin !== null && Math.abs(lane.coin - p.x) <= reach + 0.5 && Math.abs(r - p.row) <= reach) this.pullCoin(lane);
       }
+    }
+
+    for (const c of this.pulled) c.t += dt / MAGNET_PULL_TIME;
+    if (this.pulled.some((c) => c.t >= 1)) {
+      for (const c of this.pulled) if (c.t >= 1) this.bankCoin();
+      this.pulled = this.pulled.filter((c) => c.t < 1);
     }
 
     if (playing && !p.death) {
@@ -742,7 +813,13 @@ export class Engine {
           m.wrecked += dt;
           continue;
         }
+        const before = m.x - this.player.x;
         m.x += lane.speed * dt * (lane.type === "road" ? this.speedScale : 1);
+        // A car going past the player's column, close by.
+        const after = m.x - this.player.x;
+        if (lane.type === "road" && this.audible && Math.sign(before) !== Math.sign(after) && Math.abs(after) < 2) {
+          sound.carPass(lane.row - this.player.row, m.length);
+        }
         // A fixed period keeps the spacing between movers constant forever.
         if (m.x > WRAP) m.x -= WRAP * 2;
         if (m.x < -WRAP) m.x += WRAP * 2;
@@ -751,8 +828,13 @@ export class Engine {
       const train = lane.train;
       const len = trainLength(lane);
       const dir = Math.sign(lane.speed);
+      const rows = lane.row - this.player.row;
       if (train.active) {
+        const before = train.x - this.player.x;
         train.x += dir * TRAIN_SPEED * this.speedScale * dt;
+        // The engine reaching the player's column (the train's x is its middle, so lead by half its length).
+        const lead = dir * len / 2;
+        if (this.audible && Math.sign(before + lead) !== Math.sign(train.x - this.player.x + lead)) sound.trainPass(rows);
         if (Math.abs(train.x) > WRAP + len) {
           train.active = false;
           train.warning = false;
@@ -760,13 +842,35 @@ export class Engine {
         }
       } else {
         train.timer -= dt;
+        const warned = train.warning;
         train.warning = train.timer < TRAIN_WARNING;
+        if (train.warning && !warned && this.audible) sound.trainBell(rows);
         if (train.timer <= 0) {
           train.active = true;
+          if (this.audible) sound.trainHorn(rows);
           train.x = -dir * (WRAP + len / 2);
         }
       }
     }
+  }
+
+  /** Sounds play only during a run, not behind the menu. */
+  private get audible() {
+    return this.ui.status === "playing";
+  }
+
+  /** The murmur of the nearest river (or lava) within a few rows. */
+  private hearRivers() {
+    const p = this.player;
+    let level = 0;
+    let lava = false;
+    for (let r = p.row - 3; r <= p.row + 3; r++) {
+      const lane = this.lanes.get(r);
+      if (lane?.type !== "river") continue;
+      const l = 1 - Math.abs(r - p.row) / 4;
+      if (l > level) [level, lava] = [l, lane.biome === "volcano"];
+    }
+    sound.riverAmbience(level, lava);
   }
 
   private checkCollisions() {

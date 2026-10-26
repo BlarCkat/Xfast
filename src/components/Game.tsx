@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Engine, type Direction } from "@/game/engine";
-import { CHICKEN_POWERUP_BONUS } from "@/game/config";
-import { POWERUPS, durationAt, hotkeyFor, type PowerUp } from "@/game/powerups";
-import { CHARACTERS, wallet } from "@/game/wallet";
+import { POWERUPS, TIER_SIZE, durationAt, hotkeyFor, tierOf, type PowerUp } from "@/game/powerups";
+import { TRACKS, audioSettings, onAudioSettings, setAudioSettings, type TrackId } from "@/game/sound";
+import { wallet } from "@/game/wallet";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
-import Store, { useWallet } from "./Store";
+import { PowerRing } from "./PowerRing";
+import Achievements from "./Achievements";
+import Store, { ShopBackdrop, useWallet, type StoreTab } from "./Store";
 
 const KEYS: Record<string, Direction> = {
   ArrowUp: "up",
@@ -37,11 +39,80 @@ function readFx() {
   }
 }
 
-export default function Game() {
+/** The track after this one, wrapping round. */
+const nextTrack = (id: TrackId) => TRACKS[(TRACKS.findIndex((t) => t.id === id) + 1) % TRACKS.length].id;
+
+/** A labelled volume slider for the options panel. */
+function Volume({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <label className="options-row options-slider">
+      <span>{label}</span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={Math.round(value * 100)}
+        onChange={(e) => onChange(Number(e.target.value) / 100)}
+        aria-label={label}
+      />
+      <span className="options-value">{Math.round(value * 100)}</span>
+    </label>
+  );
+}
+
+export interface GameProps {
+  /** Called once the first frame of the scene has rendered. */
+  onReady?: () => void;
+  /** Called when the player picks Exit on the main menu. */
+  onExit?: () => void;
+  /** Ignore keyboard input while something covers the game. */
+  locked?: boolean;
+}
+
+type MenuItem = "play" | "characters" | "store" | "achievements" | "options" | "exit";
+const MENU: { id: MenuItem; label: string }[] = [
+  { id: "play", label: "PLAY" },
+  { id: "characters", label: "CHARACTERS" },
+  { id: "store", label: "STORE" },
+  { id: "achievements", label: "ACHIEVEMENTS" },
+  { id: "options", label: "OPTIONS" },
+  { id: "exit", label: "EXIT" },
+];
+
+/** Counts up from 0 to `to`, starting after `delay` seconds and easing out over about a second. */
+function CountUp({ to, delay = 0 }: { to: number; delay?: number }) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setValue(to);
+      return;
+    }
+    const start = performance.now() + delay * 1000;
+    const length = Math.min(1400, 400 + to * 6);
+    let frame = requestAnimationFrame(function tick(now) {
+      const t = Math.min(1, Math.max(0, (now - start) / length));
+      setValue(Math.round(to * (1 - (1 - t) ** 3)));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [to, delay]);
+  return <>{value}</>;
+}
+
+export default function Game({ onReady, onExit, locked = false }: GameProps) {
   const [engine, setEngine] = useState(() => new Engine(wallet.get().selected));
   const ui = useSyncExternalStore(engine.subscribe, engine.getSnapshot, engine.getSnapshot);
+  const sound = useSyncExternalStore(onAudioSettings, audioSettings, audioSettings);
   const w = useWallet();
   const [storeOpen, setStoreOpen] = useState(false);
+  const [storeTab, setStoreTab] = useState<StoreTab>("characters");
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [goalsOpen, setGoalsOpen] = useState(false);
+  const [hovered, setHovered] = useState<MenuItem>("play");
+  const openStore = useCallback((tab: StoreTab) => {
+    setStoreTab(tab);
+    setStoreOpen(true);
+  }, []);
   const [fx, setFx] = useState(readFx);
   const toggleFx = useCallback(() => {
     setFx((on) => {
@@ -54,17 +125,24 @@ export default function Game() {
   const diedAt = useRef(0);
   // Upgrades and the chicken's bonus stretch power-ups, so the HUD rings measure against the real length.
   const fullDuration = (key: PowerUp) =>
-    durationAt(key, w.levels[key]) * (engine.character === "chicken" ? CHICKEN_POWERUP_BONUS : 1);
-  const character = CHARACTERS.find((c) => c.id === engine.character) ?? CHARACTERS[0];
+    durationAt(key, w.upgrades[key]) * (engine.character === "chicken" ? engine.traits.powerupBonus : 1);
 
-  // Show a newly picked character straight away on the start screen.
+  // Show a newly picked or upgraded character straight away on the start screen.
+  const selectedTier = w.charTiers[w.selected] ?? 1;
   useEffect(() => {
-    if (engine.status === "ready" && engine.character !== w.selected) setEngine(new Engine(w.selected));
-  }, [engine, w.selected]);
+    if (engine.status !== "ready") return;
+    if (engine.character !== w.selected || engine.tier !== selectedTier) setEngine(new Engine(w.selected));
+  }, [engine, w.selected, selectedTier]);
 
   useEffect(() => {
     if (ui.status === "dead") diedAt.current = performance.now();
   }, [ui.status]);
+
+  // Leaving the store goes back to the main menu, even when it was opened from the score screen.
+  const closeStore = useCallback(() => {
+    setStoreOpen(false);
+    setEngine((current) => (current.status === "dead" ? new Engine(wallet.get().selected) : current));
+  }, []);
 
   const restart = useCallback(() => {
     if (performance.now() - diedAt.current < RESTART_DELAY) return;
@@ -74,9 +152,18 @@ export default function Game() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
+      if (e.repeat || locked) return;
+      if (optionsOpen) {
+        if (e.code === "Escape") setOptionsOpen(false);
+        else if (e.code === "KeyB") toggleFx();
+        return;
+      }
       if (storeOpen) {
-        if (e.code === "Escape") setStoreOpen(false);
+        if (e.code === "Escape") closeStore();
+        return;
+      }
+      if (goalsOpen) {
+        if (e.code === "Escape") setGoalsOpen(false);
         return;
       }
       if (e.code === "KeyB") {
@@ -84,7 +171,11 @@ export default function Game() {
         return;
       }
       if (e.code === "KeyS" && engine.status !== "playing") {
-        setStoreOpen(true);
+        openStore("powerups");
+        return;
+      }
+      if (e.code === "KeyC" && engine.status !== "playing") {
+        openStore("characters");
         return;
       }
       const power = POWERUPS.find((_, i) => hotkeyFor(i) === e.code);
@@ -104,7 +195,16 @@ export default function Game() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [engine, restart, storeOpen, toggleFx]);
+  }, [engine, restart, storeOpen, optionsOpen, goalsOpen, locked, toggleFx, openStore, closeStore]);
+
+  const pick = (item: MenuItem) => {
+    if (item === "play") engine.move("up");
+    else if (item === "characters") openStore("characters");
+    else if (item === "store") openStore("powerups");
+    else if (item === "achievements") setGoalsOpen(true);
+    else if (item === "options") setOptionsOpen(true);
+    else onExit?.();
+  };
 
   // Tap to hop forward, swipe to hop in any direction.
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -133,6 +233,7 @@ export default function Game() {
         shadows
         dpr={[1, 2]}
         camera={{ position: [3, 11, 7.5], zoom: 50, near: -50, far: 200 }}
+        onCreated={() => requestAnimationFrame(() => onReady?.())}
       >
         <Scene key={engine.id} engine={engine} fx={fx} />
       </Canvas>
@@ -149,18 +250,17 @@ export default function Game() {
           <span>TOP {ui.best}</span>
           {engine.speedScale > 1 && <span className="hud-speed">SPEED ×{engine.speedScale.toFixed(1)}</span>}
           <span className="hud-coins">
-            <Icon id="coin" size={14} /> {w.coins}
+            <Icon id="coin" size={22} /> {w.coins}
           </span>
         </div>
         <div className="effects">
           {POWERUPS.map(
-            ({ key, label }) =>
+            ({ key, label, color }) =>
               ui.effects[key] > 0 && (
                 <div key={key} className="effect" title={label}>
-                  <Hex tone="teal" size={40} ring={ui.effects[key] / fullDuration(key)}>
-                    <Icon id={key} size={17} />
-                  </Hex>
-                  <span>{ui.effects[key]}s</span>
+                  <PowerRing color={color} size={46} lit={ui.effects[key] / fullDuration(key)} label={`${ui.effects[key]}s`} active>
+                    <Icon id={key} size={20} />
+                  </PowerRing>
                 </div>
               ),
           )}
@@ -178,7 +278,7 @@ export default function Game() {
 
       {ui.status === "playing" && (
         <div className="inventory">
-          {POWERUPS.map(({ key, label }, i) =>
+          {POWERUPS.map(({ key, label, color }, i) =>
             w.inventory[key] + ui.stash[key] > 0 ? (
               <button
                 key={key}
@@ -190,10 +290,16 @@ export default function Game() {
                   engine.activate(key);
                 }}
               >
-                <span className="cell-badge">{w.inventory[key] + ui.stash[key]}</span>
-                <Hex tone={ui.effects[key] > 0 ? "teal" : "white"} size={54}>
-                  <Icon id={key} size={22} />
-                </Hex>
+                {/* The ring drains while the power-up runs; otherwise it shows the progress through its upgrade tier. */}
+                <PowerRing
+                  color={color}
+                  size={58}
+                  active={ui.effects[key] > 0}
+                  lit={ui.effects[key] > 0 ? ui.effects[key] / fullDuration(key) : tierOf(w.upgrades[key]).filled / TIER_SIZE}
+                  label={`×${w.inventory[key] + ui.stash[key]}`}
+                >
+                  <Icon id={key} size={26} />
+                </PowerRing>
                 {hotkeyFor(i) && <kbd>{hotkeyFor(i)!.slice(-1)}</kbd>}
               </button>
             ) : null,
@@ -203,98 +309,100 @@ export default function Game() {
 
       {ui.toast && (
         <div key={ui.toast.id} className="toast">
+          {ui.toast.icon && <img className="toast-icon" src={ui.toast.icon} alt="" />}
           {ui.toast.text}
         </div>
       )}
 
       {ui.status === "ready" && (
-        <div className="overlay">
-          <h1 className="title">XFAST</h1>
-          <p className="hint">Tap or press ↑ to hop</p>
-          <p className="sub">Swipe or use arrows / WASD. Grab coins, hearts and power-ups.</p>
-          <p className="sub">
-            <strong>{character.name}:</strong> {character.trait}
-          </p>
+        <div className="main-menu">
+          {/* Text stand-in until the Roadmasters logo arrives. */}
+          <h1 className="title">ROADMASTERS</h1>
+          <nav className="menu-list" aria-label="Main menu">
+            {MENU.map(({ id, label }) => (
+              <button
+                key={id}
+                className={hovered === id ? "on" : ""}
+                onPointerEnter={() => setHovered(id)}
+                onFocus={() => setHovered(id)}
+                onPointerDown={stop}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  pick(id);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
         </div>
       )}
 
-      {ui.status === "ready" && (
-        <nav className="start-nav" aria-label="Main menu">
-          <button
-            onPointerDown={stop}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              setStoreOpen(true);
-            }}
-          >
-            <span className="start-coin">
-              <Icon id="coin" size={22} />
-            </span>
-            <span>Store</span>
-            <kbd>S</kbd>
-          </button>
-          <button
-            className="start-play"
-            onPointerDown={stop}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              engine.move("up");
-            }}
-          >
-            <svg viewBox="0 0 24 24" width={26} height={26} fill="currentColor" aria-hidden="true">
-              <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5Z" />
-            </svg>
-            <span>Play</span>
-          </button>
-          <button
-            onPointerDown={stop}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              toggleFx();
-            }}
-          >
-            <Icon id="foresight" size={22} />
-            <span>{fx ? "Realistic" : "Classic"}</span>
-            <kbd>B</kbd>
-          </button>
-        </nav>
+      {optionsOpen && (
+        <div className="shop options-screen" role="dialog" aria-label="Options" onPointerDown={stop} onPointerUp={stop}>
+          <ShopBackdrop />
+          <header className="shop-head">
+            <button className="shop-back" onClick={() => setOptionsOpen(false)} aria-label="Back">
+              <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden="true">
+                <path d="M15 4 7 12l8 8" fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <h2 className="options-title">OPTIONS</h2>
+          </header>
+          <div className="options-list">
+            <button className="options-row" onClick={toggleFx}>
+              <span>Graphics</span>
+              <span className="options-value">{fx ? "Realistic" : "Classic"}</span>
+              <kbd>B</kbd>
+            </button>
+            <Volume label="Sound effects" value={sound.sfx} onChange={(sfx) => setAudioSettings({ sfx })} />
+            <button className="options-row" onClick={() => setAudioSettings({ musicOn: !sound.musicOn })}>
+              <span>Music</span>
+              <span className="options-value">{sound.musicOn ? "On" : "Off"}</span>
+            </button>
+            {sound.musicOn && (
+              <>
+                <button className="options-row" onClick={() => setAudioSettings({ track: nextTrack(sound.track) })}>
+                  <span>Track</span>
+                  <span className="options-value">{TRACKS.find((t) => t.id === sound.track)!.name}</span>
+                </button>
+                <Volume label="Music volume" value={sound.music} onChange={(music) => setAudioSettings({ music })} />
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {ui.status === "dead" && (
-        <div className="overlay">
-          <div className="panel">
-            <p className="menu-kind">SCORE</p>
-            <p className="panel-score">{ui.score}</p>
-            <p className="panel-best">{ui.score >= ui.best && ui.score > 0 ? "NEW TOP SCORE" : `TOP ${ui.best}`}</p>
-            <p className="panel-coins">
-              <Icon id="coin" size={16} /> +{ui.coins}
+        <div className="game-over" role="dialog" aria-label="Run over" onPointerDown={stop} onPointerUp={stop}>
+          <ShopBackdrop />
+          <div className="game-over-score">
+            <p className="game-over-kind" style={{ "--i": 0 } as React.CSSProperties}>
+              SCORE
+            </p>
+            <p className="game-over-value" style={{ "--i": 1 } as React.CSSProperties}>
+              <CountUp to={ui.score} delay={0.85} />
+            </p>
+            <p className="game-over-best" style={{ "--i": 2 } as React.CSSProperties}>
+              {ui.score >= ui.best && ui.score > 0 ? "NEW TOP SCORE!" : `TOP ${ui.best}`}
+            </p>
+            <p className="game-over-coins" style={{ "--i": 3 } as React.CSSProperties}>
+              <Icon id="coin" size={30} /> +<CountUp to={ui.coins} delay={1.2} />
             </p>
           </div>
-          <div className="menu-hints overlay-hints">
-            <button
-              onPointerDown={stop}
-              onPointerUp={(e) => {
-                e.stopPropagation();
-                setStoreOpen(true);
-              }}
-            >
-              <kbd>S</kbd> Store
+          <div className="game-over-actions">
+            <button className="game-over-store" style={{ "--i": 4 } as React.CSSProperties} onClick={() => openStore("powerups")}>
+              <span>STORE</span>
             </button>
-            <button
-              className="primary"
-              onPointerDown={stop}
-              onPointerUp={(e) => {
-                e.stopPropagation();
-                restart();
-              }}
-            >
-              <kbd>↵</kbd> Play again
+            <button className="game-over-play" style={{ "--i": 5 } as React.CSSProperties} onClick={restart}>
+              <span>PLAY</span>
             </button>
           </div>
         </div>
       )}
 
-      {storeOpen && <Store onClose={() => setStoreOpen(false)} />}
+      {goalsOpen && <Achievements onClose={() => setGoalsOpen(false)} />}
+      {storeOpen && <Store initialTab={storeTab} onClose={closeStore} />}
     </div>
   );
 }
