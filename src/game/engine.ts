@@ -13,6 +13,7 @@ import {
   MAX_ROWS_BEHIND_CAMERA,
   RESPAWN_DELAY,
   RESPAWN_SHIELD,
+  SLOWMO_EASE,
   SLOWMO_SCALE,
   START_LIVES,
   CAT_LIVES,
@@ -143,6 +144,8 @@ export class Engine {
   biome: BiomeId = biomeAt(0);
   /** Multiplier on car, truck and train speed, raised every STEPS_PER_SPEEDUP hops. */
   speedScale = 1;
+  /** How far into slowmo the world is, 0 (full speed) to 1 (fully slowed); eases rather than snapping. */
+  slowmoBlend = 0;
 
   player: PlayerState = {
     row: 0,
@@ -422,7 +425,9 @@ export class Engine {
   }
 
   private bankCoin() {
-    const n = this.effects.double > 0 ? 2 : 1;
+    // The human always doubles coins, and at higher tiers sometimes triples them.
+    const human = this.character === "human";
+    const n = human && Math.random() < this.traits.humanTriple ? 3 : this.effects.double > 0 || human ? 2 : 1;
     sound.coin(n > 1);
     wallet.addCoins(n);
     this.setUi({ coins: this.ui.coins + n });
@@ -481,6 +486,13 @@ export class Engine {
       this.apply(timeTrait);
       this.syncEffects(true);
       this.setUi({ toast: { text: PICKUP_LABEL[timeTrait], id: ++this.toastId } });
+    }
+    // The leopard pounces ahead and the owl takes to the air every so many hops.
+    const leapTrait = this.character === "leopard" ? "warp" : this.character === "owl" ? "wings" : null;
+    if (leapTrait && steps % this.traits.leapHops === 0) {
+      this.apply(leapTrait);
+      this.syncEffects(true);
+      this.setUi({ toast: { text: leapTrait === "warp" ? "POUNCE!" : PICKUP_LABEL[leapTrait], id: ++this.toastId } });
     }
     const tier = Math.floor(steps / STEPS_PER_SPEEDUP);
     const scale = Math.min(MAX_SPEED_SCALE, 1 + tier * SPEEDUP_STEP);
@@ -686,8 +698,12 @@ export class Engine {
 
   update(rawDt: number) {
     const dt = Math.min(rawDt, 1 / 20);
-    // Slowmo slows the world down; the chicken's own hops stay at full speed.
-    const worldDt = this.effects.slowmo > 0 ? dt * SLOWMO_SCALE : dt;
+    // Slowmo slows the world down, easing in and out; the chicken's own hops stay at full speed.
+    const step = dt / SLOWMO_EASE;
+    this.slowmoBlend = this.effects.slowmo > 0 ? Math.min(1, this.slowmoBlend + step) : Math.max(0, this.slowmoBlend - step);
+    const b = this.slowmoBlend;
+    const eased = b * b * (3 - 2 * b);
+    const worldDt = dt * (1 - (1 - SLOWMO_SCALE) * eased);
     this.time += dt;
     const playing = this.ui.status === "playing";
     const p = this.player;

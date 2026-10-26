@@ -745,6 +745,129 @@ export function Bowser() {
   );
 }
 
+export function Leopard() {
+  const fur = "#e8b14a";
+  const spot = "#4a3214";
+  const cream = "#fbeccb";
+  return (
+    <group>
+      {/* Long low body with rosettes along the back and flanks */}
+      <Box size={[0.48, 0.38, 0.74]} position={[0, 0.36, 0.08]} color={fur} />
+      <Box size={[0.36, 0.08, 0.5]} position={[0, 0.16, 0.06]} color={cream} cast={false} />
+      {[
+        [0.12, 0.56, -0.12],
+        [-0.1, 0.56, 0.1],
+        [0.1, 0.56, 0.3],
+        [-0.12, 0.56, -0.18],
+      ].map(([x, y, z]) => (
+        <Box key={`t${x}${z}`} size={[0.1, 0.03, 0.1]} position={[x, y, z]} color={spot} cast={false} />
+      ))}
+      {[-0.245, 0.245].map((x) =>
+        [
+          [0.42, -0.1],
+          [0.3, 0.12],
+          [0.44, 0.3],
+        ].map(([y, z]) => (
+          <Box key={`s${x}${z}`} size={[0.03, 0.08, 0.08]} position={[x, y, z]} color={spot} cast={false} />
+        )),
+      )}
+      {/* Head, muzzle, nose, eyes and round ears */}
+      <Box size={[0.4, 0.34, 0.34]} position={[0, 0.68, -0.28]} color={fur} />
+      <Box size={[0.22, 0.12, 0.08]} position={[0, 0.6, -0.48]} color={cream} />
+      <Box size={[0.08, 0.05, 0.04]} position={[0, 0.65, -0.53]} color="#3b2414" cast={false} />
+      <Box size={[0.07, 0.08, 0.04]} position={[0.1, 0.74, -0.46]} color="#c8e04a" cast={false} />
+      <Box size={[0.07, 0.08, 0.04]} position={[-0.1, 0.74, -0.46]} color="#c8e04a" cast={false} />
+      <Box size={[0.03, 0.07, 0.03]} position={[0.1, 0.74, -0.48]} color="#111111" cast={false} />
+      <Box size={[0.03, 0.07, 0.03]} position={[-0.1, 0.74, -0.48]} color="#111111" cast={false} />
+      <Box size={[0.06, 0.03, 0.03]} position={[0.08, 0.86, -0.455]} color={spot} cast={false} />
+      <Box size={[0.06, 0.03, 0.03]} position={[-0.08, 0.86, -0.455]} color={spot} cast={false} />
+      <Box size={[0.11, 0.1, 0.08]} position={[0.14, 0.89, -0.24]} color={fur} />
+      <Box size={[0.11, 0.1, 0.08]} position={[-0.14, 0.89, -0.24]} color={fur} />
+      <Box size={[0.06, 0.06, 0.09]} position={[0.14, 0.88, -0.24]} color={spot} cast={false} />
+      <Box size={[0.06, 0.06, 0.09]} position={[-0.14, 0.88, -0.24]} color={spot} cast={false} />
+      {/* Long tail curling up at a dark tip */}
+      <Box size={[0.09, 0.09, 0.42]} position={[0, 0.44, 0.62]} color={fur} />
+      <Box size={[0.09, 0.22, 0.09]} position={[0, 0.58, 0.8]} color={fur} />
+      <Box size={[0.1, 0.1, 0.1]} position={[0, 0.72, 0.8]} color={spot} />
+      {[-0.15, 0.15].map((x) =>
+        [-0.16, 0.3].map((z) => (
+          <Box key={`${x}${z}`} size={[0.13, 0.18, 0.13]} position={[x, 0.09, z]} color={fur} />
+        )),
+      )}
+    </group>
+  );
+}
+
+export function Human() {
+  const skin = "#e0a77a";
+  const shirt = "#ff7043";
+  const jeans = "#3f5f9e";
+  const hair = "#3b2414";
+  return (
+    <group>
+      {/* Sneakers and jeans */}
+      <Box size={[0.15, 0.08, 0.24]} position={[0.1, 0.04, -0.03]} color="#fafafa" />
+      <Box size={[0.15, 0.08, 0.24]} position={[-0.1, 0.04, -0.03]} color="#fafafa" />
+      <Box size={[0.14, 0.26, 0.16]} position={[0.1, 0.21, 0]} color={jeans} />
+      <Box size={[0.14, 0.26, 0.16]} position={[-0.1, 0.21, 0]} color={jeans} />
+      {/* T-shirt with a stripe, arms and hands */}
+      <Box size={[0.42, 0.34, 0.26]} position={[0, 0.5, 0]} color={shirt} />
+      <Box size={[0.43, 0.06, 0.27]} position={[0, 0.5, 0]} color="#ffffff" cast={false} />
+      <Box size={[0.11, 0.18, 0.14]} position={[0.27, 0.56, 0]} color={shirt} />
+      <Box size={[0.11, 0.18, 0.14]} position={[-0.27, 0.56, 0]} color={shirt} />
+      <Box size={[0.1, 0.16, 0.12]} position={[0.27, 0.39, 0]} color={skin} />
+      <Box size={[0.1, 0.16, 0.12]} position={[-0.27, 0.39, 0]} color={skin} />
+      {/* Head, eyes, smile and a mop of hair */}
+      <Box size={[0.36, 0.34, 0.34]} position={[0, 0.86, 0]} color={skin} />
+      <Box size={[0.05, 0.07, 0.03]} position={[0.08, 0.88, -0.17]} color="#222222" cast={false} />
+      <Box size={[0.05, 0.07, 0.03]} position={[-0.08, 0.88, -0.17]} color="#222222" cast={false} />
+      <Box size={[0.12, 0.03, 0.03]} position={[0, 0.78, -0.17]} color="#a5543a" cast={false} />
+      <Box size={[0.4, 0.1, 0.38]} position={[0, 1.06, 0.01]} color={hair} />
+      <Box size={[0.38, 0.06, 0.08]} position={[0, 0.99, -0.16]} color={hair} cast={false} />
+      <Box size={[0.38, 0.26, 0.08]} position={[0, 0.9, 0.17]} color={hair} cast={false} />
+      <Box size={[0.04, 0.16, 0.3]} position={[0.18, 0.95, 0.03]} color={hair} cast={false} />
+      <Box size={[0.04, 0.16, 0.3]} position={[-0.18, 0.95, 0.03]} color={hair} cast={false} />
+    </group>
+  );
+}
+
+export function Owl() {
+  const feather = "#8a6240";
+  const dark = "#5c3d24";
+  const cream = "#f3e3c3";
+  return (
+    <group>
+      {/* Round body with a speckled pale chest and folded wings */}
+      <Box size={[0.52, 0.56, 0.48]} position={[0, 0.36, 0.02]} color={feather} />
+      <Box size={[0.36, 0.38, 0.06]} position={[0, 0.32, -0.23]} color={cream} />
+      {[
+        [0.08, 0.42],
+        [-0.08, 0.36],
+        [0.06, 0.24],
+        [-0.1, 0.2],
+      ].map(([x, y]) => (
+        <Box key={`${x}${y}`} size={[0.05, 0.04, 0.03]} position={[x, y, -0.265]} color={dark} cast={false} />
+      ))}
+      <Box size={[0.08, 0.42, 0.36]} position={[0.29, 0.38, 0.04]} color={dark} />
+      <Box size={[0.08, 0.42, 0.36]} position={[-0.29, 0.38, 0.04]} color={dark} />
+      <Box size={[0.24, 0.12, 0.08]} position={[0, 0.16, 0.28]} color={dark} />
+      {/* Big head: facial disc, wide eyes, beak and ear tufts */}
+      <Box size={[0.48, 0.34, 0.42]} position={[0, 0.8, -0.02]} color={feather} />
+      <Box size={[0.4, 0.24, 0.04]} position={[0, 0.8, -0.24]} color={cream} cast={false} />
+      <Box size={[0.13, 0.13, 0.04]} position={[0.1, 0.83, -0.26]} color="#f5a623" cast={false} />
+      <Box size={[0.13, 0.13, 0.04]} position={[-0.1, 0.83, -0.26]} color="#f5a623" cast={false} />
+      <Box size={[0.06, 0.06, 0.03]} position={[0.1, 0.83, -0.285]} color="#111111" cast={false} />
+      <Box size={[0.06, 0.06, 0.03]} position={[-0.1, 0.83, -0.285]} color="#111111" cast={false} />
+      <Box size={[0.06, 0.1, 0.08]} position={[0, 0.72, -0.28]} color="#6d6d6d" />
+      <Box size={[0.1, 0.14, 0.1]} position={[0.17, 1.02, -0.06]} color={dark} />
+      <Box size={[0.1, 0.14, 0.1]} position={[-0.17, 1.02, -0.06]} color={dark} />
+      {/* Talons */}
+      <Box size={[0.12, 0.06, 0.14]} position={[0.11, 0.03, -0.08]} color="#e0a800" />
+      <Box size={[0.12, 0.06, 0.14]} position={[-0.11, 0.03, -0.08]} color="#e0a800" />
+    </group>
+  );
+}
+
 /** Bowser's fire breath: a short glowing jet that rolls out in front of him. */
 export function FireBreath() {
   return (
@@ -778,6 +901,12 @@ export function CharacterModel({ id }: { id: CharacterId }) {
       return <Luigi />;
     case "bowser":
       return <Bowser />;
+    case "leopard":
+      return <Leopard />;
+    case "human":
+      return <Human />;
+    case "owl":
+      return <Owl />;
     default:
       return <Chicken />;
   }

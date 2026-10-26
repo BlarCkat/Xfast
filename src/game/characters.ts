@@ -3,6 +3,7 @@ import {
   BOWSER_FIRE_ROWS,
   CAT_REFILL_HOPS,
   CHICKEN_POWERUP_BONUS,
+  LEAP_TRAIT_HOPS,
   MAGNET_RADIUS,
   MARIO_COINS_PER_LIFE,
   TIME_TRAIT_HOPS,
@@ -39,6 +40,10 @@ export interface Traits {
   /** Bowser: hops between fire breaths, and how many rows they reach. */
   bowserFireHops: number;
   bowserFireRows: number;
+  /** Human: chance a coin comes in triple instead of double. */
+  humanTriple: number;
+  /** Leopard and owl: hops between each pounce or flight. */
+  leapHops: number;
 }
 
 const BASE: Traits = {
@@ -53,6 +58,8 @@ const BASE: Traits = {
   luigiRadius: MAGNET_RADIUS,
   bowserFireHops: BOWSER_FIRE_HOPS,
   bowserFireRows: BOWSER_FIRE_ROWS,
+  humanTriple: 0,
+  leapHops: LEAP_TRAIT_HOPS,
 };
 
 /** Each character's trait values from tier 1 to tier 5. */
@@ -68,6 +75,9 @@ const LADDER: { [K in CharacterId]: Partial<{ [T in keyof Traits]: number[] }> }
   mario: { marioCoinsPerLife: [100, 90, 80, 70, 60] },
   luigi: { luigiRadius: [2, 2.5, 3, 3.5, 4] },
   bowser: { bowserFireHops: [50, 45, 40, 35, 30], bowserFireRows: [4, 5, 5, 6, 7] },
+  human: { humanTriple: [0, 0.1, 0.2, 0.3, 0.4] },
+  leopard: { leapHops: [50, 45, 40, 35, 30] },
+  owl: { leapHops: [50, 45, 40, 35, 30] },
 };
 
 const clampTier = (tier: number) => Math.max(1, Math.min(CHARACTER_TIERS, Math.round(tier) || 1));
@@ -109,6 +119,12 @@ export function traitText(id: CharacterId, tier: number): string {
       return `Poltergust: sucks up coins within ${t.luigiRadius} tiles. Ghost hunter: nothing can hit him in the Spooky biome.`;
     case "bowser":
       return `Smashes through trees and rocks, and breathes fire every ${t.bowserFireHops} hops to wreck ${t.bowserFireRows} rows of traffic ahead.`;
+    case "human":
+      return `Picks up every coin twice: coins are always doubled.${t.humanTriple ? ` ${pct(t.humanTriple)} of coins come in triple.` : ""}`;
+    case "leopard":
+      return `Pounces every ${t.leapHops} hops, leaping ahead to safe grass like a Warp.`;
+    case "owl":
+      return `Takes flight every ${t.leapHops} hops: Wings carry it over rivers for a moment.`;
   }
 }
 
@@ -141,5 +157,11 @@ export function nextPerk(id: CharacterId, tier: number): string | null {
       return next.bowserFireRows > now.bowserFireRows
         ? `fire every ${next.bowserFireHops} hops, ${next.bowserFireRows} rows`
         : `fire every ${next.bowserFireHops} hops`;
+    case "human":
+      return `${pct(next.humanTriple)} triple coins`;
+    case "leopard":
+      return `pounce every ${next.leapHops} hops`;
+    case "owl":
+      return `fly every ${next.leapHops} hops`;
   }
 }

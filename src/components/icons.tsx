@@ -55,6 +55,20 @@ const PATHS: Record<IconId, React.ReactNode> = {
     />
   ),
   luigi: <path fillRule="evenodd" d="M12 3a9 9 0 0 1 9 9v2h2v3H1v-3h2v-2a9 9 0 0 1 9-9Zm-2 4v6h5v-2h-3V7Z" />,
+  // A person, a leopard's spotted head and an owl with ear tufts.
+  human: <path d="M12 1a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm-4 9h8a3 3 0 0 1 3 3v5h-3v5h-3v-5h-2v5H8v-5H5v-5a3 3 0 0 1 3-3Z" />,
+  leopard: (
+    <path
+      fillRule="evenodd"
+      d="M4 3l4 3h8l4-3 1 7a9 9 0 0 1-18 0Zm4 6v2h2V9Zm6 0v2h2V9Zm-2 6-2 1 2 2 2-2ZM6 13a1 1 0 1 0 2 0 1 1 0 0 0-2 0Zm10 0a1 1 0 1 0 2 0 1 1 0 0 0-2 0Z"
+    />
+  ),
+  owl: (
+    <path
+      fillRule="evenodd"
+      d="M4 1l4 4h8l4-4v12a8 8 0 0 1-3 6.2V22H7v-2.8A8 8 0 0 1 4 13ZM8.5 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Zm7 0a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM12 12l-1.5 2L12 16l1.5-2Z"
+    />
+  ),
   // A spiked shell.
   bowser: (
     <path d="M12 2l2 3.2 3.6-1.2-.6 3.8 3.6 1.4-2.8 2.6L20 15h-3.4L16 19H8l-.6-4H4l2.2-3.2-2.8-2.6L7 7.8 6.4 4 10 5.2ZM6 20h12v2H6Z" />

@@ -36,6 +36,8 @@ export const MARIO_COINS_PER_LIFE = 100;
 /** Bowser breathes fire every this many hops, wrecking traffic on the next few road lanes. */
 export const BOWSER_FIRE_HOPS = 50;
 export const BOWSER_FIRE_ROWS = 4;
+/** The leopard pounces ahead and the owl takes flight every this many hops. */
+export const LEAP_TRAIT_HOPS = 50;
 /** Rows of seabed the duck crosses after diving, before the river where it surfaces. */
 export const UNDERWATER_ROWS = 30;
 export const RESPAWN_DELAY = 1.2;
@@ -69,5 +71,7 @@ export const MAGNET_RADIUS = 2;
 export const MAGNET_PULL_TIME = 0.35;
 /** World speed while slowmo is active; the chicken keeps hopping at full speed. */
 export const SLOWMO_SCALE = 0.35;
+/** Seconds the world takes to ease into slowmo, and back up to full speed when it ends. */
+export const SLOWMO_EASE = 0.8;
 /** How far ahead (seconds) the foresight ghosts show traffic. */
 export const FORESIGHT_STEPS = [0.6, 1.2];
