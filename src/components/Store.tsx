@@ -97,12 +97,13 @@ function Spinner({ y, children }: { y: number; children: React.ReactNode }) {
 }
 
 /** A slowly turning model on the card: a character, an illustrated power-up or a currency pack. */
-function Preview({ id }: { id: Cell["id"] }) {
+function Preview({ id, zoom = 72 }: { id: Cell["id"]; zoom?: number }) {
   const art = ART_POWERUPS[id as PowerUp];
   const pack = packOf(id);
   return (
     <div className="menu-preview">
-      <Canvas orthographic camera={{ position: [0, 1.2, 3], zoom: 72 }}>
+      {/* Keyed by zoom: the camera only takes its zoom when the canvas is created. */}
+      <Canvas key={zoom} orthographic camera={{ position: [0, 1.2, 3], zoom }}>
         <hemisphereLight args={["#ffffff", "#9fc3e8", 1.8]} />
         <directionalLight position={[-2, 4, 3]} intensity={1.6} />
         {pack ? (
@@ -187,11 +188,16 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
     const top = pin.current?.getBoundingClientRect().bottom;
     if (top === undefined || !grid.current) return;
     for (const tile of Array.from(grid.current.children) as HTMLElement[]) {
+      // Side by side on wide screens, nothing scrolls under the card.
+      if (size.wide) {
+        tile.style.opacity = "";
+        continue;
+      }
       const r = tile.getBoundingClientRect();
       const fade = r.height * 0.35;
       tile.style.opacity = String(Math.max(0, Math.min(1, (r.top - (top - fade)) / (fade + 12))));
     }
-  }, []);
+  }, [size.wide]);
   useLayoutEffect(fadeTiles, [fadeTiles, tab, size]);
   const [focus, setFocus] = useState(() =>
     tab === "characters" ? Math.max(0, CHARACTERS.findIndex((c) => c.id === w.selected)) : 0,
@@ -225,7 +231,11 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
     const onKey = (e: KeyboardEvent) => {
       const { act, doUpgrade, cells, tab } = latest.current;
       const n = cells.length;
-      const moves: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -GRID_COLS, ArrowDown: GRID_COLS };
+      // The grid has more columns on wide screens; read how many it has now.
+      const cols = grid.current
+        ? getComputedStyle(grid.current).gridTemplateColumns.split(" ").filter(Boolean).length || GRID_COLS
+        : GRID_COLS;
+      const moves: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -cols, ArrowDown: cols };
       if (e.code in moves) {
         e.preventDefault();
         setFocus((f) => Math.max(0, Math.min(n - 1, f + moves[e.code])));
@@ -261,7 +271,7 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
   return (
     <div
       ref={shop}
-      className="shop"
+      className={`shop${size.wide ? " wide" : ""}`}
       role="dialog"
       aria-label="Store"
       onScroll={fadeTiles}
@@ -303,17 +313,17 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
 
       {/* The selected item's card stays pinned while the grid scrolls up under it. */}
       {!goals && (
-      <>
+      <div className="shop-main">
       <div className="shop-pin" ref={pin}>
         <section className="shop-card" aria-live="polite">
           <CardFrame wide={size.units - 256} boost={boosting} color={boostColor} />
           <h2 className="shop-card-title">{cell.name.toUpperCase()}</h2>
           <div className="shop-card-body">
             {hasPreview(cell.id) ? (
-              <Preview id={cell.id} />
+              <Preview id={cell.id} zoom={size.wide ? Math.round(72 * Math.max(1, size.height / 420)) : 72} />
             ) : (
               <span className="shop-card-icon">
-                <Icon id={cell.id as StoreItemId | CharacterId} size={64} />
+                <Icon id={cell.id as StoreItemId | CharacterId} size={size.wide ? Math.round(64 * Math.max(1, size.height / 420)) : 64} />
               </span>
             )}
             <p className="shop-card-kind">{cell.kind}</p>
@@ -391,7 +401,7 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
           );
         })}
       </div>
-      </>
+      </div>
       )}
     </div>
   );
@@ -404,17 +414,24 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
  */
 function useCardSize() {
   const measure = () => {
-    if (typeof window === "undefined") return { width: 256, height: 392, units: 256 };
     const vw = window.innerWidth;
     const vh = window.innerHeight;
+    if (isWide(vw, vh)) {
+      // Wide screens: the card fills the left ~40% of the screen, as tall as fits under the header.
+      const width = vw * WIDE_CARD - 2 * CARD_MARGIN;
+      const height = Math.max(320, Math.min(vh - WIDE_CHROME, (width * (312 + CARD_STRETCH)) / 256));
+      return { width, height, units: (width / height) * (312 + CARD_STRETCH), wide: true };
+    }
     const base = Math.min(vw * 0.62, 270, vh * 0.52 * 0.653);
     const height = (base * (312 + CARD_STRETCH)) / 256;
     const width = Math.max(base, Math.min(vw - 2 * CARD_MARGIN, height * 0.95));
-    return { width, height, units: (width / height) * (312 + CARD_STRETCH) };
+    return { width, height, units: (width / height) * (312 + CARD_STRETCH), wide: false };
   };
-  const [size, setSize] = useState(measure);
-  useEffect(() => {
+  // Start from the server's size so hydration matches, then measure the real screen before paint.
+  const [size, setSize] = useState(SERVER_CARD);
+  useLayoutEffect(() => {
     const onResize = () => setSize(measure());
+    onResize();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -422,6 +439,14 @@ function useCardSize() {
 }
 
 const GRID_COLS = 3;
+const SERVER_CARD = { width: 256, height: 392, units: 256, wide: false };
+/** Screens at least this wide, and wider than tall, put the card on the left and the list on the right. */
+const WIDE_MIN = 900;
+const isWide = (vw: number, vh: number) => vw >= WIDE_MIN && vw > vh;
+/** Share of the screen's width the card's column takes on wide screens. */
+const WIDE_CARD = 0.4;
+/** Height kept for the header, pips and padding when sizing the card on wide screens. */
+const WIDE_CHROME = 190;
 /** Space kept between the card and the sides of the screen. */
 const CARD_MARGIN = 22;
 /** Extra height (in card SVG units) added to the middle of the card; keep in sync with --card-h in globals.css. */

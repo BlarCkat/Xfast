@@ -1373,3 +1373,42 @@ kbd {
 .shop-tile {
   scroll-margin-top: calc(var(--card-h) + 60px);
 }
+
+/* Wide screens (Store.tsx adds .wide): the card sits in the left ~40% and the list fills the right. */
+.shop-main {
+  display: contents;
+}
+
+.shop.wide .shop-head {
+  max-width: none;
+  padding-inline: 22px;
+}
+
+.shop.wide .shop-main {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.shop.wide .shop-pin {
+  width: 40%;
+  padding-top: 18px;
+}
+
+.shop.wide .shop-grid {
+  flex: 1;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  max-width: none;
+  margin-top: 0;
+  padding: 18px 22px 0 8px;
+}
+
+.shop.wide .shop-tile {
+  scroll-margin-top: 18px;
+}
+
+.shop.wide .shop-card-kind,
+.shop.wide .shop-card-desc {
+  font-size: 15px;
+}
