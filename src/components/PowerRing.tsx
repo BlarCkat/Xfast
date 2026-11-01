@@ -50,7 +50,8 @@ export function PowerRing({
             // Start at the bottom left and run clockwise, like the reference.
             d={arc(45, 200 + i * step + GAP / 2, 200 + (i + 1) * step - GAP / 2)}
             className="ring-seg"
-            stroke={i < on ? color : undefined}
+            // Inline so it wins over the pale stroke in the stylesheet; --i lets a card light them in turn.
+            style={{ ...(i < on ? { stroke: color } : null), ["--i" as string]: i }}
           />
         ))}
       </svg>

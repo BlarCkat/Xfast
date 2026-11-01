@@ -9,7 +9,7 @@ import { wallet } from "@/game/wallet";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
 import { PowerRing } from "./PowerRing";
-import Achievements from "./Achievements";
+import Achievements, { EarnedToast } from "./Achievements";
 import Store, { ShopBackdrop, useWallet, type StoreTab } from "./Store";
 import Walkthrough from "./Walkthrough";
 import { basicsPages, markSeen, pendingGuide, type GuidePage } from "@/game/guide";
@@ -342,6 +342,10 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
           {ui.toast.icon && <img className="toast-icon" src={ui.toast.icon} alt="" />}
           {ui.toast.text}
         </div>
+      )}
+
+      {ui.earned[0] && (
+        <EarnedToast key={ui.earned[0].id} goal={ui.earned[0].goal} onDone={() => engine.dismissEarned(ui.earned[0].id)} />
       )}
 
       {ui.status === "ready" && !guide && (
