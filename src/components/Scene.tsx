@@ -85,15 +85,15 @@ function Player({ engine }: { engine: Engine }) {
 
     const isRock = engine.effects.rock > 0 && !death;
     if (bubble.current) bubble.current.visible = engine.effects.shield > 0 && !death;
-    const flying = engine.effects.wings > 0 && !death;
+    const flying = !!p.flight && !death;
     if (wings.current) {
       wings.current.visible = flying;
       wings.current.rotation.z = Math.sin(engine.time * 18) * 0.25;
     }
     // Paddle low in the water where the duck surfaced.
     if (engine.swimming) y = -0.22 + Math.sin(engine.time * 4) * 0.03;
-    // Hover a little above the water while flying.
-    if (flying && !p.hop && !p.ride) y = 0.35 + Math.sin(engine.time * 6) * 0.05;
+    // Bob gently while soaring.
+    if (flying) y += Math.sin(engine.time * 6) * 0.08;
     if (chicken.current) chicken.current.visible = !isRock;
     if (rock.current) rock.current.visible = isRock;
     // Blink while the respawn shield is up; also flicker the last second of rock.

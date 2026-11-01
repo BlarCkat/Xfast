@@ -70,7 +70,7 @@ const POWERUP_TIPS: Record<PowerUp, string> = {
   superhop: "This one is Super Hop, and it makes each hop forward jump two rows.",
   shield: "This one is Shield, and it's a bubble that keeps you safe from one bump.",
   freeze: "This one is Freeze, and it stops all the cars and trains.",
-  wings: "This one is Flight, and it lets you fly over the water for a little while.",
+  wings: "This one is Flight, and it flies you high over cars, trains and water, then lands you somewhere safe.",
   scarecrow: "This one is Scarecrow, and it keeps the eagle away.",
   ghost: "This one is Ghost, and it lets cars and trains go right through you.",
   tiny: "This one is Tiny, and it makes you so small that cars have a hard time hitting you.",
@@ -177,7 +177,7 @@ function abilityPages(id: CharacterId, tier: number): GuidePage[] {
     case "leopard":
       return [{ text: `Every ${t.leapHops} hops, Leopard does a giant pounce to safe grass!`, art: { icon: "warp" } }];
     case "owl":
-      return [{ text: `Every ${t.leapHops} hops, Owl flies up. Owl can fly over water!`, art: { icon: "wings" } }];
+      return [{ text: `Every ${t.leapHops} hops, Owl flies up over everything and lands somewhere safe!`, art: { icon: "wings" } }];
     case "tiger":
       return [
         { text: `Every ${t.tigerRoarHops} hops, Tiger lets out a big ROAR!`, art: self },

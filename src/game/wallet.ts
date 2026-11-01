@@ -41,7 +41,7 @@ export const CHARACTERS: Character[] = [
   },
   { id: "human", name: "Human", price: 550, trait: "Picks up every coin twice: coins are always doubled." },
   { id: "leopard", name: "Leopard", price: 600, trait: "Pounces every 50 hops, leaping ahead to safe grass like a Warp." },
-  { id: "owl", name: "Owl", price: 650, trait: "Takes flight every 50 hops: Wings carry it over rivers for a moment." },
+  { id: "owl", name: "Owl", price: 650, trait: "Takes flight every 50 hops: Wings carry it over everything to safe grass." },
   { id: "tiger", name: "Tiger", price: 700, trait: "Roars every 60 hops, putting up a shield that soaks up the next hit." },
 ];
 
