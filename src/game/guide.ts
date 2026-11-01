@@ -125,8 +125,8 @@ function tipPages(id: HintId, touch: boolean): GuidePage[] {
 }
 
 /** A character's pages: who they are, then their power one idea at a time, using their current numbers. */
-function abilityPages(id: CharacterId, tier: number): GuidePage[] {
-  const t = traitsAt(id, tier);
+function abilityPages(id: CharacterId, steps: number): GuidePage[] {
+  const t = traitsAt(id, steps);
   const self = { model: id } as const;
   switch (id) {
     case "chicken":
@@ -187,9 +187,9 @@ function abilityPages(id: CharacterId, tier: number): GuidePage[] {
 }
 
 /** The pages for meeting a character for the first time: who they are, and their power. */
-export function meetPages(id: CharacterId, tier: number): GuidePage[] {
+export function meetPages(id: CharacterId, steps: number): GuidePage[] {
   const name = CHARACTERS.find((c) => c.id === id)!.name;
-  const pages = abilityPages(id, tier);
+  const pages = abilityPages(id, steps);
   const hello = id === "chicken" ? "" : `This is ${name}! `;
   return pages.map((p, i) => (i === 0 ? { ...p, text: hello + p.text, art: { model: id } } : p));
 }
@@ -200,7 +200,7 @@ export function tip(id: HintId, touch = isTouch()): GuidePage[] | null {
 }
 
 /** What to say before a run starts: hello for a new player, and the character if they're new. */
-export function beforeRun(id: CharacterId, tier: number, hasPowerups: boolean): { pages: GuidePage[]; tips: HintId[]; character: CharacterId | null } | null {
+export function beforeRun(id: CharacterId, steps: number, hasPowerups: boolean): { pages: GuidePage[]; tips: HintId[]; character: CharacterId | null } | null {
   const s = get();
   const pages: GuidePage[] = [];
   const tips: HintId[] = [];
@@ -214,7 +214,7 @@ export function beforeRun(id: CharacterId, tier: number, hasPowerups: boolean): 
   add("start");
   // The chicken explains its own power in the Characters screen (the "characters" tip), not here.
   const meet = id !== "chicken" && !s.met.includes(id);
-  if (meet) pages.push(...meetPages(id, tier));
+  if (meet) pages.push(...meetPages(id, steps));
   if (hasPowerups) add("inventory");
   return pages.length ? { pages, tips, character: meet ? id : null } : null;
 }

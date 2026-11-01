@@ -1,4 +1,4 @@
-import { CHARACTER_TIERS, CHARACTER_TIER_COST } from "./characters";
+import { CHARACTER_LEVELS, MAX_CHARACTER_STEPS, characterLevelOf, nextCharacterStep, stepsAtLevel } from "./characters";
 import { MAX_UPGRADES, POWERUPS, nextUpgrade, noEffects, type PowerUp } from "./powerups";
 
 export type CharacterId = "chicken" | "duck" | "frog" | "cat" | "penguin" | "robot" | "sparrow" | "snail" | "mario" | "luigi" | "bowser" | "human" | "leopard" | "owl" | "tiger";
@@ -71,14 +71,9 @@ export interface WalletState {
   inventory: Record<StoreItemId, number>;
   /** Upgrade steps taken on each power-up, 0 to MAX_UPGRADES (see tierOf). */
   upgrades: Record<PowerUp, number>;
-  /** Each character's tier, 1 to CHARACTER_TIERS (see characters.ts). */
-  charTiers: Partial<Record<CharacterId, number>>;
-  /** Character upgrades from chests toward each character's next free tier (see UPGRADES_PER_LEVEL). */
-  charUpgrades: Partial<Record<CharacterId, number>>;
+  /** Upgrade steps taken on each character, 0 to MAX_CHARACTER_STEPS (see characterLevelOf). */
+  charSteps: Partial<Record<CharacterId, number>>;
 }
-
-/** Chest upgrades a character collects to step up a tier for free. */
-export const UPGRADES_PER_LEVEL = 3;
 
 const KEY = "xfast-wallet";
 
@@ -89,9 +84,22 @@ const fresh = (): WalletState => ({
   selected: "chicken",
   inventory: { life: 0, ...noEffects() },
   upgrades: Object.fromEntries(POWERUPS.map((p) => [p.key, 0])) as Record<PowerUp, number>,
-  charTiers: {},
-  charUpgrades: {},
+  charSteps: {},
 });
+
+/**
+ * Older saves kept a tier from 1 to 5 plus chest upgrades toward the next one. Each tier becomes the
+ * same strength on the nine-level path, and each chest upgrade one more step.
+ */
+function fromTiers(tiers?: Partial<Record<CharacterId, number>>, partial?: Partial<Record<CharacterId, number>>) {
+  const out: Partial<Record<CharacterId, number>> = {};
+  for (const id of new Set([...Object.keys(tiers ?? {}), ...Object.keys(partial ?? {})]) as Set<CharacterId>) {
+    const tier = Math.max(1, Math.min(5, Number(tiers?.[id]) || 1));
+    const steps = Math.round(((tier - 1) / 4) * MAX_CHARACTER_STEPS) + (tier < 5 ? Math.max(0, Number(partial?.[id]) || 0) : 0);
+    out[id] = Math.min(MAX_CHARACTER_STEPS, steps);
+  }
+  return out;
+}
 
 /** Older saves kept a level from 1 to 5; each level above 1 becomes one filled tier-1 box. */
 function fromLevels(levels?: Record<PowerUp, number>) {
@@ -103,7 +111,11 @@ function load(): WalletState {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return fresh();
-    const saved = JSON.parse(raw) as Partial<WalletState> & { levels?: Record<PowerUp, number> };
+    const saved = JSON.parse(raw) as Partial<WalletState> & {
+      levels?: Record<PowerUp, number>;
+      charTiers?: Partial<Record<CharacterId, number>>;
+      charUpgrades?: Partial<Record<CharacterId, number>>;
+    };
     const base = fresh();
     return {
       coins: Math.max(0, Number(saved.coins) || 0),
@@ -112,8 +124,7 @@ function load(): WalletState {
       selected: saved.selected && saved.owned?.includes(saved.selected) ? saved.selected : "chicken",
       inventory: { ...base.inventory, ...saved.inventory },
       upgrades: { ...base.upgrades, ...(saved.upgrades ?? fromLevels(saved.levels)) },
-      charTiers: { ...saved.charTiers },
-      charUpgrades: { ...saved.charUpgrades },
+      charSteps: { ...(saved.charSteps ?? fromTiers(saved.charTiers, saved.charUpgrades)) },
     };
   } catch {
     return fresh();
@@ -179,55 +190,58 @@ class Wallet {
   upgrade(id: PowerUp) {
     const s = this.get();
     const next = nextUpgrade(s.upgrades[id]);
-    if (!next || s.coins < next.cost) return false;
-    this.set({ ...s, coins: s.coins - next.cost, upgrades: { ...s.upgrades, [id]: s.upgrades[id] + 1 } });
+    if (!next || s.gems < next.cost) return false;
+    this.set({ ...s, gems: s.gems - next.cost, upgrades: { ...s.upgrades, [id]: s.upgrades[id] + 1 } });
     return true;
   }
 
-  /** A character's tier, 1 to CHARACTER_TIERS. */
-  tierOf(id: CharacterId) {
-    return Math.max(1, Math.min(CHARACTER_TIERS, this.get().charTiers[id] ?? 1));
+  /** Upgrade steps a character has taken, 0 to MAX_CHARACTER_STEPS. */
+  stepsOf(id: CharacterId) {
+    return Math.max(0, Math.min(MAX_CHARACTER_STEPS, this.get().charSteps[id] ?? 0));
   }
 
-  /** Step an owned character up a tier, strengthening its trait. */
+  /** A character's level (1 to 9) and how many of that level's boxes are filled. */
+  levelOf(id: CharacterId) {
+    return characterLevelOf(this.stepsOf(id));
+  }
+
+  canUpgradeCharacter(id: CharacterId) {
+    return this.stepsOf(id) < MAX_CHARACTER_STEPS;
+  }
+
+  private setSteps(id: CharacterId, steps: number, gems = this.get().gems) {
+    const s = this.get();
+    this.set({ ...s, gems, charSteps: { ...s.charSteps, [id]: Math.min(MAX_CHARACTER_STEPS, steps) } });
+  }
+
+  /** Buy an owned character's next step: fill the next box, or step up a level once all are full. */
   upgradeCharacter(id: CharacterId) {
     const s = this.get();
-    const tier = this.tierOf(id);
-    const cost = CHARACTER_TIER_COST[tier];
-    if (!s.owned.includes(id) || tier >= CHARACTER_TIERS || s.coins < cost) return false;
-    this.set({ ...s, coins: s.coins - cost, charTiers: { ...s.charTiers, [id]: tier + 1 } });
+    const next = nextCharacterStep(this.stepsOf(id));
+    if (!s.owned.includes(id) || !next || s.gems < next.cost) return false;
+    this.setSteps(id, this.stepsOf(id) + 1, s.gems - next.cost);
     return true;
-  }
-
-  /** Chest upgrades a character has toward its next tier. */
-  upgradesOf(id: CharacterId) {
-    return this.get().charUpgrades[id] ?? 0;
   }
 
   /**
-   * A character upgrade from a chest. Every UPGRADES_PER_LEVEL of them step the character up a
-   * tier for free; returns true when this one did.
+   * A free step for a character, from a chest: the next box, or the level-up when the boxes are all
+   * full. Returns true when it was a level-up.
    */
   grantCharacterUpgrade(id: CharacterId) {
-    const s = this.get();
-    const tier = this.tierOf(id);
-    if (tier >= CHARACTER_TIERS) return false;
-    const have = (s.charUpgrades[id] ?? 0) + 1;
-    const levelUp = have >= UPGRADES_PER_LEVEL;
-    this.set({
-      ...s,
-      charUpgrades: { ...s.charUpgrades, [id]: levelUp ? 0 : have },
-      charTiers: levelUp ? { ...s.charTiers, [id]: tier + 1 } : s.charTiers,
-    });
-    return levelUp;
+    const next = nextCharacterStep(this.stepsOf(id));
+    if (!next) return false;
+    this.setSteps(id, this.stepsOf(id) + 1);
+    return next.kind === "level";
   }
 
-  /** A whole free tier for a character, from a chest. */
+  /**
+   * A whole free level for a character, from a Mega or holiday chest: the rest of this level's boxes
+   * fill and the character steps up to the next level. On the last level it fills the remaining boxes.
+   */
   grantCharacterLevel(id: CharacterId) {
-    const s = this.get();
-    const tier = this.tierOf(id);
-    if (tier >= CHARACTER_TIERS) return false;
-    this.set({ ...s, charTiers: { ...s.charTiers, [id]: tier + 1 }, charUpgrades: { ...s.charUpgrades, [id]: 0 } });
+    if (!this.canUpgradeCharacter(id)) return false;
+    const { level } = this.levelOf(id);
+    this.setSteps(id, level < CHARACTER_LEVELS ? stepsAtLevel(level + 1) : MAX_CHARACTER_STEPS);
     return true;
   }
 
