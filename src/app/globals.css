@@ -1348,6 +1348,14 @@ kbd {
   pointer-events: none;
 }
 
+/* Tile icons are drawn at 2x; on small tiles they shrink to fit, leaving room for the price. */
+.shop-tile > svg,
+.shop-tile > .icon-art {
+  max-width: 72%;
+  max-height: 72%;
+  object-fit: contain;
+}
+
 .shop-tile.locked .icon-art,
 .shop-tile.locked .shop-tile-art {
   opacity: 0.45;
