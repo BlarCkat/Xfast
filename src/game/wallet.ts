@@ -23,19 +23,19 @@ export const CHARACTERS: Character[] = [
   { id: "snail", name: "Snail", price: 350, trait: "Slows time for a moment every 100 hops." },
   {
     id: "mario",
-    name: "Mario",
+    name: "Red Plumber",
     price: 400,
     trait: "Super Mushroom: the first car or train hit shrinks him instead of costing a life, and he grows back in each new biome. Every 100 coins is a 1-UP.",
   },
   {
     id: "luigi",
-    name: "Luigi",
+    name: "Green Plumber",
     price: 450,
     trait: "Poltergust: sucks up coins within 2 tiles. Ghost hunter: nothing can hit him in the Spooky biome.",
   },
   {
     id: "bowser",
-    name: "Bowser",
+    name: "Giant Turtle",
     price: 500,
     trait: "Smashes through trees and rocks in his way, and breathes fire every 50 hops to wreck the traffic ahead.",
   },

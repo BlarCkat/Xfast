@@ -16,7 +16,7 @@ import Rewards, { useChests, useEvents } from "./Rewards";
 import { EventIcon } from "./EventArt";
 import { activeEvent, events } from "@/game/events";
 import { chests } from "@/game/chests";
-import { beforeRun, markSeen, pickupTip, tip, type GuidePage, type HintId } from "@/game/guide";
+import { beforeRun, markSeen, tip, type GuidePage, type HintId } from "@/game/guide";
 import type { CharacterId } from "@/game/wallet";
 
 const KEYS: Record<string, Direction> = {
@@ -198,18 +198,22 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   // During a run the engine asks for a tip at the moments that need one; the game holds still while the chicken talks.
   useEffect(() => {
     engine.onHint = (id) => {
-      const pickup = id === "life" || POWERUPS.some((p) => p.key === id);
-      const pages = pickup ? null : tip(id);
-      const next = pickup ? pickupTip(id as PowerUp | "life", engine.character) : pages && { pages, character: null };
-      if (!next) return false;
+      const pages = tip(id);
+      if (!pages) return false;
       engine.paused = true;
-      setGuide({ ...next, tips: [id], thenPlay: false });
+      setGuide({ pages, character: null, tips: [id], thenPlay: false });
       return true;
     };
     return () => {
       engine.onHint = null;
     };
   }, [engine]);
+
+  /** The first visit to the Characters screen: every friend has a power, and here's mine. */
+  const onStoreTab = useCallback((t: StoreTab) => {
+    const pages = t === "characters" ? tip("characters") : null;
+    if (pages) setGuide({ pages, character: "chicken", tips: ["characters"], thenPlay: false });
+  }, []);
 
   const endGuide = useCallback(() => {
     if (!guide) return;
@@ -523,7 +527,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
 
       {goalsOpen && <Achievements onClose={() => setGoalsOpen(false)} />}
       {rewardsOpen && <Rewards onClose={() => setRewardsOpen(false)} />}
-      {storeOpen && <Store initialTab={storeTab} onClose={closeStore} />}
+      {storeOpen && <Store initialTab={storeTab} onClose={closeStore} onTab={onStoreTab} />}
       {guide && <Walkthrough pages={guide.pages} onDone={endGuide} doneLabel={guide.thenPlay ? "LET'S GO!" : "OK!"} />}
     </div>
   );

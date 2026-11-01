@@ -1,5 +1,6 @@
 import { traitsAt } from "./characters";
 import type { PickupKind } from "./lanes";
+import type { PowerUp } from "./powerups";
 import { CHARACTERS, type CharacterId, type StoreItemId } from "./wallet";
 
 // The chicken's tips. Instead of one long lesson, the chicken pops up the first time something
@@ -15,7 +16,7 @@ export interface GuidePage {
 }
 
 /** Moments the chicken has something to say about. Power-ups and hearts use their own names. */
-export type HintId = "start" | "side" | "road" | "river" | "rail" | "eagle" | "coin" | "duck-saved" | "inventory" | PickupKind;
+export type HintId = "start" | "characters" | "side" | "road" | "river" | "rail" | "eagle" | "coin" | "duck-saved" | "inventory" | PickupKind;
 
 const KEY = "xfast-guide";
 const BEST_KEY = "xfast-best";
@@ -59,34 +60,49 @@ function save(next: GuideState) {
 /** Is a phone or tablet: taps and swipes rather than keys. */
 export const isTouch = () => typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
 
-/** What each power-up and the heart do, in a few simple words. */
-const PICKUP_TIPS: Record<PickupKind, string> = {
-  life: "A heart! That's an extra life. Now you get one more try!",
-  foresight: "Foresight! See-through cars show where the real cars will go.",
-  slowmo: "Slowmo! Everything goes slow, but you stay fast.",
-  rock: "Rock! You're made of stone. Cars that bump you go crash!",
-  magnet: "Magnet! Coins near you fly right to you.",
-  double: "Double coins! Every coin counts two times.",
-  superhop: "Super hop! Each hop forward jumps two rows.",
-  shield: "Shield! A bubble keeps you safe from one bump.",
-  freeze: "Freeze! All the cars and trains stop still.",
-  wings: "Wings! You can fly over the water for a little while.",
-  scarecrow: "Scarecrow! The eagle stays away, so you can take your time.",
-  ghost: "Ghost! Cars and trains go right through you.",
-  tiny: "Tiny! You're so small that cars have a harder time hitting you.",
-  lumberjack: "Lumberjack! Hop into trees to chop them down.",
-  warp: "Warp! Zoom! You jumped far ahead.",
-  coinrain: "Coin rain! Coins fell all over the road ahead. Go grab them!",
+/** What each power-up does, in one simple sentence. */
+const POWERUP_TIPS: Record<PowerUp, string> = {
+  foresight: "This one is Foresight, and it shows where the cars will go next.",
+  slowmo: "This one is Slowmo, and it makes everything slow while you stay fast.",
+  rock: "This one is Rock, and it turns you to stone so cars that bump you go crash!",
+  magnet: "This one is Magnet, and it pulls coins near you right to you.",
+  double: "This one is Double Coins, and it makes every coin count two times.",
+  superhop: "This one is Super Hop, and it makes each hop forward jump two rows.",
+  shield: "This one is Shield, and it's a bubble that keeps you safe from one bump.",
+  freeze: "This one is Freeze, and it stops all the cars and trains.",
+  wings: "This one is Flight, and it lets you fly over the water for a little while.",
+  scarecrow: "This one is Scarecrow, and it keeps the eagle away.",
+  ghost: "This one is Ghost, and it lets cars and trains go right through you.",
+  tiny: "This one is Tiny, and it makes you so small that cars have a hard time hitting you.",
+  lumberjack: "This one is Lumberjack, and it lets you hop into trees to chop them down.",
+  warp: "This one is Warp, and it zooms you far ahead!",
+  coinrain: "This one is Coin Rain, and it drops coins all over the road ahead.",
 };
+
+const isPowerUp = (id: HintId): id is PowerUp => id in POWERUP_TIPS;
+/** Every power-up shares one tip: only the very first one picked up is explained. */
+const seenKey = (id: HintId) => (isPowerUp(id) ? "powerup" : id);
 
 /** The page for one tip. */
 function tipPages(id: HintId, touch: boolean): GuidePage[] {
-  if (id in PICKUP_TIPS) return [{ text: PICKUP_TIPS[id as PickupKind], art: { icon: id as PickupKind } }];
+  if (isPowerUp(id))
+    return [
+      { text: "You've picked up a power-up!", art: { icon: id } },
+      { text: "Use power-ups to fly, slow time, freeze everything, and more!", art: { icon: id } },
+      { text: POWERUP_TIPS[id], art: { icon: id } },
+    ];
   switch (id) {
+    case "life":
+      return [{ text: "A heart! That's an extra life. Now you get one more try!", art: { icon: "life" } }];
     case "start":
       return [
         { text: "Hi! I'm Chicken. I'll help you play!" },
         { text: touch ? "Tap the screen to hop forward. Hop, hop, hop!" : "Press the up arrow to hop forward. Hop, hop, hop!" },
+      ];
+    case "characters":
+      return [
+        { text: "These are your friends. Every friend has their own super power!" },
+        { text: "My super power? Power-ups last longer when I have them!", art: { icon: "slowmo" } },
       ];
     case "side":
       return [{ text: touch ? "A tree is in the way! Swipe left or right to hop around it." : "A tree is in the way! Press left or right to hop around it." }];
@@ -143,18 +159,18 @@ function abilityPages(id: CharacterId, tier: number): GuidePage[] {
       ];
     case "mario":
       return [
-        { text: "The first bump makes Mario small. But he keeps playing!", art: self },
-        { text: `Every ${t.marioCoinsPerLife} coins gives Mario an extra life!`, art: { icon: "life" } },
+        { text: "The first bump makes Red Plumber small. But he keeps playing!", art: self },
+        { text: `Every ${t.marioCoinsPerLife} coins gives Red Plumber an extra life!`, art: { icon: "life" } },
       ];
     case "luigi":
       return [
-        { text: "Luigi's vacuum sucks up coins near him. Whoosh!", art: { icon: "magnet" } },
-        { text: "In the spooky land, nothing can hurt Luigi!", art: { icon: "ghost" } },
+        { text: "Green Plumber's vacuum sucks up coins near him. Whoosh!", art: { icon: "magnet" } },
+        { text: "In the spooky land, nothing can hurt Green Plumber!", art: { icon: "ghost" } },
       ];
     case "bowser":
       return [
-        { text: "Bowser smashes right through trees and rocks. Crash!", art: { icon: "lumberjack" } },
-        { text: `Every ${t.bowserFireHops} hops, Bowser breathes fire and burns the cars ahead!`, art: self },
+        { text: "Giant Turtle smashes right through trees and rocks. Crash!", art: { icon: "lumberjack" } },
+        { text: `Every ${t.bowserFireHops} hops, Giant Turtle breathes fire and burns the cars ahead!`, art: self },
       ];
     case "human":
       return [{ text: "Every coin Human picks up counts two times. Double coins!", art: { icon: "double" } }];
@@ -180,15 +196,7 @@ export function meetPages(id: CharacterId, tier: number): GuidePage[] {
 
 /** A tip the chicken hasn't given yet, or null. */
 export function tip(id: HintId, touch = isTouch()): GuidePage[] | null {
-  return get().seen.includes(id) ? null : tipPages(id, touch);
-}
-
-/** A tip for picking something up; the chicken adds its own power the first time it grabs a power-up. */
-export function pickupTip(kind: PickupKind, character: CharacterId): { pages: GuidePage[]; character: CharacterId | null } | null {
-  const pages = tip(kind) ?? [];
-  const chicken = character === "chicken" && kind !== "life" && !get().met.includes("chicken");
-  if (chicken) pages.push(...meetPages("chicken", 1));
-  return pages.length ? { pages, character: chicken ? "chicken" : null } : null;
+  return get().seen.includes(seenKey(id)) ? null : tipPages(id, touch);
 }
 
 /** What to say before a run starts: hello for a new player, and the character if they're new. */
@@ -204,7 +212,7 @@ export function beforeRun(id: CharacterId, tier: number, hasPowerups: boolean): 
     }
   };
   add("start");
-  // The chicken's own power is told the first time it picks up a power-up (see powerupTip).
+  // The chicken explains its own power in the Characters screen (the "characters" tip), not here.
   const meet = id !== "chicken" && !s.met.includes(id);
   if (meet) pages.push(...meetPages(id, tier));
   if (hasPowerups) add("inventory");
@@ -215,5 +223,5 @@ export function beforeRun(id: CharacterId, tier: number, hasPowerups: boolean): 
 export function markSeen(tips: HintId[], character: CharacterId | null = null) {
   const s = get();
   const met = character && !s.met.includes(character) ? [...s.met, character] : s.met;
-  save({ seen: Array.from(new Set([...s.seen, ...tips])), met });
+  save({ seen: Array.from(new Set([...s.seen, ...tips.map(seenKey)])), met });
 }

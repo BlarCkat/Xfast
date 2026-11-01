@@ -173,9 +173,21 @@ function upgradeAction(tab: StoreTab, cell: Cell, w: WalletState) {
   };
 }
 
-export default function Store({ onClose, initialTab = "characters" }: { onClose: () => void; initialTab?: StoreTab }) {
+export default function Store({
+  onClose,
+  initialTab = "characters",
+  onTab,
+}: {
+  onClose: () => void;
+  initialTab?: StoreTab;
+  /** Told whenever a tab is shown, including the first. */
+  onTab?: (tab: StoreTab) => void;
+}) {
   const w = useWallet();
   const [tab, setTab] = useState<StoreTab>(initialTab);
+  useEffect(() => {
+    onTab?.(tab);
+  }, [tab, onTab]);
   const goals = tab === "achievements";
   // The achievements tab has no card or grid; the power-ups stand in so the hooks below stay simple.
   const cells = cellsFor(goals ? "powerups" : tab, w);
