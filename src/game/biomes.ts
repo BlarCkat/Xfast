@@ -13,6 +13,9 @@ export type BiomeId =
   | "spooky"
   | "volcano"
   | "northpole"
+  | "autumn"
+  | "bamboo"
+  | "candy"
   | "underwater";
 
 export interface Biome {
@@ -163,6 +166,46 @@ export const BIOMES: Record<BiomeId, Biome> = {
     truckColors: ["#c0392b"],
     trainColors: ["#c0392b", "#2f7d4a", "#f2f2f2", "#d4af37"],
   },
+  autumn: {
+    id: "autumn",
+    label: "Autumn Woods",
+    grass: ["#d6a24a", "#cc9842"],
+    road: "#5e5552",
+    marking: "#f2c14e",
+    water: "#4f9fbf",
+    railBed: "#7a6250",
+    // Fox fur shades.
+    carColors: ["#e8742a", "#d9622b", "#c4552a"],
+    // Bear coats.
+    truckColors: ["#6b4a35", "#4a3428", "#8a5e3c"],
+    trainColors: ["#9c3b2a", "#d9822b", "#f2c14e", "#5e4030"],
+  },
+  bamboo: {
+    id: "bamboo",
+    label: "Bamboo Grove",
+    grass: ["#8fcf7a", "#84c470"],
+    road: "#9c8f7a",
+    marking: "#e8dfc8",
+    water: "#4fb3a0",
+    railBed: "#7d7466",
+    // Rickshaw paint.
+    carColors: ["#d93a2b", "#2f6fbf", "#2f8f5a", "#f2b134"],
+    truckColors: ["#f4f4f0"],
+    trainColors: ["#c0392b", "#f2f2f2", "#2b2f36", "#d4af37"],
+  },
+  candy: {
+    id: "candy",
+    label: "Candy Hills",
+    grass: ["#ffc2dc", "#ffb6d5"],
+    road: "#7a4a35",
+    marking: "#ffffff",
+    water: "#8a5236",
+    railBed: "#b98a6a",
+    // Gummy bear flavours.
+    carColors: ["#ff4f6d", "#ffb020", "#7bd94a", "#4fb8ff", "#c77dff"],
+    truckColors: ["#7ad3f7", "#ff9ac1", "#ffd166"],
+    trainColors: ["#ff6f91", "#7ad3f7", "#ffd166", "#9be564"],
+  },
   // Only reached by the duck diving into a river; never part of the regular cycle.
   underwater: {
     id: "underwater",
@@ -182,12 +225,15 @@ export const BIOMES: Record<BiomeId, Biome> = {
 export const BIOME_ORDER: BiomeId[] = [
   "meadow",
   "farm",
+  "autumn",
   "safari",
   "savannah",
   "desert",
   "beach",
   "jungle",
+  "bamboo",
   "city",
+  "candy",
   "spooky",
   "volcano",
   "northpole",

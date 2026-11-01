@@ -5,6 +5,7 @@ import type { Group } from "three";
 import type { BiomeId } from "@/game/biomes";
 import type { MoverKind } from "@/game/lanes";
 import { Box, Car, Log, Tree, Truck } from "./models";
+import { MoreFloater, moreObstacle, moreVehicle } from "./biomeModelsMore";
 
 // Per-biome voxel props, traffic and river floaters. Vehicles face +x and are mirrored by `dir`,
 // keeping the same footprint as the car (1.5) and truck (2.6) they stand in for.
@@ -1104,7 +1105,7 @@ export function extraObstacle(biome: BiomeId, height: number, variant: number): 
       if (variant % 11 === 0) return <TreasureChest />;
       return height === 1 ? <SeaRock /> : height === 2 ? <Coral variant={variant} /> : <Kelp variant={variant} />;
     default:
-      return null;
+      return moreObstacle(biome, height, variant);
   }
 }
 
@@ -1123,8 +1124,8 @@ export function extraVehicle(biome: BiomeId, big: boolean, props: VehicleProps):
     case "underwater":
       return big ? <Shark {...props} /> : <SeaCritter {...props} />;
     default:
-      return null;
+      return moreVehicle(biome, big, props);
   }
 }
 
-export const ExtraFloater = { beach: PoolFloat, volcano: BasaltSlab, spooky: Coffin } as const;
+export const ExtraFloater = { beach: PoolFloat, volcano: BasaltSlab, spooky: Coffin, ...MoreFloater } as const;

@@ -55,6 +55,9 @@ const GRASS_TEXTURE: Record<BiomeId, GroundTexture> = {
   spooky: "grass",
   volcano: "ash",
   northpole: "snow",
+  autumn: "leaves",
+  bamboo: "grass",
+  candy: "frosting",
   underwater: "sand",
 };
 
