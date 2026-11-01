@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 import type { GuidePage } from "@/game/guide";
@@ -67,11 +67,66 @@ function useTyped(text: string) {
 const stop = (e: React.PointerEvent) => e.stopPropagation();
 
 /**
- * The chicken's visual-novel walkthrough: the chicken stands at the bottom and talks in a speech
- * box, one short line at a time. Tap (or Space, Enter, right arrow) to go on; Skip leaves early.
+ * The speech box drawn like the store's card: cream paper with torn edges, a navy panel and a teal
+ * name banner (without the card's moving shine). Drawn in pixels at the box's measured size, so the
+ * corners keep their shape at any width.
  */
-export default function Walkthrough({ pages, onDone }: { pages: GuidePage[]; onDone: () => void }) {
+function GuideFrame({ w, h }: { w: number; h: number }) {
+  if (!w || !h) return null;
+  const path = (pts: [number, number][]) => `M${pts.map(([x, y]) => `${x} ${y}`).join("L")}Z`;
+  const paper = path([
+    [w - 1, 0],
+    [20, 7],
+    [20, 34],
+    [9, 27],
+    [19, h - 40],
+    [0, h - 24],
+    [23, h - 12],
+    [16, h],
+    [w - 10, h - 9],
+    [w - 1, 25],
+    [w - 10, 14],
+  ]);
+  const panel = path([
+    [w - 18, 20],
+    [36, 20],
+    [26, h - 18],
+    [w - 80, h - 14],
+    [w - 22, h - 44],
+  ]);
+  const banner = "M39 23H196L193 58H150C147 61 141 67 139 70C137 67 88 61 37 58Z";
+  return (
+    <svg className="guide-frame" viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden="true">
+      <path d={paper} fill="#F3EED1" />
+      <path d={panel} fill="#212139" />
+      <path d={banner} fill="#2DDED3" />
+    </svg>
+  );
+}
+
+/** The element's size in pixels, kept up to date as it changes. */
+function useSize<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setSize({ w: Math.round(el.offsetWidth), h: Math.round(el.offsetHeight) });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, size] as const;
+}
+
+/**
+ * The chicken's tip box: the chicken stands at the bottom and talks in a speech box, one short line
+ * at a time. Tap (or Space, Enter, right arrow) to go on; Skip leaves early.
+ */
+export default function Walkthrough({ pages, onDone, doneLabel = "OK!" }: { pages: GuidePage[]; onDone: () => void; doneLabel?: string }) {
   const [index, setIndex] = useState(0);
+  const [boxRef, box] = useSize<HTMLDivElement>();
   const page = pages[index];
   const [shown, finish] = useTyped(page.text);
   const typing = shown < page.text.length;
@@ -112,22 +167,25 @@ export default function Walkthrough({ pages, onDone }: { pages: GuidePage[]; onD
   }, []);
 
   return (
-    <div className="guide" role="dialog" aria-label="How to play" onPointerDown={stop} onPointerUp={stop} onClick={next}>
-      <button
-        className="guide-skip"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDone();
-        }}
-      >
-        SKIP
-      </button>
+    <div className="guide" role="dialog" aria-label="Chicken's tip" onPointerDown={stop} onPointerUp={stop} onClick={next}>
+      {pages.length > 2 && (
+        <button
+          className="guide-skip"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDone();
+          }}
+        >
+          SKIP
+        </button>
+      )}
 
       {page.art && <Art art={page.art} />}
 
       <div className="guide-stage">
         <img className="guide-chicken" key={index} src="/characters/chicken.png" alt="" draggable={false} />
-        <div className="guide-box">
+        <div className="guide-box" ref={boxRef}>
+          <GuideFrame w={box.w} h={box.h} />
           <span className="guide-name">CHICKEN</span>
           <p className="guide-text" aria-live="polite">
             {page.text.slice(0, shown)}
@@ -136,11 +194,9 @@ export default function Walkthrough({ pages, onDone }: { pages: GuidePage[]; onD
           </p>
           <div className="guide-foot">
             <span className="guide-dots" aria-label={`Page ${index + 1} of ${pages.length}`}>
-              {pages.map((_, i) => (
-                <i key={i} className={i === index ? "on" : i < index ? "done" : ""} />
-              ))}
+              {pages.length > 1 && pages.map((_, i) => <i key={i} className={i === index ? "on" : i < index ? "done" : ""} />)}
             </span>
-            {!typing && <span className="guide-next">{last ? "LET'S GO!" : "NEXT ▶"}</span>}
+            <span className={`guide-next${typing ? " waiting" : ""}`}>{last ? doneLabel : "NEXT ▶"}</span>
           </div>
         </div>
       </div>

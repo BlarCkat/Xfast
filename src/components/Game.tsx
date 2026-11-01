@@ -12,7 +12,7 @@ import { PowerRing } from "./PowerRing";
 import Achievements, { EarnedToast } from "./Achievements";
 import Store, { ShopBackdrop, useWallet, type StoreTab } from "./Store";
 import Walkthrough from "./Walkthrough";
-import { basicsPages, markSeen, pendingGuide, type GuidePage } from "@/game/guide";
+import { beforeRun, markSeen, pickupTip, tip, type GuidePage, type HintId } from "@/game/guide";
 import type { CharacterId } from "@/game/wallet";
 
 const KEYS: Record<string, Direction> = {
@@ -113,7 +113,17 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   const [goalsOpen, setGoalsOpen] = useState(false);
   const [hovered, setHovered] = useState<MenuItem>("play");
   /** The chicken's walkthrough on screen: its pages, who it introduces, and whether finishing starts the run. */
-  const [guide, setGuide] = useState<null | { pages: GuidePage[]; character: CharacterId | null; thenPlay: boolean }>(null);
+  const [guide, setGuide] = useState<null | {
+    pages: GuidePage[];
+    tips: HintId[];
+    character: CharacterId | null;
+    /** Shown before the run, so closing it makes the first hop. */
+    thenPlay: boolean;
+  }>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+  useEffect(() => {
+    if (!optionsOpen) setConfirmReset(false);
+  }, [optionsOpen]);
   const openStore = useCallback((tab: StoreTab) => {
     setStoreTab(tab);
     setStoreOpen(true);
@@ -157,12 +167,13 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
 
   /**
    * Every way of starting a run comes through here. A new player, or a character played for the
-   * first time, hears from the chicken first; the hop happens once the walkthrough is done.
+   * first time, hears from the chicken first; the hop happens once the chicken is done.
    */
   const startRun = useCallback(
     (dir: Direction) => {
       if (engine.status === "ready") {
-        const pending = pendingGuide(engine.character, engine.tier);
+        const inv = wallet.get().inventory;
+        const pending = beforeRun(engine.character, engine.tier, POWERUPS.some((p) => inv[p.key] > 0));
         if (pending) {
           setGuide({ ...pending, thenPlay: true });
           return;
@@ -173,12 +184,37 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
     [engine],
   );
 
+  // During a run the engine asks for a tip at the moments that need one; the game holds still while the chicken talks.
+  useEffect(() => {
+    engine.onHint = (id) => {
+      const pickup = id === "life" || POWERUPS.some((p) => p.key === id);
+      const pages = pickup ? null : tip(id);
+      const next = pickup ? pickupTip(id as PowerUp | "life", engine.character) : pages && { pages, character: null };
+      if (!next) return false;
+      engine.paused = true;
+      setGuide({ ...next, tips: [id], thenPlay: false });
+      return true;
+    };
+    return () => {
+      engine.onHint = null;
+    };
+  }, [engine]);
+
   const endGuide = useCallback(() => {
     if (!guide) return;
-    markSeen(guide.character);
+    markSeen(guide.tips, guide.character);
     setGuide(null);
+    engine.paused = false;
     if (guide.thenPlay && engine.status === "ready") engine.move("up");
   }, [guide, engine]);
+
+  /** Wipe everything this game saved in the browser and start fresh. */
+  const resetAll = useCallback(() => {
+    try {
+      localStorage.clear();
+    } catch {}
+    window.location.reload();
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -389,16 +425,6 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
               <span className="options-value">{fx ? "Realistic" : "Classic"}</span>
               <kbd>B</kbd>
             </button>
-            <button
-              className="options-row"
-              onClick={() => {
-                setOptionsOpen(false);
-                setGuide({ pages: basicsPages(), character: null, thenPlay: false });
-              }}
-            >
-              <span>How to play</span>
-              <span className="options-value">Ask Chicken</span>
-            </button>
             <Volume label="Sound effects" value={sound.sfx} onChange={(sfx) => setAudioSettings({ sfx })} />
             <button className="options-row" onClick={() => setAudioSettings({ musicOn: !sound.musicOn })}>
               <span>Music</span>
@@ -412,6 +438,22 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
                 </button>
                 <Volume label="Music volume" value={sound.music} onChange={(music) => setAudioSettings({ music })} />
               </>
+            )}
+            {confirmReset ? (
+              <div className="options-row options-confirm" role="alertdialog" aria-label="Reset game">
+                <span>Erase all coins, friends and progress?</span>
+                <button className="options-cancel" onClick={() => setConfirmReset(false)}>
+                  Keep
+                </button>
+                <button className="options-danger" onClick={resetAll}>
+                  Erase
+                </button>
+              </div>
+            ) : (
+              <button className="options-row options-reset" onClick={() => setConfirmReset(true)}>
+                <span>Reset game</span>
+                <span className="options-value">Start fresh</span>
+              </button>
             )}
           </div>
         </div>
@@ -447,7 +489,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
 
       {goalsOpen && <Achievements onClose={() => setGoalsOpen(false)} />}
       {storeOpen && <Store initialTab={storeTab} onClose={closeStore} />}
-      {guide && <Walkthrough pages={guide.pages} onDone={endGuide} />}
+      {guide && <Walkthrough pages={guide.pages} onDone={endGuide} doneLabel={guide.thenPlay ? "LET'S GO!" : "OK!"} />}
     </div>
   );
 }

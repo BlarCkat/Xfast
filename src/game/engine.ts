@@ -23,6 +23,7 @@ import {
   TRAIN_WARNING,
   WRAP,
 } from "./config";
+import type { HintId } from "./guide";
 import { Lane, LaneGenerator, Mover, PickupKind, trainLength } from "./lanes";
 import {
   POWERUPS,
@@ -133,6 +134,16 @@ export class Engine {
   cameraX = 0;
   time = 0;
   idle = 0;
+  /** While the chicken is giving a tip the world holds still and hops are ignored. */
+  paused = false;
+  /**
+   * Asked at moments worth a tip (a road ahead, a power-up just picked up...). Returns true when a
+   * tip is shown, and pauses the game itself; the game resumes by clearing `paused`.
+   */
+  onHint: ((id: HintId) => boolean) | null = null;
+  private hint(id: HintId) {
+    return this.ui.status === "playing" && !this.player.death && !this.paused && !!this.onHint?.(id);
+  }
   /** Bumped whenever lanes are added or removed so React can re-render the list. */
   laneVersion = 0;
   eagle: null | { t: number; startZ: number } = null;
@@ -215,7 +226,7 @@ export class Engine {
   // ---- Input ----------------------------------------------------------------
 
   move(dir: Direction) {
-    if (this.ui.status === "dead") return;
+    if (this.ui.status === "dead" || this.paused) return;
     if (this.ui.status === "ready") {
       // Extra lives bought in the store are spent when a run starts.
       this.setUi({ status: "playing", lives: this.ui.lives + wallet.takeLives() });
@@ -270,7 +281,11 @@ export class Engine {
       toRow++;
       span = SUPER_HOP_TIME;
     }
-    if (!open(toRow)) return;
+    if (!open(toRow)) {
+      // Bumped into a tree: a good moment to show hopping around it.
+      if (dir === "up") this.hint("side");
+      return;
+    }
     // The frog aims for the nearest log in the river it is jumping into, so it never lands in water.
     if (this.character === "frog" && !riding) {
       const lane = this.lanes.get(toRow);
@@ -320,7 +335,12 @@ export class Engine {
     if (lane?.type === "grass" && lane.blocked.has(Math.round(p.x))) this.chop(lane, Math.round(p.x));
     if (lane?.pickup && Math.round(p.x) === lane.pickup.x) this.collect(lane);
     if (lane && lane.coin !== null && Math.round(p.x) === lane.coin) this.collectCoin(lane);
+    // Standing at the edge of something new: explain it before the first crossing.
+    const ahead = this.lanes.get(p.row + 1)?.type;
+    if (ahead === "road" || ahead === "river" || ahead === "rail") this.hint(ahead);
 
+    // A tip just paused the game: drop the queued hop rather than carry the player into danger.
+    if (this.paused) p.queued = null;
     if (p.queued) {
       const next = p.queued;
       p.queued = null;
@@ -436,6 +456,7 @@ export class Engine {
     wallet.addCoins(n);
     this.setUi({ coins: this.ui.coins + n });
     this.award(achievements.coins(n));
+    this.hint("coin");
     if (this.character === "mario") {
       this.marioCoins += n;
       if (this.marioCoins >= this.traits.marioCoinsPerLife) {
@@ -520,11 +541,13 @@ export class Engine {
         toast: { text: `${PICKUP_LABEL[kind]} SAVED`, id: ++this.toastId },
       });
       this.award(found);
+      this.hint("duck-saved");
       return;
     } else this.apply(kind);
     this.syncEffects(true);
     this.setUi({ toast: { text: PICKUP_LABEL[kind], id: ++this.toastId } });
     this.award([...found, ...(kind === "life" ? [] : achievements.usedPowerup())]);
+    this.hint(kind);
   }
 
   /** Queue goals just earned for the achievement card. */
@@ -704,6 +727,7 @@ export class Engine {
   }
 
   update(rawDt: number) {
+    if (this.paused) return;
     const dt = Math.min(rawDt, 1 / 20);
     // Slowmo slows the world down, easing in and out; the chicken's own hops stay at full speed.
     const step = dt / SLOWMO_EASE;
@@ -794,6 +818,9 @@ export class Engine {
       } else if (this.effects.freeze > 0) {
         // Frozen eagle: the idle clock is paused above, and the camera can't leave the chicken behind.
         this.focus = Math.min(this.focus, p.row + MAX_ROWS_BEHIND_CAMERA - 0.5);
+      } else if ((this.idle > IDLE_LIMIT * 0.4 || p.row < this.focus - MAX_ROWS_BEHIND_CAMERA + 2) && this.hint("eagle")) {
+        // Warned about the eagle: start its clock afresh once play resumes.
+        this.idle = 0;
       } else if (this.idle > IDLE_LIMIT || p.row < this.focus - MAX_ROWS_BEHIND_CAMERA) {
         this.die("eagle");
         this.eagle = { t: 0, startZ: p.z + 14 };
