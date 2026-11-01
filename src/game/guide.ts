@@ -1,5 +1,6 @@
 import { traitsAt } from "./characters";
 import type { PickupKind } from "./lanes";
+import type { PowerUp } from "./powerups";
 import { CHARACTERS, type CharacterId, type StoreItemId } from "./wallet";
 
 // The chicken's tips. Instead of one long lesson, the chicken pops up the first time something
@@ -59,30 +60,40 @@ function save(next: GuideState) {
 /** Is a phone or tablet: taps and swipes rather than keys. */
 export const isTouch = () => typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
 
-/** What each power-up and the heart do, in a few simple words. */
-const PICKUP_TIPS: Record<PickupKind, string> = {
-  life: "A heart! That's an extra life. Now you get one more try!",
-  foresight: "Foresight! See-through cars show where the real cars will go.",
-  slowmo: "Slowmo! Everything goes slow, but you stay fast.",
-  rock: "Rock! You're made of stone. Cars that bump you go crash!",
-  magnet: "Magnet! Coins near you fly right to you.",
-  double: "Double coins! Every coin counts two times.",
-  superhop: "Super hop! Each hop forward jumps two rows.",
-  shield: "Shield! A bubble keeps you safe from one bump.",
-  freeze: "Freeze! All the cars and trains stop still.",
-  wings: "Wings! You can fly over the water for a little while.",
-  scarecrow: "Scarecrow! The eagle stays away, so you can take your time.",
-  ghost: "Ghost! Cars and trains go right through you.",
-  tiny: "Tiny! You're so small that cars have a harder time hitting you.",
-  lumberjack: "Lumberjack! Hop into trees to chop them down.",
-  warp: "Warp! Zoom! You jumped far ahead.",
-  coinrain: "Coin rain! Coins fell all over the road ahead. Go grab them!",
+/** What each power-up does, in one simple sentence. */
+const POWERUP_TIPS: Record<PowerUp, string> = {
+  foresight: "This one is Foresight. See-through cars show where the real cars will go.",
+  slowmo: "This one is Slowmo. Everything goes slow, but you stay fast.",
+  rock: "This one is Rock. You turn to stone, and cars that bump you go crash!",
+  magnet: "This one is Magnet. Coins near you fly right to you.",
+  double: "This one is Double Coins. Every coin counts two times.",
+  superhop: "This one is Super Hop. Each hop forward jumps two rows.",
+  shield: "This one is Shield. A bubble keeps you safe from one bump.",
+  freeze: "This one is Freeze. All the cars and trains stop still.",
+  wings: "This one is Flight. You can fly over the water for a little while.",
+  scarecrow: "This one is Scarecrow. The eagle stays away, so you can take your time.",
+  ghost: "This one is Ghost. Cars and trains go right through you.",
+  tiny: "This one is Tiny. You get so small that cars have a hard time hitting you.",
+  lumberjack: "This one is Lumberjack. Hop into trees to chop them down.",
+  warp: "This one is Warp. Zoom, it jumps you far ahead!",
+  coinrain: "This one is Coin Rain. Coins fall all over the road ahead.",
 };
+
+const isPowerUp = (id: HintId): id is PowerUp => id in POWERUP_TIPS;
+/** Every power-up shares one tip: only the very first one picked up is explained. */
+const seenKey = (id: HintId) => (isPowerUp(id) ? "powerup" : id);
 
 /** The page for one tip. */
 function tipPages(id: HintId, touch: boolean): GuidePage[] {
-  if (id in PICKUP_TIPS) return [{ text: PICKUP_TIPS[id as PickupKind], art: { icon: id as PickupKind } }];
+  if (isPowerUp(id))
+    return [
+      { text: "You picked up your first power-up! Power-ups give you a super power for a little while.", art: { icon: id } },
+      { text: POWERUP_TIPS[id], art: { icon: id } },
+      { text: "Let's give it a try!", art: { icon: id } },
+    ];
   switch (id) {
+    case "life":
+      return [{ text: "A heart! That's an extra life. Now you get one more try!", art: { icon: "life" } }];
     case "start":
       return [
         { text: "Hi! I'm Chicken. I'll help you play!" },
@@ -180,7 +191,7 @@ export function meetPages(id: CharacterId, tier: number): GuidePage[] {
 
 /** A tip the chicken hasn't given yet, or null. */
 export function tip(id: HintId, touch = isTouch()): GuidePage[] | null {
-  return get().seen.includes(id) ? null : tipPages(id, touch);
+  return get().seen.includes(seenKey(id)) ? null : tipPages(id, touch);
 }
 
 /** What to say before a run starts: hello for a new player, and the character if they're new. */
@@ -207,5 +218,5 @@ export function beforeRun(id: CharacterId, tier: number, hasPowerups: boolean): 
 export function markSeen(tips: HintId[], character: CharacterId | null = null) {
   const s = get();
   const met = character && !s.met.includes(character) ? [...s.met, character] : s.met;
-  save({ seen: Array.from(new Set([...s.seen, ...tips])), met });
+  save({ seen: Array.from(new Set([...s.seen, ...tips.map(seenKey)])), met });
 }
