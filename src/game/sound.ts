@@ -62,6 +62,11 @@ let master: GainNode | null = null;
 let musicBus: GainNode | null = null;
 let music: HTMLAudioElement | null = null;
 let noiseBuffer: AudioBuffer | null = null;
+// The button sound (see the end of this file); declared up here because unlocking audio loads it.
+const BUTTON_SRC = "/audio/ui/button.wav";
+let buttonData: Promise<ArrayBuffer | null> | null = null;
+let buttonBuffer: AudioBuffer | null = null;
+let lastButton = -1;
 
 function applyVolumes() {
   if (!ctx || !master || !musicBus) return;
@@ -84,6 +89,7 @@ function audio() {
     musicBus = ctx.createGain();
     musicBus.connect(ctx.destination);
     applyVolumes();
+    loadButtonSound(ctx);
     // Go quiet with the tab, so the music and the river don't keep running in the background.
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
@@ -389,4 +395,76 @@ export function riverAmbience(level: number, lava = false) {
   riverHeard = ac.currentTime;
   river.gain.gain.setTargetAtTime(0.07 * level, ac.currentTime, 0.3);
   river.tone.frequency.setTargetAtTime(lava ? 220 : 650, ac.currentTime, 0.3);
+}
+
+// ---- Button sound ----------------------------------------------------------------
+
+// The one recorded effect: a short click for pointing at or pressing a button in the menus and store.
+// It is fetched as soon as the game opens and decoded once the audio context exists, so the first
+// hover after the player's first tap already has it ready.
+
+function fetchButtonSound() {
+  buttonData ??= fetch(BUTTON_SRC)
+    .then((r) => (r.ok ? r.arrayBuffer() : null))
+    .catch(() => null);
+  return buttonData;
+}
+if (typeof window !== "undefined") void fetchButtonSound();
+
+function loadButtonSound(ac: AudioContext) {
+  void fetchButtonSound().then((data) => {
+    if (!data || buttonBuffer) return;
+    return ac.decodeAudioData(data.slice(0)).then((b) => void (buttonBuffer = b), () => {});
+  });
+}
+
+/** The button click, through the effects volume. Rapid calls (sweeping across a row of buttons) are thinned out. */
+export function button() {
+  const ac = audio();
+  if (!ac || !buttonBuffer || ac.state !== "running") return;
+  if (ac.currentTime - lastButton < 0.07) return;
+  lastButton = ac.currentTime;
+  const src = ac.createBufferSource();
+  src.buffer = buttonBuffer;
+  src.connect(master!);
+  src.start();
+}
+
+// Every button in the menus, store and dialogs clicks when the mouse moves onto it, when the keyboard
+// moves focus to it, and when it is pressed. The power-up buttons used mid-run stay quiet, as they
+// are part of play rather than menus. Touch screens only get the press, since a tap has no hover.
+if (typeof window !== "undefined") {
+  const target = (e: Event) => {
+    const el = (e.target as Element | null)?.closest?.("button");
+    return el && !el.disabled && !el.closest(".use-power") ? el : null;
+  };
+  let hovered: Element | null = null;
+  window.addEventListener(
+    "pointerover",
+    (e) => {
+      if (e.pointerType !== "mouse") return;
+      const el = target(e);
+      if (el && el !== hovered) button();
+      hovered = el;
+    },
+    true,
+  );
+  window.addEventListener(
+    "focusin",
+    (e) => {
+      const el = target(e);
+      if (el && el !== hovered && el.matches(":focus-visible")) button();
+      if (el) hovered = el;
+    },
+    true,
+  );
+  // Presses sound on pointerdown rather than click: it feels instant, and the main menu acts on
+  // pointerup and is gone before a click would arrive. Keyboard presses (Enter, Space) come as clicks.
+  const press = () => {
+    // A press right after the hover click still sounds, so pressing never feels dead.
+    lastButton = -1;
+    button();
+  };
+  window.addEventListener("pointerdown", (e) => void (target(e) && press()), true);
+  window.addEventListener("click", (e) => void (e.detail === 0 && target(e) && press()), true);
 }

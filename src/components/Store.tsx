@@ -219,6 +219,13 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
     : null;
   useEffect(() => () => clearTimeout(boostTimer.current), []);
 
+  // Moving through the grid clicks like hovering a button does (a tile click is thinned into one sound).
+  const shown = useRef(`${tab}:${focus}`);
+  useEffect(() => {
+    if (shown.current !== `${tab}:${focus}`) sound.button();
+    shown.current = `${tab}:${focus}`;
+  }, [focus, tab]);
+
   const switchTab = (next: StoreTab) => {
     setTab(next);
     setFocus(0);
@@ -241,6 +248,7 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
         setFocus((f) => Math.max(0, Math.min(n - 1, f + moves[e.code])));
       } else if (e.code === "Enter" || e.code === "Space") {
         e.preventDefault();
+        if (act.run) sound.button();
         act.run?.();
       } else if (e.code === "KeyU") {
         doUpgrade?.();
