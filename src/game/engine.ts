@@ -1,4 +1,5 @@
 import { achievements, type Goal } from "./achievements";
+import { CHESTS, chests } from "./chests";
 import { traitsAt, type Traits } from "./characters";
 import { BIOMES, biomeAt, type BiomeId } from "./biomes";
 import {
@@ -339,6 +340,7 @@ export class Engine {
     }
     if (lane?.type === "grass" && lane.blocked.has(Math.round(p.x))) this.chop(lane, Math.round(p.x));
     if (lane?.pickup && Math.round(p.x) === lane.pickup.x) this.collect(lane);
+    if (lane?.chest && Math.round(p.x) === lane.chest.x) this.collectChest(lane);
     if (lane && lane.coin !== null && Math.round(p.x) === lane.coin) this.collectCoin(lane);
     // Standing at the edge of something new: explain it before the first crossing.
     const ahead = this.lanes.get(p.row + 1)?.type;
@@ -569,11 +571,30 @@ export class Engine {
     this.hint(kind);
   }
 
+  /** A reward chest found on the road goes into the player's collection, to open on the Rewards screen. */
+  private collectChest(lane: Lane) {
+    const kind = lane.chest!.kind;
+    lane.chest = null;
+    chests.found(kind);
+    sound.coin(true);
+    this.announceChests();
+  }
+
+  /** Say so when stars or the road just added chests to the collection. */
+  private announceChests() {
+    const got = chests.takeNew();
+    if (!got.length) return;
+    const best = got.includes("mega") ? "mega" : got.includes("epic") ? "epic" : "basic";
+    const text = `${CHESTS[best].name.toUpperCase()}${got.length > 1 ? ` +${got.length - 1}` : ""}!`;
+    this.setUi({ toast: { text, id: ++this.toastId } });
+  }
+
   /** Queue goals just earned for the achievement card. */
   private award(goals: Goal[]) {
     if (!goals.length) return;
     sound.coin(true);
     this.setUi({ earned: [...this.ui.earned, ...goals.map((goal) => ({ goal, id: ++this.toastId }))] });
+    this.announceChests();
   }
 
   /** The HUD has finished showing an achievement card; move on to the next. */

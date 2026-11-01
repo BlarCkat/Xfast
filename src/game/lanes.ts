@@ -1,5 +1,6 @@
 import { COLS, TRAIN_CAR_LENGTH, UNDERWATER_ROWS, WRAP } from "./config";
 import { BIOMES, biomeAt, type BiomeId } from "./biomes";
+import { foundChest, type ChestKind } from "./chests";
 import { POWERUP_KEYS, type PowerUp } from "./powerups";
 
 export type LaneType = "grass" | "road" | "river" | "rail";
@@ -42,6 +43,8 @@ export interface Lane {
   continued: boolean;
   /** A collectible sitting on this lane, removed once picked up. */
   pickup: Pickup | null;
+  /** A reward chest sitting on this lane, removed once picked up. */
+  chest: { x: number; kind: ChestKind } | null;
   /** Column of a coin on this lane, or null. */
   coin: number | null;
   /** The river where a diving duck comes back up; its open water is safe to paddle in. */
@@ -77,6 +80,7 @@ function emptyLane(row: number, type: LaneType, biome: BiomeId): Lane {
     train: { x: 0, active: false, timer: 0, cars: 0, warning: false },
     continued: false,
     pickup: null,
+    chest: null,
     coin: null,
   };
 }
@@ -86,6 +90,8 @@ const PICKUP_CHANCE = 1 / 7;
 // Of those collectibles, this share are extra lives; the rest are power-ups.
 export const LIFE_CHANCE = 0.2;
 const POWERUPS: PickupKind[] = POWERUP_KEYS;
+/** Of those collectibles, this share are reward chests instead. */
+export const CHEST_CHANCE = 0.05;
 const COIN_CHANCE = 0.35;
 /** Score where lanes start getting busier, and how many rows the ramp takes to max out. */
 export const DIFFICULTY_START = 500;
@@ -217,12 +223,16 @@ export class LaneGenerator {
     for (let x = -COLS; x <= COLS; x++) if (!lane.blocked.has(x)) free.push(x);
     if (free.length === 0) return;
     if (rng() < PICKUP_CHANCE) {
-      lane.pickup = {
-        x: pick(rng, free),
-        kind: rng() < LIFE_CHANCE ? "life" : pick(rng, POWERUPS),
-      };
+      if (rng() < CHEST_CHANCE) {
+        lane.chest = { x: pick(rng, free), kind: foundChest(rng) };
+      } else {
+        lane.pickup = {
+          x: pick(rng, free),
+          kind: rng() < LIFE_CHANCE ? "life" : pick(rng, POWERUPS),
+        };
+      }
     }
-    const coinSpots = free.filter((x) => x !== lane.pickup?.x);
+    const coinSpots = free.filter((x) => x !== lane.pickup?.x && x !== lane.chest?.x);
     if (rng() < COIN_CHANCE && coinSpots.length > 0) lane.coin = pick(rng, coinSpots);
   }
 
