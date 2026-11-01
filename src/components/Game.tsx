@@ -148,8 +148,9 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
     });
   }, []);
   const diedAt = useRef(0);
-  // Upgrades and the chicken's bonus stretch power-ups, so the HUD rings measure against the real length.
+  // Upgrades, the chicken's bonus and doubling stretch power-ups, so the HUD rings measure against the real length.
   const fullDuration = (key: PowerUp) =>
+    engine.effectSpan[key] ||
     durationAt(key, w.upgrades[key]) * (engine.character === "chicken" ? engine.traits.powerupBonus : 1);
 
   // Show a newly picked or upgraded character straight away on the start screen.
