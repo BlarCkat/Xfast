@@ -9,6 +9,7 @@ import { CHARACTERS, UPGRADES_PER_LEVEL, wallet, type CharacterId, type StoreIte
 import * as sound from "@/game/sound";
 import { ChestArt, ChestLights } from "./ChestArt";
 import { Icon } from "./icons";
+import { ShopBackdrop } from "./Store";
 
 // Opening a chest, full screen. The chest can wait for a tap ("You have found a chest!"), then it
 // rattles for three seconds, hops up and throws back its lid, and what was inside comes out one item
@@ -190,7 +191,7 @@ export function ChestOpening({
         tapToOpen();
       }}
     >
-      <div className="chest-open-glow" />
+      <ShopBackdrop />
       <h2 className="chest-open-title">{title}</h2>
       {look && (
         // Keyed by the item, so each one pops out of the chest afresh.

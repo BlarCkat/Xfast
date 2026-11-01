@@ -176,13 +176,13 @@ function roll(kind: ChestKind): Loot[] {
   loot.push({ kind: "coins", amount: coins }, { kind: "gems", amount: gems });
 
   const chars = upgradable();
-  if (kind === "basic" && chars.length && Math.random() < 0.8) {
+  if (kind === "basic" && chars.length && Math.random() < 0.05) {
     // "Any character": the one you play with when it can still level up, otherwise another you own.
     const selected = wallet.get().selected;
     const id = chars.includes(selected) ? selected : pickOne(chars);
     loot.push({ kind: "upgrade", character: id, levelUp: wallet.grantCharacterUpgrade(id) });
   }
-  if (kind === "epic" && chars.length && Math.random() < 0.6) {
+  if (kind === "epic" && chars.length && Math.random() < 0.08) {
     // Two upgrades on two different characters, picked by the chest. With one character it gets both.
     const ids = shuffled(chars);
     for (const id of [ids[0], ids[1] ?? ids[0]]) {

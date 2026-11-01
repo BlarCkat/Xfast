@@ -269,13 +269,13 @@ function Rivets({ points, color }: { points: [number, number, number][]; color: 
 }
 
 /** Half a cylinder lying along x, flat side down: the rounded lid and the bands round it. */
-function halfDrum(r: number, length: number) {
-  return new CylinderGeometry(r, r, length, 32, 1, false, 0, Math.PI).rotateZ(Math.PI / 2);
+function halfDrum(r: number, length: number, openEnded = false) {
+  return new CylinderGeometry(r, r, length, 32, 1, openEnded, 0, Math.PI).rotateZ(Math.PI / 2);
 }
 
 function Lid({ look }: { look: Look }) {
   const [shell, hull, band, bandHull] = useMemo(
-    () => [halfDrum(R, W), halfDrum(R + O, W + 2 * O), halfDrum(R + 0.022, 0.1), halfDrum(R + 0.022 + O, 0.1 + 2 * O)],
+    () => [halfDrum(R, W), halfDrum(R + O, W + 2 * O), halfDrum(R + 0.022, 0.1, true), halfDrum(R + 0.022 + O, 0.1 + 2 * O, true)],
     [],
   );
   const map = useMemo(() => paint(look, true), [look]);
@@ -330,6 +330,78 @@ function Gem({ color, position, size, tilt = 0 }: { color: string; position: [nu
       </mesh>
       <mesh scale={1.3}>
         <octahedronGeometry args={[size]} />
+        <Ink />
+      </mesh>
+    </group>
+  );
+}
+
+/** Wall thickness of the hollow box, and the height of its floor inside. */
+const T = 0.05;
+const FLOOR = 0.1;
+
+/**
+ * The chest's box: four walls and a floor, open at the top so the inside shows when the lid lifts.
+ * The outside wears the painted finish; the inside is lined in a darker shade of it.
+ */
+function Shell({ look, map, wood }: { look: Look; map: CanvasTexture; wood: boolean }) {
+  const outer = (
+    <meshStandardMaterial map={map} roughness={wood ? 0.8 : look.finish === "gold" ? 0.35 : 0.6} metalness={look.finish === "gold" ? 0.3 : 0} />
+  );
+  const lining = <meshStandardMaterial color={look.dark} roughness={0.9} side={DoubleSide} />;
+  const inH = H - FLOOR;
+  return (
+    <group>
+      {/* Walls: front, back, then the ends between them. */}
+      {[1, -1].map((z) => (
+        <mesh key={`z${z}`} position={[0, H / 2, z * (D / 2 - T / 2)]}>
+          <boxGeometry args={[W, H, T]} />
+          {outer}
+        </mesh>
+      ))}
+      {[1, -1].map((x) => (
+        <mesh key={`x${x}`} position={[x * (W / 2 - T / 2), H / 2, 0]}>
+          <boxGeometry args={[T, H, D - 2 * T]} />
+          {outer}
+        </mesh>
+      ))}
+      <mesh position={[0, FLOOR / 2, 0]}>
+        <boxGeometry args={[W - 2 * T, FLOOR, D - 2 * T]} />
+        {outer}
+      </mesh>
+      {/* The lining: a darker inner face on each wall and the floor. */}
+      {[1, -1].map((z) => (
+        <mesh key={`lz${z}`} position={[0, FLOOR + inH / 2, z * (D / 2 - T - 0.002)]}>
+          <planeGeometry args={[W - 2 * T, inH]} />
+          {lining}
+        </mesh>
+      ))}
+      {[1, -1].map((x) => (
+        <mesh key={`lx${x}`} position={[x * (W / 2 - T - 0.002), FLOOR + inH / 2, 0]} rotation={[0, Math.PI / 2, 0]}>
+          <planeGeometry args={[D - 2 * T, inH]} />
+          {lining}
+        </mesh>
+      ))}
+      <mesh position={[0, FLOOR + 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[W - 2 * T, D - 2 * T]} />
+        <meshStandardMaterial color={look.dark} roughness={0.95} />
+      </mesh>
+      {/* A thin rim along the top edge of the walls. */}
+      {[1, -1].map((z) => (
+        <mesh key={`rz${z}`} position={[0, H - 0.005, z * (D / 2 - T / 2)]}>
+          <boxGeometry args={[W + 0.004, 0.012, T + 0.004]} />
+          <meshStandardMaterial color={look.light} roughness={0.6} />
+        </mesh>
+      ))}
+      {[1, -1].map((x) => (
+        <mesh key={`rx${x}`} position={[x * (W / 2 - T / 2), H - 0.005, 0]}>
+          <boxGeometry args={[T + 0.004, 0.012, D]} />
+          <meshStandardMaterial color={look.light} roughness={0.6} />
+        </mesh>
+      ))}
+      {/* The inked outline round the whole box. From above, its back faces sit under the floor. */}
+      <mesh position={[0, H / 2, 0]}>
+        <boxGeometry args={[W + 2 * O, H + 2 * O, D + 2 * O]} />
         <Ink />
       </mesh>
     </group>
@@ -392,7 +464,7 @@ export function ChestArt({ kind, open = false, shaking = false }: { kind: ChestK
       halo.current.visible = s > 0.02;
       const pulse = 1 + Math.sin(t * 2.2) * 0.05;
       halo.current.scale.setScalar(1.5 * s * pulse);
-      halo.current.material.opacity = 0.9 * s;
+      halo.current.material.opacity = 0.55 * s;
     }
     if (lamp.current) lamp.current.intensity = 2.2 * s;
   });
@@ -400,15 +472,16 @@ export function ChestArt({ kind, open = false, shaking = false }: { kind: ChestK
   return (
     <group ref={body}>
       <group position={[0, -H / 2, 0]}>
-        <InkBox size={[W, H, D]} position={[0, H / 2, 0]}>
-          <meshStandardMaterial map={map} roughness={wood ? 0.8 : look.finish === "gold" ? 0.35 : 0.6} metalness={look.finish === "gold" ? 0.3 : 0} />
-        </InkBox>
-        {/* Metal bands round the ends with rivets down the front, and a rim along the bottom. */}
+        <Shell look={look} map={map} wood={wood} />
+        {/* Metal straps down the front and back near each end, with rivets, and a rim along the bottom.
+            They sit on the outside of the walls so the hollow inside stays clear. */}
         {[-1, 1].map((s) => (
           <group key={`b${s}`}>
-            <InkBox size={[0.1, H + 0.02, D + 0.04]} position={[s * (W / 2 - 0.12), H / 2, 0]} outline={0.02}>
-              <Metal color={look.band} />
-            </InkBox>
+            {[1, -1].map((z) => (
+              <InkBox key={z} size={[0.1, H + 0.02, 0.03]} position={[s * (W / 2 - 0.12), H / 2, z * (D / 2 + 0.005)]} outline={0.02}>
+                <Metal color={look.band} />
+              </InkBox>
+            ))}
             <Rivets color={look.lock} points={[0.12, 0.26, 0.4].map((y) => [s * (W / 2 - 0.12), y, D / 2 + 0.025])} />
           </group>
         ))}
@@ -429,15 +502,15 @@ export function ChestArt({ kind, open = false, shaking = false }: { kind: ChestK
             <meshBasicMaterial color="#14101f" />
           </mesh>
         </group>
-        {/* Inside: a warm lit floor, a lamp lighting the lid and a soft halo with no edge to it. */}
+        {/* Inside: a soft pool of light on the floor and a lamp lighting the walls and the lid. */}
         <group ref={inner} visible={false}>
-          <mesh position={[0, H + 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[W - 0.06, D - 0.06]} />
-            <meshBasicMaterial map={glow()} color="#ffe9a8" transparent toneMapped={false} />
+          <mesh position={[0, FLOOR + 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
+            <planeGeometry args={[W - 2 * T, D - 2 * T]} />
+            <meshBasicMaterial map={glow()} color="#ffd98a" transparent opacity={0.55} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
           </mesh>
-          <pointLight ref={lamp} position={[0, H + 0.25, 0]} color="#ffd36b" intensity={0} distance={2.5} decay={1.5} />
+          <pointLight ref={lamp} position={[0, H * 0.7, 0]} color="#ffd36b" intensity={0} distance={2.5} decay={1.5} />
         </group>
-        <sprite ref={halo} position={[0, H + 0.3, 0]} visible={false}>
+        <sprite ref={halo} position={[0, H + 0.5, -0.1]} visible={false}>
           <spriteMaterial map={glow()} blending={AdditiveBlending} transparent depthWrite={false} toneMapped={false} opacity={0} />
         </sprite>
         {/* The lid hinges along the back edge. */}
