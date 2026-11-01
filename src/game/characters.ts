@@ -129,7 +129,7 @@ export function traitText(id: CharacterId, tier: number): string {
     case "leopard":
       return `Pounces every ${t.leapHops} hops, leaping ahead to safe grass like a Warp.`;
     case "owl":
-      return `Takes flight every ${t.leapHops} hops: Wings carry it over rivers for a moment.`;
+      return `Takes flight every ${t.leapHops} hops: Wings carry it over everything to safe grass.`;
     case "tiger":
       return `Roars every ${t.tigerRoarHops} hops, putting up a shield that soaks up the next hit.`;
   }

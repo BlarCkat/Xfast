@@ -53,7 +53,7 @@ export const POWERUP_DURATION = {
   superhop: 8,
   shield: 20,
   freeze: 4,
-  wings: 6,
+  wings: 5,
   scarecrow: 10,
   ghost: 6,
   tiny: 8,
@@ -62,6 +62,10 @@ export const POWERUP_DURATION = {
   warp: 0,
   coinrain: 0,
 } as const;
+/** Rows a second the flight power-up carries the player forward. */
+export const FLIGHT_SPEED = 4;
+/** How high the player soars while flying, in hop heights. */
+export const FLIGHT_ALTITUDE = 5;
 /** Every this many hops, cars and trains get faster. */
 export const STEPS_PER_SPEEDUP = 1000;
 export const SPEEDUP_STEP = 0.2;

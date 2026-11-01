@@ -5,6 +5,8 @@ import { traitsAt, type Traits } from "./characters";
 import { BIOMES, biomeAt, type BiomeId } from "./biomes";
 import {
   COLS,
+  FLIGHT_ALTITUDE,
+  FLIGHT_SPEED,
   HOP_DURATION,
   IDLE_LIMIT,
   MAGNET_PULL_TIME,
@@ -89,6 +91,15 @@ export interface PlayerState {
   death: null | { kind: DeathKind; t: number; pushX: number; revive: boolean };
   /** Seconds of post-respawn invulnerability left. */
   shield: number;
+  /**
+   * Flight power-up: the player soars forward on its own, high above everything, while the wings
+   * last; then it glides down onto the nearest safe grass ahead (`land`).
+   */
+  flight: null | {
+    /** Last row flown over (coins, pickups and score are taken row by row). */
+    row: number;
+    land: null | { row: number; x: number; fromX: number; fromZ: number; fromY: number; t: number; time: number };
+  };
 }
 
 export interface UiSnapshot {
@@ -185,6 +196,7 @@ export class Engine {
     rideOffset: 0,
     death: null,
     shield: 0,
+    flight: null,
   };
 
   private generator: LaneGenerator;
@@ -263,7 +275,7 @@ export class Engine {
       }
     }
     const p = this.player;
-    if (p.death) return;
+    if (p.death || p.flight) return;
     if (p.hop) {
       p.queued = dir;
       return;
@@ -334,25 +346,13 @@ export class Engine {
       const slot = this.nearestLogSlot(lane, p.x);
       if (slot !== null) p.x = slot;
     }
-    if (lane?.type === "river" && !this.boardLog(lane)) {
-      // Wings let the chicken hover over open water.
-      if (this.effects.wings <= 0 && this.splash(lane)) return;
-    }
+    if (lane?.type === "river" && !this.boardLog(lane) && this.splash(lane)) return;
     // An upgraded frog sometimes catches a coin as it lands on a log.
     if (lane?.type === "river" && p.ride && this.character === "frog" && Math.random() < this.traits.frogCoin) this.bankCoin();
 
-    if (lane && lane.biome !== this.biome) {
-      this.biome = lane.biome;
-      this.setUi({ toast: { text: BIOMES[lane.biome].label.toUpperCase(), id: ++this.toastId } });
-      this.award(achievements.enteredBiome(lane.biome));
-      // Mario finds a fresh Super Mushroom in every new biome.
-      if (this.character === "mario") this.big = true;
-    }
+    if (lane) this.enterBiome(lane);
     if (lane?.type === "grass" && lane.blocked.has(Math.round(p.x))) this.chop(lane, Math.round(p.x));
-    if (lane?.pickup && Math.round(p.x) === lane.pickup.x) this.collect(lane);
-    if (lane?.chest && Math.round(p.x) === lane.chest.x) this.collectChest(lane);
-    if (lane && lane.coin !== null && Math.round(p.x) === lane.coin) this.collectCoin(lane);
-    if (lane?.special && Math.round(p.x) === lane.special.x) this.collectSpecial(lane);
+    if (lane) this.collectAt(lane);
     // Standing at the edge of something new: explain it before the first crossing.
     const ahead = this.lanes.get(p.row + 1)?.type;
     if (ahead === "road" || ahead === "river" || ahead === "rail") this.hint(ahead);
@@ -363,6 +363,114 @@ export class Engine {
       const next = p.queued;
       p.queued = null;
       this.startHop(next);
+    }
+  }
+
+  /** Announce a new biome the first time the player reaches one of its lanes. */
+  private enterBiome(lane: Lane) {
+    if (lane.biome === this.biome) return;
+    this.biome = lane.biome;
+    this.setUi({ toast: { text: BIOMES[lane.biome].label.toUpperCase(), id: ++this.toastId } });
+    this.award(achievements.enteredBiome(lane.biome));
+    // Mario finds a fresh Super Mushroom in every new biome.
+    if (this.character === "mario") this.big = true;
+  }
+
+  /** Pick up whatever lies in the player's column on this lane. */
+  private collectAt(lane: Lane) {
+    const x = Math.round(this.player.x);
+    if (lane.pickup && x === lane.pickup.x) this.collect(lane);
+    if (lane.chest && x === lane.chest.x) this.collectChest(lane);
+    if (lane.coin !== null && x === lane.coin) this.collectCoin(lane);
+    if (lane.special && x === lane.special.x) this.collectSpecial(lane);
+  }
+
+  /** Take off, or keep flying if the wings were topped up on the way down. */
+  private takeOff() {
+    const p = this.player;
+    if (p.death) return;
+    if (p.flight) {
+      p.flight.land = null;
+      return;
+    }
+    // Lift straight off from wherever the player is, mid-hop or riding a log.
+    p.hop = null;
+    p.queued = null;
+    p.ride = null;
+    p.x = Math.max(-COLS, Math.min(COLS, p.x));
+    p.facing = FACING.up;
+    p.row = Math.round(p.z);
+    p.flight = { row: p.row, land: null };
+    sound.pop(true);
+  }
+
+  /** Fly forward, taking each row's coins and pickups on the way, then glide down onto safe grass. */
+  private updateFlight(dt: number) {
+    const p = this.player;
+    const f = p.flight!;
+    this.idle = 0;
+    if (!f.land) {
+      p.z += FLIGHT_SPEED * dt;
+      p.y += (FLIGHT_ALTITUDE - p.y) * Math.min(1, dt * 5);
+      this.flyOver(Math.floor(p.z));
+      if (this.effects.wings > 0) return;
+      // Out of wings: pick the first grass a short glide ahead with a free spot near our column.
+      const want = Math.round(p.x);
+      for (let row = Math.floor(p.z) + 2; ; row++) {
+        const lane = this.lanes.get(row);
+        if (!lane) {
+          this.ensureLanes();
+          if (!this.lanes.get(row)) return;
+          continue;
+        }
+        if (lane.type !== "grass") continue;
+        const x = this.freeColumn(lane, want);
+        if (x === null) continue;
+        const time = Math.max(0.5, (row - p.z) / FLIGHT_SPEED);
+        f.land = { row, x, fromX: p.x, fromZ: p.z, fromY: p.y, t: 0, time };
+        break;
+      }
+      return;
+    }
+    const l = f.land;
+    l.t = Math.min(1, l.t + dt / l.time);
+    const e = l.t * l.t * (3 - 2 * l.t);
+    p.x = l.fromX + (l.x - l.fromX) * e;
+    p.z = l.fromZ + (l.row - l.fromZ) * l.t;
+    p.y = l.fromY * (1 - e);
+    this.flyOver(Math.min(l.row - 1, Math.floor(p.z)));
+    if (l.t < 1) return;
+    p.flight = null;
+    Object.assign(p, { row: l.row, x: l.x, z: l.row, y: 0 });
+    p.shield = Math.max(p.shield, 0.5);
+    this.effects.wings = 0;
+    this.syncEffects(true);
+    sound.pop(false);
+    const lane = this.lanes.get(l.row)!;
+    this.enterBiome(lane);
+    this.collectAt(lane);
+    const ahead = this.lanes.get(l.row + 1)?.type;
+    if (ahead === "road" || ahead === "river" || ahead === "rail") this.hint(ahead);
+  }
+
+  /** Count the rows flown over up to `to`: score, biomes, and anything in the player's column. */
+  private flyOver(to: number) {
+    const p = this.player;
+    const f = p.flight!;
+    while (f.row < to) {
+      f.row++;
+      p.row = f.row;
+      if (f.row > this.ui.score) {
+        this.setUi({ score: f.row });
+        this.award(achievements.scored(f.row));
+      }
+      this.ensureLanes();
+      const lane = this.lanes.get(f.row);
+      if (!lane) continue;
+      this.enterBiome(lane);
+      this.collectAt(lane);
+      // A pickup tip can pause the game mid-flight; carry on from here when it resumes.
+      if (this.paused || !p.flight) return;
     }
   }
 
@@ -654,6 +762,7 @@ export class Engine {
       const doubled = stack && left > 0;
       this.effects[kind] = doubled ? Math.max(2 * full, left + full) : Math.max(left, full);
       if (doubled || left < full) this.effectSpan[kind] = this.effects[kind];
+      if (kind === "wings") this.takeOff();
       return doubled;
     }
     if (kind === "warp") this.warp();
@@ -671,7 +780,8 @@ export class Engine {
       if (lane?.type !== "grass") continue;
       const x = this.freeColumn(lane, want);
       if (x === null) continue;
-      Object.assign(p, { row, x, z: row, y: 0, hop: null, queued: null, ride: null });
+      Object.assign(p, { row, x, z: row, y: 0, hop: null, queued: null, ride: null, flight: null });
+      this.effects.wings = 0;
       p.shield = Math.max(p.shield, 1);
       this.idle = 0;
       if (row > this.ui.score) this.setUi({ score: row });
@@ -741,6 +851,7 @@ export class Engine {
     }
     p.queued = null;
     p.ride = null;
+    p.flight = null;
     if (kind !== "eagle") p.hop = null;
     // Power-ups end with the life they were collected on.
     this.effects = noEffects();
@@ -778,7 +889,7 @@ export class Engine {
       if (Math.abs(want + d) <= COLS && !lane.blocked.has(want + d)) { x = want + d; break; }
       if (Math.abs(want - d) <= COLS && !lane.blocked.has(want - d)) { x = want - d; break; }
     }
-    Object.assign(p, { row, x, z: row, y: 0, hop: null, queued: null, ride: null, death: null, facing: 0 });
+    Object.assign(p, { row, x, z: row, y: 0, hop: null, queued: null, ride: null, death: null, facing: 0, flight: null });
     p.shield = RESPAWN_SHIELD;
     this.eagle = null;
     this.idle = 0;
@@ -827,6 +938,8 @@ export class Engine {
     this.fire = Math.max(0, this.fire - dt);
     this.syncEffects();
 
+    if (p.flight && !p.death) this.updateFlight(dt);
+
     // Hop animation.
     if (p.hop) {
       const hop = p.hop;
@@ -857,16 +970,9 @@ export class Engine {
       }
     }
 
-    // Hovering over water on wings: grab a log that drifts underneath, or fall in once the wings run out.
+    // Standing in open water (a log swept away, or a warp gone wrong): grab a log underneath or fall in.
     const here = this.lanes.get(p.row);
-    if (
-      here?.type === "river" &&
-      !p.ride &&
-      !p.hop &&
-      !p.death &&
-      !this.boardLog(here) &&
-      this.effects.wings <= 0
-    ) {
+    if (here?.type === "river" && !p.ride && !p.hop && !p.flight && !p.death && !this.boardLog(here)) {
       this.splash(here);
     }
 
@@ -996,7 +1102,8 @@ export class Engine {
   private checkCollisions() {
     const p = this.player;
     const lane = this.lanes.get(p.row);
-    if (!lane) return;
+    // High in the air, nothing on the ground can reach the player.
+    if (!lane || p.flight) return;
     // Mid-hop between lanes the chicken only counts as being in its target lane once past halfway.
     if (p.hop && p.hop.t < 0.5) return;
     // Tiny chickens are harder to hit.
