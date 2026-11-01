@@ -12,6 +12,8 @@ import { PowerRing } from "./PowerRing";
 import Achievements, { EarnedToast } from "./Achievements";
 import Store, { ShopBackdrop, useWallet, type StoreTab } from "./Store";
 import Walkthrough from "./Walkthrough";
+import Rewards, { useChests } from "./Rewards";
+import { chests } from "@/game/chests";
 import { beforeRun, markSeen, pickupTip, tip, type GuidePage, type HintId } from "@/game/guide";
 import type { CharacterId } from "@/game/wallet";
 
@@ -72,11 +74,12 @@ export interface GameProps {
   locked?: boolean;
 }
 
-type MenuItem = "play" | "characters" | "store" | "achievements" | "options" | "exit";
+type MenuItem = "play" | "characters" | "store" | "rewards" | "achievements" | "options" | "exit";
 const MENU: { id: MenuItem; label: string }[] = [
   { id: "play", label: "PLAY" },
   { id: "characters", label: "CHARACTERS" },
   { id: "store", label: "STORE" },
+  { id: "rewards", label: "REWARDS" },
   { id: "achievements", label: "ACHIEVEMENTS" },
   { id: "options", label: "OPTIONS" },
   { id: "exit", label: "EXIT" },
@@ -111,6 +114,8 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   const [storeTab, setStoreTab] = useState<StoreTab>("characters");
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [goalsOpen, setGoalsOpen] = useState(false);
+  const [rewardsOpen, setRewardsOpen] = useState(false);
+  const unopened = chests.total(useChests());
   const [hovered, setHovered] = useState<MenuItem>("play");
   /** The chicken's walkthrough on screen: its pages, who it introduces, and whether finishing starts the run. */
   const [guide, setGuide] = useState<null | {
@@ -218,7 +223,8 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat || locked || guide) return;
+      // The Rewards screen handles its own keys.
+      if (e.repeat || locked || guide || rewardsOpen) return;
       if (optionsOpen) {
         if (e.code === "Escape") setOptionsOpen(false);
         else if (e.code === "KeyB") toggleFx();
@@ -261,12 +267,13 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [engine, restart, storeOpen, optionsOpen, goalsOpen, locked, toggleFx, openStore, closeStore, guide, startRun]);
+  }, [engine, restart, storeOpen, optionsOpen, goalsOpen, rewardsOpen, locked, toggleFx, openStore, closeStore, guide, startRun]);
 
   const pick = (item: MenuItem) => {
     if (item === "play") startRun("up");
     else if (item === "characters") openStore("characters");
     else if (item === "store") openStore("powerups");
+    else if (item === "rewards") setRewardsOpen(true);
     else if (item === "achievements") setGoalsOpen(true);
     else if (item === "options") setOptionsOpen(true);
     else onExit?.();
@@ -412,6 +419,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
                 }}
               >
                 {label}
+                {id === "rewards" && unopened > 0 && <span className="menu-badge">{unopened}</span>}
               </button>
             ))}
           </nav>
@@ -498,6 +506,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
       )}
 
       {goalsOpen && <Achievements onClose={() => setGoalsOpen(false)} />}
+      {rewardsOpen && <Rewards onClose={() => setRewardsOpen(false)} />}
       {storeOpen && <Store initialTab={storeTab} onClose={closeStore} />}
       {guide && <Walkthrough pages={guide.pages} onDone={endGuide} doneLabel={guide.thenPlay ? "LET'S GO!" : "OK!"} />}
     </div>
