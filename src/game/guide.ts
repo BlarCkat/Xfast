@@ -62,21 +62,21 @@ export const isTouch = () => typeof window !== "undefined" && window.matchMedia(
 
 /** What each power-up does, in one simple sentence. */
 const POWERUP_TIPS: Record<PowerUp, string> = {
-  foresight: "This one is Foresight. See-through cars show where the real cars will go.",
-  slowmo: "This one is Slowmo. Everything goes slow, but you stay fast.",
-  rock: "This one is Rock. You turn to stone, and cars that bump you go crash!",
-  magnet: "This one is Magnet. Coins near you fly right to you.",
-  double: "This one is Double Coins. Every coin counts two times.",
-  superhop: "This one is Super Hop. Each hop forward jumps two rows.",
-  shield: "This one is Shield. A bubble keeps you safe from one bump.",
-  freeze: "This one is Freeze. All the cars and trains stop still.",
-  wings: "This one is Flight. You can fly over the water for a little while.",
-  scarecrow: "This one is Scarecrow. The eagle stays away, so you can take your time.",
-  ghost: "This one is Ghost. Cars and trains go right through you.",
-  tiny: "This one is Tiny. You get so small that cars have a hard time hitting you.",
-  lumberjack: "This one is Lumberjack. Hop into trees to chop them down.",
-  warp: "This one is Warp. Zoom, it jumps you far ahead!",
-  coinrain: "This one is Coin Rain. Coins fall all over the road ahead.",
+  foresight: "This one is Foresight, and it shows where the cars will go next.",
+  slowmo: "This one is Slowmo, and it makes everything slow while you stay fast.",
+  rock: "This one is Rock, and it turns you to stone so cars that bump you go crash!",
+  magnet: "This one is Magnet, and it pulls coins near you right to you.",
+  double: "This one is Double Coins, and it makes every coin count two times.",
+  superhop: "This one is Super Hop, and it makes each hop forward jump two rows.",
+  shield: "This one is Shield, and it's a bubble that keeps you safe from one bump.",
+  freeze: "This one is Freeze, and it stops all the cars and trains.",
+  wings: "This one is Flight, and it lets you fly over the water for a little while.",
+  scarecrow: "This one is Scarecrow, and it keeps the eagle away.",
+  ghost: "This one is Ghost, and it lets cars and trains go right through you.",
+  tiny: "This one is Tiny, and it makes you so small that cars have a hard time hitting you.",
+  lumberjack: "This one is Lumberjack, and it lets you hop into trees to chop them down.",
+  warp: "This one is Warp, and it zooms you far ahead!",
+  coinrain: "This one is Coin Rain, and it drops coins all over the road ahead.",
 };
 
 const isPowerUp = (id: HintId): id is PowerUp => id in POWERUP_TIPS;
@@ -87,9 +87,9 @@ const seenKey = (id: HintId) => (isPowerUp(id) ? "powerup" : id);
 function tipPages(id: HintId, touch: boolean): GuidePage[] {
   if (isPowerUp(id))
     return [
-      { text: "You picked up your first power-up! Power-ups give you a super power for a little while.", art: { icon: id } },
+      { text: "You've picked up a power-up!", art: { icon: id } },
+      { text: "Use power-ups to fly, slow time, freeze everything, and more!", art: { icon: id } },
       { text: POWERUP_TIPS[id], art: { icon: id } },
-      { text: "Let's give it a try!", art: { icon: id } },
     ];
   switch (id) {
     case "life":
