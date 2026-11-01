@@ -1,6 +1,7 @@
 import { COLS, TRAIN_CAR_LENGTH, UNDERWATER_ROWS, WRAP } from "./config";
 import { BIOMES, biomeAt, type BiomeId } from "./biomes";
 import { foundChest, type ChestKind } from "./chests";
+import { collectingEvent, type EventId } from "./events";
 import { POWERUP_KEYS, type PowerUp } from "./powerups";
 
 export type LaneType = "grass" | "road" | "river" | "rail";
@@ -47,6 +48,8 @@ export interface Lane {
   chest: { x: number; kind: ChestKind } | null;
   /** Column of a coin on this lane, or null. */
   coin: number | null;
+  /** A holiday event's special item sitting on this lane, removed once picked up. */
+  special: { x: number; event: EventId } | null;
   /** The river where a diving duck comes back up; its open water is safe to paddle in. */
   exit?: boolean;
 }
@@ -82,6 +85,7 @@ function emptyLane(row: number, type: LaneType, biome: BiomeId): Lane {
     pickup: null,
     chest: null,
     coin: null,
+    special: null,
   };
 }
 
@@ -234,6 +238,10 @@ export class LaneGenerator {
     }
     const coinSpots = free.filter((x) => x !== lane.pickup?.x && x !== lane.chest?.x);
     if (rng() < COIN_CHANCE && coinSpots.length > 0) lane.coin = pick(rng, coinSpots);
+    // During a holiday event its special item turns up too, on a square of its own.
+    const event = collectingEvent();
+    const itemSpots = coinSpots.filter((x) => x !== lane.coin);
+    if (event && rng() < event.spawnChance && itemSpots.length > 0) lane.special = { x: pick(rng, itemSpots), event: event.id };
   }
 
   private pickGroup(row: number) {

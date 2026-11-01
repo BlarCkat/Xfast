@@ -178,6 +178,27 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 
+.hud-event {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ffd6dc;
+  font-variant-numeric: tabular-nums;
+}
+
+.event-icon {
+  flex: none;
+  vertical-align: middle;
+}
+
+.game-over-event {
+  color: #ffd6dc;
+}
+
+.chest-event {
+  background: linear-gradient(135deg, #2b1b4f, #4a1630);
+}
+
 .effects {
   display: flex;
   flex-wrap: wrap;
