@@ -22,6 +22,7 @@
   --ui-teal: #2ee6c9;
   --ui-teal-deep: #11b39b;
   --ui-gold: #f4c542;
+  --ui-amber: #ffb627;
   --ui-locked: rgba(120, 148, 182, 0.42);
   --ui-locked-ink: rgba(36, 58, 88, 0.45);
   --ui-text: #ffffff;
@@ -684,6 +685,35 @@ kbd {
   background: #1f1b45;
 }
 
+/* A finished goal's card turns amber gold, with dark text to stay readable on it. */
+.goal-done,
+.earned-toast {
+  background: var(--ui-amber);
+  color: #1f1b45;
+}
+
+.goal-done .goal-desc,
+.earned-toast .goal-desc {
+  color: rgba(31, 27, 69, 0.75);
+}
+
+.goal-done .goal-check,
+.earned-toast .goal-check {
+  color: #1f1b45;
+}
+
+/* The ring keeps a navy disc behind it so its gold and orange still show on the amber card. */
+.goal-done .ring,
+.earned-toast .ring {
+  border-radius: 50%;
+  background: #1f1b45;
+}
+
+.goal-done .ring-label,
+.earned-toast .ring-label {
+  box-shadow: 0 0 0 2px #1f1b45;
+}
+
 .goal-text {
   display: flex;
   flex-direction: column;
@@ -711,6 +741,35 @@ kbd {
   display: contents;
 }
 
+/* Today and This week share one list, switched by a two-way pill like the store's wallet pills. */
+.goals-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #1f1b45;
+}
+
+.goals-tabs button {
+  flex: 1;
+  padding: 8px 12px 6px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.goals-tabs button.on {
+  background: var(--ui-gold);
+  color: #1f1b45;
+}
+
 /* ---- Achievement earned: a card that drops in from the top during a run ---- */
 
 .earned-toast {
@@ -720,7 +779,6 @@ kbd {
   top: calc(118px + env(safe-area-inset-top, 0px));
   left: 50%;
   width: min(520px, calc(100% - 32px));
-  color: var(--ui-text);
   pointer-events: none;
   box-shadow: 0 6px 0 rgba(16, 20, 24, 0.35);
   animation: earned-toast 3.6s ease-out both;
