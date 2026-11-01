@@ -38,6 +38,8 @@ export const BOWSER_FIRE_HOPS = 50;
 export const BOWSER_FIRE_ROWS = 4;
 /** The leopard pounces ahead and the owl takes flight every this many hops. */
 export const LEAP_TRAIT_HOPS = 50;
+/** The tiger roars and puts up a shield every this many hops. */
+export const TIGER_ROAR_HOPS = 60;
 /** Rows of seabed the duck crosses after diving, before the river where it surfaces. */
 export const UNDERWATER_ROWS = 30;
 export const RESPAWN_DELAY = 1.2;

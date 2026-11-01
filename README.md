@@ -102,6 +102,18 @@ Each character has its own trait, shown on the start screen and in the store.
 
 Every power-up can be upgraded in the store (select it on the Power-ups tab and tap the red button, or press **U**). Upgrades come in three tiers of seven, shown as the row of boxes under the card: lime for tier 1, light red for tier 2, gold for tier 3. Each upgrade costs 50 coins in tier 1, 100 in tier 2 and 150 in tier 3. Once a tier's seven boxes are full, stepping up to tier 2 costs 200 coins and to tier 3 costs 500, and the boxes start again. A fully upgraded power-up lasts three times as long; Warp reaches up to 12 more rows and Coin rain up to 24 more lanes. Upgrades apply to power-ups you pick up on the road as well as ones bought in the store, and stack with the Chicken's 50% bonus.
 
+## Reward chests
+
+Stars from achievements fill three chests, opened from **Rewards** on the main menu:
+
+| Chest | Earned | Inside |
+| --- | --- | --- |
+| Basic | Every 3 stars earned in a day | 1-30 coins, 1-5 gems, and an 80% chance of an upgrade for the character you play |
+| Epic | Every 21 stars earned in a week (Monday to Sunday) | 30-100 coins, 6-15 gems, a 60% chance of an upgrade each for 2 characters the chest picks, and 1-3 power-up upgrades |
+| Mega | Every 90 stars earned in a calendar month | 100-500 coins, 20-50 gems, an 80% chance of a whole free level for the character you play, and 1-5 power-up upgrades |
+
+Every 3 character upgrades from chests level that character up for free. Character rewards only go to characters you own that can still level up; power-up upgrades are free steps along the store's upgrade path. Chests also turn up on the road: 5% of the collectibles that spawn are chests (80% Basic, 17% Epic, 3% Mega), and hopping on one keeps it to open later. Unopened chests never expire.
+
 ## Coins and the store
 
 - Coins sit on grass and road lanes. They are saved in your browser as soon as you pick them up, even if you die.
