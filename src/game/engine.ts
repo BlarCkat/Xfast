@@ -785,10 +785,14 @@ export class Engine {
 
     if (playing && !p.death) {
       this.checkCollisions();
-      this.idle += worldDt;
+      // The eagle lives in world time: slowmo slows its idle clock, freeze stops it outright.
+      this.idle += trafficDt;
       if (this.effects.scarecrow > 0) {
         // No eagle: forget idling and hold the camera back so it can't leave the chicken behind.
         this.idle = 0;
+        this.focus = Math.min(this.focus, p.row + MAX_ROWS_BEHIND_CAMERA - 0.5);
+      } else if (this.effects.freeze > 0) {
+        // Frozen eagle: the idle clock is paused above, and the camera can't leave the chicken behind.
         this.focus = Math.min(this.focus, p.row + MAX_ROWS_BEHIND_CAMERA - 0.5);
       } else if (this.idle > IDLE_LIMIT || p.row < this.focus - MAX_ROWS_BEHIND_CAMERA) {
         this.die("eagle");
@@ -797,7 +801,8 @@ export class Engine {
     }
 
     if (p.death) {
-      this.updateDeath(dt);
+      // An eagle that is already swooping flies in world time too, so slowmo slows the grab.
+      this.updateDeath(dt, worldDt);
       const delay = p.death.kind === "eagle" ? RESPAWN_DELAY + 0.6 : RESPAWN_DELAY;
       if (p.death.revive && p.death.t > delay) this.respawn();
     }
@@ -805,7 +810,7 @@ export class Engine {
     // Camera focus: chase the player when ahead, otherwise creep forward.
     if (playing) {
       const creep = 0.28 + Math.min(0.5, this.ui.score / 400);
-      this.focus += creep * worldDt;
+      this.focus += creep * trafficDt;
       if (p.z > this.focus) this.focus += (p.z - this.focus) * Math.min(1, dt * 4);
     }
     this.cameraX += (Math.max(-2, Math.min(2, p.x * 0.6)) - this.cameraX) * Math.min(1, dt * 3);
@@ -930,13 +935,14 @@ export class Engine {
     return true;
   }
 
-  private updateDeath(dt: number) {
+  private updateDeath(dt: number, worldDt: number) {
     const p = this.player;
     const death = p.death!;
-    death.t += dt;
+    // Keep the eagle's grab and the respawn wait in step, so a slowed swoop still finishes before respawn.
+    death.t += death.kind === "eagle" ? worldDt : dt;
     if (death.kind === "train") {
       p.x += death.pushX * TRAIN_SPEED * dt * Math.max(0, 1 - death.t * 2);
     }
-    if (this.eagle) this.eagle.t += dt;
+    if (this.eagle) this.eagle.t += worldDt;
   }
 }
