@@ -13,6 +13,7 @@ import { Floater, Obstacle, Vehicle } from "./biomeModels";
 import { Baked, Box, PickupModel, Train } from "./models";
 import { CoinArt } from "./CurrencyArt";
 import { ART_POWERUPS, PickupArt } from "./PowerupArt";
+import { ChestArt } from "./ChestArt";
 import { groundTexture, type GroundTexture } from "./textures";
 
 function Ground({
@@ -288,6 +289,27 @@ function PickupView({ lane }: { lane: Lane }) {
   );
 }
 
+/** A reward chest on the road: it bobs and turns slowly so it stands out from the power-ups. */
+function ChestView({ lane }: { lane: Lane }) {
+  const ref = useRef<Group>(null);
+  const [chest] = useState(lane.chest);
+  useFrame(({ clock }) => {
+    const g = ref.current;
+    if (!g) return;
+    g.visible = lane.chest !== null;
+    g.rotation.y = Math.sin(clock.elapsedTime * 1.5 + lane.row) * 0.6;
+    g.position.y = 0.32 + Math.sin(clock.elapsedTime * 3 + lane.row) * 0.06;
+  });
+  if (!chest) return null;
+  return (
+    <group ref={ref} position={[chest.x, 0.32, 0]}>
+      <group scale={0.6}>
+        <ChestArt kind={chest.kind} />
+      </group>
+    </group>
+  );
+}
+
 function CoinView({ lane }: { lane: Lane }) {
   const ref = useRef<Group>(null);
   // Coins can appear later (coin rain), so read the lane every frame.
@@ -353,6 +375,7 @@ export const LaneView = memo(function LaneView({ lane, engine }: { lane: Lane; e
     <group position={[0, 0, -lane.row]}>
       {lane.type !== "grass" && <ForesightGhosts lane={lane} engine={engine} />}
       {lane.pickup && <PickupView lane={lane} />}
+      {lane.chest && <ChestView lane={lane} />}
       {(lane.type === "grass" || lane.type === "road") && <CoinView lane={lane} />}
       {lane.type === "grass" && <GrassLane lane={lane} />}
       {lane.type === "road" && <RoadLane lane={lane} />}
