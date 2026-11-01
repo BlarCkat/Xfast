@@ -152,6 +152,8 @@ export class Engine {
   private pullId = 0;
   /** Exact seconds left on each power-up. */
   effects: Effects = noEffects();
+  /** The seconds each running power-up started from, so the HUD ring can drain from full even when doubled. */
+  effectSpan: Effects = noEffects();
   private toastId = 0;
   /** Biome the player is currently in, announced when it changes. */
   biome: BiomeId = biomeAt(0);
@@ -234,6 +236,7 @@ export class Engine {
       if (this.character === "penguin") {
         this.apply("shield");
         this.effects.shield *= this.traits.penguinShield;
+        this.effectSpan.shield = this.effects.shield;
         this.syncEffects(true);
       }
       // An upgraded duck starts the run with a few random power-ups already saved.
@@ -549,9 +552,10 @@ export class Engine {
       this.award(found);
       this.hint("duck-saved");
       return;
-    } else this.apply(kind);
+    }
+    const doubled = kind !== "life" && this.apply(kind, true);
     this.syncEffects(true);
-    this.setUi({ toast: { text: PICKUP_LABEL[kind], id: ++this.toastId } });
+    this.setUi({ toast: { text: doubled ? `${PICKUP_LABEL[kind]} ×2` : PICKUP_LABEL[kind], id: ++this.toastId } });
     this.award([...found, ...(kind === "life" ? [] : achievements.usedPowerup())]);
     this.hint(kind);
   }
@@ -574,21 +578,32 @@ export class Engine {
     // Spend what the duck saved this run before anything bought in the store.
     if (this.ui.stash[kind] > 0) this.setUi({ stash: { ...this.ui.stash, [kind]: this.ui.stash[kind] - 1 } });
     else if (!wallet.use(kind)) return false;
-    this.apply(kind);
+    const doubled = this.apply(kind, true);
     this.syncEffects(true);
-    this.setUi({ toast: { text: PICKUP_LABEL[kind], id: ++this.toastId } });
+    this.setUi({ toast: { text: doubled ? `${PICKUP_LABEL[kind]} ×2` : PICKUP_LABEL[kind], id: ++this.toastId } });
     this.award(achievements.usedPowerup());
     return true;
   }
 
-  private apply(kind: PowerUp) {
+  /**
+   * Start a power-up. With `stack` (a pickup or a use from the store), taking one that is already running
+   * doubles it: the timer jumps to twice its full length, or adds a full length if that would be more.
+   * Character traits only top the timer up, so they never cut a doubled power-up short.
+   * Returns whether the power-up was doubled.
+   */
+  private apply(kind: PowerUp, stack = false) {
     if (!isInstant(kind)) {
       const upgrades = wallet.get().upgrades[kind];
-      this.effects[kind] = durationAt(kind, upgrades) * (this.character === "chicken" ? this.traits.powerupBonus : 1);
-      return;
+      const full = durationAt(kind, upgrades) * (this.character === "chicken" ? this.traits.powerupBonus : 1);
+      const left = this.effects[kind];
+      const doubled = stack && left > 0;
+      this.effects[kind] = doubled ? Math.max(2 * full, left + full) : Math.max(left, full);
+      if (doubled || left < full) this.effectSpan[kind] = this.effects[kind];
+      return doubled;
     }
     if (kind === "warp") this.warp();
     if (kind === "coinrain") this.coinRain();
+    return false;
   }
 
   /** Jump to the first open grass at least WARP_ROWS (more when upgraded) ahead. */
@@ -673,6 +688,7 @@ export class Engine {
     if (kind !== "eagle") p.hop = null;
     // Power-ups end with the life they were collected on.
     this.effects = noEffects();
+    this.effectSpan = noEffects();
     this.syncEffects();
     if (revive) {
       if (this.character === "cat") {

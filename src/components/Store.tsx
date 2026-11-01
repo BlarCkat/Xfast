@@ -70,7 +70,7 @@ const cellsFor = (tab: StoreTab, w: WalletState): Cell[] =>
           id: c.id,
           name: c.name,
           price: c.price,
-          kind: w.owned.includes(c.id) ? `Character · Tier ${tier}` : "Character",
+          kind: w.owned.includes(c.id) ? `Character · Level ${tier}` : "Character",
           description: `${traitText(c.id, tier)} ${CHARACTER_BLURB[c.id]}`,
         };
       })
@@ -81,7 +81,7 @@ const cellsFor = (tab: StoreTab, w: WalletState): Cell[] =>
         kind:
           i.id === "life"
             ? "Extra life"
-            : `${isInstant(i.id) ? "Instant" : "Power-up"} · Tier ${tierOf(w.upgrades[i.id]).tier} · ${strengthAt(i.id, w.upgrades[i.id])}`,
+            : `${isInstant(i.id) ? "Instant" : "Power-up"} · Level ${tierOf(w.upgrades[i.id]).tier} · ${strengthAt(i.id, w.upgrades[i.id])}`,
         description: i.description,
       }));
 
@@ -153,11 +153,11 @@ function upgradeAction(tab: StoreTab, cell: Cell, w: WalletState) {
     const id = cell.id as CharacterId;
     if (!w.owned.includes(id)) return null;
     const tier = wallet.tierOf(id);
-    if (tier >= CHARACTER_TIERS) return { label: "Max tier", run: null, next: null };
+    if (tier >= CHARACTER_TIERS) return { label: "Max level", run: null, next: null };
     const cost = CHARACTER_TIER_COST[tier];
     return {
-      label: `Tier ${tier + 1} · ${cost}`,
-      next: `Tier ${tier + 1}: ${nextPerk(id, tier)}`,
+      label: `Level ${tier + 1} · ${cost}`,
+      next: `Level ${tier + 1}: ${nextPerk(id, tier)}`,
       run: w.coins >= cost ? () => wallet.upgradeCharacter(id) : null,
     };
   }
@@ -167,7 +167,7 @@ function upgradeAction(tab: StoreTab, cell: Cell, w: WalletState) {
   const step = nextUpgrade(done);
   if (!step) return { label: "Max level", run: null, next: null };
   return {
-    label: step.kind === "tier" ? `Tier ${step.tier} · ${step.cost}` : `Upgrade · ${step.cost}`,
+    label: step.kind === "tier" ? `Level ${step.tier} · ${step.cost}` : `Upgrade · ${step.cost}`,
     next: `Next level: ${strengthAt(id, done + 1)}`,
     run: w.coins >= step.cost ? () => wallet.upgrade(id) : null,
   };
@@ -360,15 +360,15 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
           className={`shop-pips${tier ? ` tier-${tier.tier}` : ""}`}
           aria-label={
             tier
-              ? `Tier ${tier.tier}, ${tier.filled} of ${TIER_SIZE} upgrades`
+              ? `Level ${tier.tier}, ${tier.filled} of ${TIER_SIZE} upgrades`
               : charTier
-              ? `Tier ${charTier} of ${CHARACTER_TIERS}`
+              ? `Level ${charTier} of ${CHARACTER_TIERS}`
               : undefined
           }
           // Packs have nothing to save toward; keep the space so the card doesn't jump between tabs.
           style={isBank ? { visibility: "hidden" } : undefined}
         >
-          {(tier || charTier > 0) && <span className="shop-pips-tier">TIER {tier?.tier ?? charTier}</span>}
+          {(tier || charTier > 0) && <span className="shop-pips-tier">LEVEL {tier?.tier ?? charTier}</span>}
           {Array.from({ length: pips }, (_, i) => (
             <span
               key={i}
