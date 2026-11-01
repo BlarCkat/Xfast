@@ -99,6 +99,8 @@ export interface UiSnapshot {
   effects: Effects;
   /** `icon` is an image shown before the text, such as an achievement star. */
   toast: null | { text: string; id: number; icon?: string };
+  /** Goals earned this run that are waiting to be shown, oldest first; the HUD shows them one at a time. */
+  earned: { goal: Goal; id: number }[];
   /** Cat only: progress (0-1) towards regrowing the next life, or null for other characters. */
   refill: number | null;
   /** Duck only: power-ups picked up this run and saved for later. */
@@ -185,6 +187,7 @@ export class Engine {
       coins: 0,
       effects: noEffects(),
       toast: null,
+      earned: [],
       refill: character === "cat" ? 0 : null,
       stash: noEffects(),
     };
@@ -216,7 +219,7 @@ export class Engine {
     if (this.ui.status === "ready") {
       // Extra lives bought in the store are spent when a run starts.
       this.setUi({ status: "playing", lives: this.ui.lives + wallet.takeLives() });
-      achievements.startRun(this.biome);
+      this.award(achievements.startRun(this.biome, this.character));
       if (this.character === "penguin") {
         this.apply("shield");
         this.effects.shield *= this.traits.penguinShield;
@@ -283,6 +286,7 @@ export class Engine {
     if (toRow > this.ui.score) {
       this.setUi({ score: toRow });
       this.ensureLanes();
+      this.award(achievements.scored(toRow));
     }
   }
 
@@ -523,13 +527,16 @@ export class Engine {
     this.award([...found, ...(kind === "life" ? [] : achievements.usedPowerup())]);
   }
 
-  /** Announce goals just earned; a later toast replaces an earlier one, so these go last. */
+  /** Queue goals just earned for the achievement card. */
   private award(goals: Goal[]) {
-    for (const g of goals) {
-      sound.coin(true);
-      const icon = g.kind === "daily" ? "/achievements/star.png" : `/achievements/medal-${g.id}.png`;
-      this.setUi({ toast: { text: g.title.toUpperCase(), icon, id: ++this.toastId } });
-    }
+    if (!goals.length) return;
+    sound.coin(true);
+    this.setUi({ earned: [...this.ui.earned, ...goals.map((goal) => ({ goal, id: ++this.toastId }))] });
+  }
+
+  /** The HUD has finished showing an achievement card; move on to the next. */
+  dismissEarned(id: number) {
+    this.setUi({ earned: this.ui.earned.filter((e) => e.id !== id) });
   }
 
   /** Use a power-up bought in the store. */

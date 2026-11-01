@@ -705,6 +705,85 @@ kbd {
   white-space: nowrap;
 }
 
+.goals-section {
+  display: contents;
+}
+
+/* ---- Achievement earned: a card that drops in from the top during a run ---- */
+
+.earned-toast {
+  position: absolute;
+  z-index: 20;
+  /* Below the score and lives so they stay readable. */
+  top: calc(118px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  width: min(520px, calc(100% - 32px));
+  color: var(--ui-text);
+  pointer-events: none;
+  box-shadow: 0 6px 0 rgba(16, 20, 24, 0.35);
+  animation: earned-toast 3.6s ease-out both;
+}
+
+/* The ring fills up one segment at a time once the card has landed. */
+.earned-toast .ring-seg {
+  animation: seg-fill 0.2s ease-out both;
+  animation-delay: calc(0.35s + var(--i) * 0.16s);
+}
+
+.earned-toast .ring-label,
+.earned-toast .goal-check {
+  animation: earned-pop 0.35s ease-out both;
+  animation-delay: 1.2s;
+}
+
+@keyframes earned-toast {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -130%);
+  }
+  9% {
+    opacity: 1;
+    transform: translate(-50%, 6px);
+  }
+  13%,
+  88% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -130%);
+  }
+}
+
+@keyframes seg-fill {
+  from {
+    stroke: #dcdce4;
+  }
+}
+
+@keyframes earned-pop {
+  0% {
+    opacity: 0;
+    scale: 0.6;
+  }
+  70% {
+    scale: 1.15;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .earned-toast .ring-seg,
+  .earned-toast .ring-label,
+  .earned-toast .goal-check {
+    animation: none;
+  }
+}
+
 /* ---- Game over: full purple screen ------------------------------------- */
 
 /* Slides up over the scene a moment after the crash, with Store over Play docked at the bottom. */
