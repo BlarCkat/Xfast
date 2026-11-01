@@ -1923,7 +1923,6 @@ kbd {
   justify-content: center;
   gap: 6px;
   padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px));
-  background: radial-gradient(circle at 50% 38%, #7a52f5, #2a1d6e 58%, #160f3d);
   color: var(--ui-text);
   isolation: isolate;
   overflow: hidden;
@@ -1932,39 +1931,6 @@ kbd {
 
 .chest-phase-wait {
   cursor: pointer;
-}
-
-/* A soft wash of light behind the chest: no edges, it just brightens as the lid opens. */
-.chest-open-glow {
-  position: absolute;
-  z-index: -1;
-  left: 50%;
-  top: 40%;
-  width: 150vmax;
-  height: 150vmax;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 214, 120, 0.55), rgba(255, 190, 90, 0.18) 35%, rgba(255, 170, 60, 0) 70%);
-  opacity: 0.25;
-  transform: translate(-50%, -50%) scale(0.5);
-  transition: opacity 0.8s ease-out, transform 1.2s ease-out;
-  pointer-events: none;
-}
-
-.chest-phase-shake .chest-open-glow {
-  opacity: 0.4;
-  animation: chest-glow-throb 0.5s ease-in-out infinite alternate;
-}
-
-.chest-phase-bounce .chest-open-glow,
-.chest-phase-reveal .chest-open-glow {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
-}
-
-@keyframes chest-glow-throb {
-  to {
-    opacity: 0.6;
-  }
 }
 
 .chest-open-title {
@@ -2129,8 +2095,7 @@ kbd {
   .chest-open-tap,
   .chest-item,
   .chest-tally li.on,
-  .chest-actions button,
-  .chest-phase-shake .chest-open-glow {
+  .chest-actions button {
     animation: none;
   }
 }
