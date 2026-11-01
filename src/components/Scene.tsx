@@ -111,7 +111,7 @@ function Player({ engine }: { engine: Engine }) {
     g.position.set(x, y, z);
     // Tiny shrinks the model; ghost fades it.
     size.current += ((engine.character === "mario" && !engine.marioBig ? 0.7 : 1) - size.current) * Math.min(1, dt * 10);
-    const small = (engine.effects.tiny > 0 && !death ? 0.55 : 1) * size.current;
+    const small = (engine.effects.tiny > 0 && !death ? engine.tinyScale : 1) * size.current;
     sx *= small;
     sy *= small;
     sz *= small;

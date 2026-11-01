@@ -269,7 +269,10 @@ function ForesightGhosts({ lane, engine }: { lane: Lane; engine: Engine }) {
     const on = engine.foresight;
     if (root.current) root.current.visible = on;
     if (!on) return;
-    FORESIGHT_STEPS.forEach((step, s) => {
+    // Upgraded foresight looks further ahead.
+    const reach = engine.foresightReach;
+    FORESIGHT_STEPS.forEach((base, s) => {
+      const step = base * reach;
       for (let i = 0; i < count; i++) {
         const mesh = refs.current[s * count + i];
         if (!mesh) continue;

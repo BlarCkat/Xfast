@@ -6,11 +6,9 @@ import { BIOMES, biomeAt, type BiomeId } from "./biomes";
 import {
   COLS,
   FLIGHT_ALTITUDE,
-  FLIGHT_SPEED,
   HOP_DURATION,
   IDLE_LIMIT,
   MAGNET_PULL_TIME,
-  MAGNET_RADIUS,
   MAX_SPEED_SCALE,
   SPEEDUP_STEP,
   STEPS_PER_SPEEDUP,
@@ -18,7 +16,6 @@ import {
   RESPAWN_DELAY,
   RESPAWN_SHIELD,
   SLOWMO_EASE,
-  SLOWMO_SCALE,
   START_LIVES,
   CAT_LIVES,
   ROWS_AHEAD,
@@ -32,10 +29,24 @@ import { Lane, LaneGenerator, Mover, PickupKind, trainLength } from "./lanes";
 import {
   POWERUPS,
   POWERUP_KEYS,
+  chopCoinAt,
   coinRainRowsAt,
   durationAt,
+  flightSpeedAt,
+  foresightReachAt,
+  freezeThawAt,
+  ghostTreesAt,
   isInstant,
+  magnetRadiusAt,
   noEffects,
+  rockCoinsAt,
+  scarecrowGraceAt,
+  shieldHitsAt,
+  slowmoScaleAt,
+  superHopRowsAt,
+  tinyMarginAt,
+  tinyScaleAt,
+  tripleChanceAt,
   warpRowsAt,
   type Effects,
   type PowerUp,
@@ -55,7 +66,8 @@ const PICKUP_LABEL = {
 
 /** How long a water splash lasts, in seconds. */
 export const SPLASH_TIME = 1;
-const SUPER_HOP_TIME = 1.6;
+/** Hop time, as a multiple of a normal hop, for a super hop over 2 and 3 rows. */
+const SUPER_HOP_TIME = [1, 1, 1.6, 2];
 
 const FACING: Record<Direction, number> = {
   up: 0,
@@ -183,6 +195,11 @@ export class Engine {
   speedScale = 1;
   /** How far into slowmo the world is, 0 (full speed) to 1 (fully slowed); eases rather than snapping. */
   slowmoBlend = 0;
+  /** Hits left in the shield bubble; upgraded shields take more than one. */
+  private shieldHits = 0;
+  /** Seconds left while traffic thaws back up to speed after an upgraded freeze, and the thaw's full length. */
+  private thaw = 0;
+  private thawSpan = 0;
 
   player: PlayerState = {
     row: 0,
@@ -298,16 +315,21 @@ export class Engine {
     const open = (row: number) => {
       const lane = this.lanes.get(row);
       if (!lane) return false;
-      // Lumberjack and Bowser walk through trees (they're cleared on landing).
-      return !(lane.type === "grass" && lane.blocked.has(Math.round(toX)) && !this.smashes);
+      // Lumberjack and Bowser walk through trees (they're cleared on landing); an upgraded ghost floats through them.
+      return !(lane.type === "grass" && lane.blocked.has(Math.round(toX)) && !this.smashes && !this.ghostTrees);
     };
 
     if (Math.abs(toX) > COLS + 0.01) return;
-    // Super hop clears a whole extra row when the landing spot is open.
+    // Super hop clears one extra row (two once upgraded to tier 3), as far as the landing spots are open.
     let span = 1;
-    if (dir === "up" && this.effects.superhop > 0 && open(toRow + 1)) {
-      toRow++;
-      span = SUPER_HOP_TIME;
+    if (dir === "up" && this.effects.superhop > 0) {
+      const rows = superHopRowsAt(this.level("superhop"));
+      for (let reach = rows; reach > 1; reach--) {
+        if (!open(p.row + reach)) continue;
+        toRow = p.row + reach;
+        span = SUPER_HOP_TIME[reach];
+        break;
+      }
     }
     if (!open(toRow)) {
       // Bumped into a tree: a good moment to show hopping around it.
@@ -351,7 +373,7 @@ export class Engine {
     if (lane?.type === "river" && p.ride && this.character === "frog" && Math.random() < this.traits.frogCoin) this.bankCoin();
 
     if (lane) this.enterBiome(lane);
-    if (lane?.type === "grass" && lane.blocked.has(Math.round(p.x))) this.chop(lane, Math.round(p.x));
+    if (lane?.type === "grass" && lane.blocked.has(Math.round(p.x)) && this.smashes) this.chop(lane, Math.round(p.x));
     if (lane) this.collectAt(lane);
     // Standing at the edge of something new: explain it before the first crossing.
     const ahead = this.lanes.get(p.row + 1)?.type;
@@ -410,7 +432,7 @@ export class Engine {
     const f = p.flight!;
     this.idle = 0;
     if (!f.land) {
-      p.z += FLIGHT_SPEED * dt;
+      p.z += this.flightSpeed * dt;
       p.y += (FLIGHT_ALTITUDE - p.y) * Math.min(1, dt * 5);
       this.flyOver(Math.floor(p.z));
       if (this.effects.wings > 0) return;
@@ -426,7 +448,7 @@ export class Engine {
         if (lane.type !== "grass") continue;
         const x = this.freeColumn(lane, want);
         if (x === null) continue;
-        const time = Math.max(0.5, (row - p.z) / FLIGHT_SPEED);
+        const time = Math.max(0.5, (row - p.z) / this.flightSpeed);
         f.land = { row, x, fromX: p.x, fromZ: p.z, fromY: p.y, t: 0, time };
         break;
       }
@@ -477,6 +499,25 @@ export class Engine {
   /** Foresight ghosts show while the power-up runs, and always for the robot. */
   get foresight() {
     return this.effects.foresight > 0 || (this.character === "robot" && !this.player.death);
+  }
+
+  /** How much further ahead the foresight ghosts look; upgrades stretch it, the robot's own sight stays at 1. */
+  get foresightReach() {
+    return this.effects.foresight > 0 ? foresightReachAt(this.level("foresight")) : 1;
+  }
+
+  /** How small the Tiny power-up makes the player. */
+  get tinyScale() {
+    return tinyScaleAt(this.level("tiny"));
+  }
+
+  /** Upgrades bought for a power-up. */
+  private level(k: PowerUp) {
+    return wallet.get().upgrades[k];
+  }
+
+  private get flightSpeed() {
+    return flightSpeedAt(this.level("wings"));
   }
 
   /** The duck paddling in the river where it surfaced. */
@@ -532,6 +573,11 @@ export class Engine {
     return this.effects.lumberjack > 0 || this.character === "bowser";
   }
 
+  /** A ghost upgraded to tier 2 floats through trees as well. */
+  private get ghostTrees() {
+    return this.effects.ghost > 0 && ghostTreesAt(this.level("ghost"));
+  }
+
   /** Mario at full size, with a hit to spare. */
   get marioBig() {
     return this.character === "mario" && this.big;
@@ -583,9 +629,11 @@ export class Engine {
   }
 
   private bankCoin() {
-    // The human always doubles coins, and at higher tiers sometimes triples them.
+    // The human always doubles coins, and at higher tiers sometimes triples them; so does an upgraded 2x coins.
     const human = this.character === "human";
-    const n = human && Math.random() < this.traits.humanTriple ? 3 : this.effects.double > 0 || human ? 2 : 1;
+    const doubling = this.effects.double > 0;
+    const triple = Math.max(human ? this.traits.humanTriple : 0, doubling ? tripleChanceAt(this.level("double")) : 0);
+    const n = Math.random() < triple ? 3 : doubling || human ? 2 : 1;
     sound.coin(n > 1);
     wallet.addCoins(n);
     this.setUi({ coins: this.ui.coins + n });
@@ -763,6 +811,8 @@ export class Engine {
       this.effects[kind] = doubled ? Math.max(2 * full, left + full) : Math.max(left, full);
       if (doubled || left < full) this.effectSpan[kind] = this.effects[kind];
       if (kind === "wings") this.takeOff();
+      if (kind === "shield") this.shieldHits = Math.max(this.shieldHits, shieldHitsAt(upgrades));
+      if (kind === "freeze") this.thaw = this.thawSpan = 0;
       return doubled;
     }
     if (kind === "warp") this.warp();
@@ -824,6 +874,8 @@ export class Engine {
   private chop(lane: Lane, x: number) {
     lane.blocked.delete(x);
     lane.trees = lane.trees.filter((t) => t.x !== x);
+    // An upgraded lumberjack shakes coins out of the trees it chops.
+    if (this.effects.lumberjack > 0 && Math.random() < chopCoinAt(this.level("lumberjack"))) this.bankCoin();
   }
 
   /** Push whole-second effect timers to the HUD when they change. */
@@ -856,6 +908,8 @@ export class Engine {
     // Power-ups end with the life they were collected on.
     this.effects = noEffects();
     this.effectSpan = noEffects();
+    this.shieldHits = 0;
+    this.thaw = this.thawSpan = 0;
     this.syncEffects();
     if (revive) {
       if (this.character === "cat") {
@@ -923,13 +977,17 @@ export class Engine {
     this.slowmoBlend = this.effects.slowmo > 0 ? Math.min(1, this.slowmoBlend + step) : Math.max(0, this.slowmoBlend - step);
     const b = this.slowmoBlend;
     const eased = b * b * (3 - 2 * b);
-    const worldDt = dt * (1 - (1 - SLOWMO_SCALE) * eased);
+    const worldDt = dt * (1 - (1 - slowmoScaleAt(this.level("slowmo"))) * eased);
     this.time += dt;
     const playing = this.ui.status === "playing";
     const p = this.player;
 
-    // Freeze stops traffic and trains outright.
-    const trafficDt = this.effects.freeze > 0 ? 0 : worldDt;
+    // Freeze stops traffic and trains outright; once upgraded, they thaw back up to speed when it ends.
+    const frozen = this.effects.freeze > 0;
+    if (frozen && this.effects.freeze <= dt) this.thaw = this.thawSpan = freezeThawAt(this.level("freeze"));
+    else if (!frozen) this.thaw = Math.max(0, this.thaw - dt);
+    const thawed = this.thaw > 0 ? 1 - this.thaw / this.thawSpan : 1;
+    const trafficDt = frozen ? 0 : worldDt * thawed * thawed;
     for (const lane of this.lanes.values()) this.updateLane(lane, trafficDt);
     if (this.audible) this.hearRivers();
 
@@ -978,7 +1036,7 @@ export class Engine {
 
     if ((this.effects.magnet > 0 || this.character === "luigi") && !p.death) {
       // Luigi's Poltergust reaches further as he is upgraded; the magnet power-up keeps its own reach.
-      const reach = Math.max(this.effects.magnet > 0 ? MAGNET_RADIUS : 0, this.character === "luigi" ? this.traits.luigiRadius : 0);
+      const reach = Math.max(this.effects.magnet > 0 ? magnetRadiusAt(this.level("magnet")) : 0, this.character === "luigi" ? this.traits.luigiRadius : 0);
       for (let r = p.row - Math.ceil(reach); r <= p.row + Math.ceil(reach); r++) {
         const lane = this.lanes.get(r);
         if (lane && lane.coin !== null && Math.abs(lane.coin - p.x) <= reach + 0.5 && Math.abs(r - p.row) <= reach) this.pullCoin(lane);
@@ -1000,7 +1058,8 @@ export class Engine {
       this.idle += trafficDt;
       if (this.effects.scarecrow > 0) {
         // No eagle: forget idling and hold the camera back so it can't leave the chicken behind.
-        this.idle = 0;
+        // An upgraded scarecrow keeps the eagle away a little longer once it runs out.
+        this.idle = -scarecrowGraceAt(this.level("scarecrow"));
         this.focus = Math.min(this.focus, p.row + MAX_ROWS_BEHIND_CAMERA - 0.5);
       } else if (this.effects.freeze > 0) {
         // Frozen eagle: the idle clock is paused above, and the camera can't leave the chicken behind.
@@ -1107,12 +1166,12 @@ export class Engine {
     // Mid-hop between lanes the chicken only counts as being in its target lane once past halfway.
     if (p.hop && p.hop.t < 0.5) return;
     // Tiny chickens are harder to hit.
-    const margin = this.effects.tiny > 0 ? 0.08 : 0.3;
+    const margin = this.effects.tiny > 0 ? tinyMarginAt(this.level("tiny")) : 0.3;
     if (lane.type === "road") {
       for (const m of lane.movers) {
         if (m.wrecked !== null || this.untouchable(lane) || Math.abs(p.x - m.x) >= m.length / 2 + margin) continue;
         // A rock chicken wrecks whatever drives into it.
-        if (this.effects.rock > 0) m.wrecked = 0;
+        if (this.effects.rock > 0) this.wreck(m);
         else if (p.shield <= 0 && !this.popShield() && !this.shrink()) {
           this.die("car");
           return;
@@ -1131,11 +1190,22 @@ export class Engine {
     }
   }
 
-  /** The shield bubble soaks up one hit, then gives a moment to get clear. */
+  /** A rock wrecks the car that hit it; upgraded, the wreck pays out coins. */
+  private wreck(m: Mover) {
+    m.wrecked = 0;
+    for (let i = rockCoinsAt(this.level("rock")); i > 0; i--) this.bankCoin();
+  }
+
+  /** The shield bubble soaks up a hit (more once upgraded), then gives a moment to get clear. */
   private popShield() {
     if (this.effects.shield <= 0) return false;
-    this.effects.shield = 0;
     this.player.shield = 1.5;
+    this.shieldHits = Math.max(0, this.shieldHits - 1);
+    if (this.shieldHits > 0) {
+      this.setUi({ toast: { text: `SHIELD ×${this.shieldHits}`, id: ++this.toastId } });
+      return true;
+    }
+    this.effects.shield = 0;
     this.syncEffects();
     this.setUi({ toast: { text: "SHIELD POPPED", id: ++this.toastId } });
     return true;

@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import type { Group } from "three";
-import { TIER_SIZE, isInstant, nextUpgrade, strengthAt, tierOf, type PowerUp } from "@/game/powerups";
+import { TIER_SIZE, effectAt, headlineAt, isInstant, nextUpgrade, strengthAt, tierOf, type PowerUp } from "@/game/powerups";
+
+/** A power-up's blurb, plus what its upgrades add right now (instant ones already show it on the card). */
+const nowLine = (id: PowerUp, upgrades: number, description: string) => {
+  const effect = isInstant(id) ? null : effectAt(id, upgrades);
+  return effect ? `${description} Now: ${effect}.` : description;
+};
 import { CHARACTER_BOXES, CHARACTER_LEVELS, CHARACTER_LEVEL_COLORS, MAX_CHARACTER_STEPS, nextCharacterStep, nextPerk, stepsAtLevel, traitText } from "@/game/characters";
 import { CHARACTERS, STORE_ITEMS, wallet, type CharacterId, type StoreItemId, type WalletState } from "@/game/wallet";
 import { Icon } from "./icons";
@@ -81,8 +87,8 @@ const cellsFor = (tab: StoreTab, w: WalletState): Cell[] =>
         kind:
           i.id === "life"
             ? "Extra life"
-            : `${isInstant(i.id) ? "Instant" : "Power-up"} · Level ${tierOf(w.upgrades[i.id]).tier} · ${strengthAt(i.id, w.upgrades[i.id])}`,
-        description: i.description,
+            : `${isInstant(i.id) ? "Instant" : "Power-up"} · Level ${tierOf(w.upgrades[i.id]).tier} · ${headlineAt(i.id, w.upgrades[i.id])}`,
+        description: i.id === "life" ? i.description : nowLine(i.id, w.upgrades[i.id], i.description),
       }));
 
 function Spinner({ y, children }: { y: number; children: React.ReactNode }) {

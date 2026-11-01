@@ -1,4 +1,14 @@
-import { COIN_RAIN_ROWS, POWERUP_DURATION, WARP_ROWS } from "./config";
+import {
+  COIN_RAIN_ROWS,
+  FLIGHT_SPEED,
+  FORESIGHT_STEPS,
+  MAGNET_RADIUS,
+  POWERUP_DURATION,
+  SLOWMO_SCALE,
+  WARP_ROWS,
+} from "./config";
+
+const FORESIGHT_FAR = FORESIGHT_STEPS[FORESIGHT_STEPS.length - 1];
 
 export type PowerUp = keyof typeof POWERUP_DURATION;
 export type Effects = Record<PowerUp, number>;
@@ -77,10 +87,100 @@ export const durationAt = (k: PowerUp, upgrades: number) => POWERUP_DURATION[k] 
 export const warpRowsAt = (upgrades: number) => WARP_ROWS + Math.round(12 * progress(upgrades));
 export const coinRainRowsAt = (upgrades: number) => COIN_RAIN_ROWS + Math.round(24 * progress(upgrades));
 
+// ---- Upgraded strength ------------------------------------------------------------
+//
+// Upgrades make each power-up last longer and also work better. The numbers below go from the
+// base effect with no upgrades to the strongest one at MAX_UPGRADES; a few power-ups also gain an
+// extra trick when they step up into a new tier.
+
+/** Foresight's ghosts look further ahead: x1 up to x1.75 (the far ghost from 1.2s to 2.1s). */
+export const foresightReachAt = (upgrades: number) => 1 + 0.75 * progress(upgrades);
+/** Slowmo's world speed: 35% down to 15%. */
+export const slowmoScaleAt = (upgrades: number) => SLOWMO_SCALE - 0.2 * progress(upgrades);
+/** Coins a car pays out when it crashes into a rock: none, up to 3. */
+export const rockCoinsAt = (upgrades: number) => Math.round(3 * progress(upgrades));
+/** Magnet reach in tiles: 2 up to 4. */
+export const magnetRadiusAt = (upgrades: number) => MAGNET_RADIUS + 2 * progress(upgrades);
+/** Chance a 2x coin comes in triple instead: 0% up to 50%. */
+export const tripleChanceAt = (upgrades: number) => 0.5 * progress(upgrades);
+/** Rows a super hop covers: 2, then 3 from tier 3. */
+export const superHopRowsAt = (upgrades: number) => (tierOf(upgrades).tier >= 3 ? 3 : 2);
+/** Hits a shield soaks up: one per tier. */
+export const shieldHitsAt = (upgrades: number) => tierOf(upgrades).tier;
+/** Seconds traffic takes to thaw back up to speed after a freeze: none, up to 3. */
+export const freezeThawAt = (upgrades: number) => 3 * progress(upgrades);
+/** Flight speed in rows a second: 4 up to 6. */
+export const flightSpeedAt = (upgrades: number) => FLIGHT_SPEED + 2 * progress(upgrades);
+/** Seconds the eagle keeps away after a scarecrow runs out: none, up to 6. */
+export const scarecrowGraceAt = (upgrades: number) => 6 * progress(upgrades);
+/** A ghost floats through trees too from tier 2. */
+export const ghostTreesAt = (upgrades: number) => tierOf(upgrades).tier >= 2;
+/** Tiny's size (55% down to 40%) and how close traffic has to pass (0.08 down to -0.12 tiles). */
+export const tinyScaleAt = (upgrades: number) => 0.55 - 0.15 * progress(upgrades);
+export const tinyMarginAt = (upgrades: number) => 0.08 - 0.2 * progress(upgrades);
+/** Chance a chopped tree drops a coin: 0% up to 100%. */
+export const chopCoinAt = (upgrades: number) => progress(upgrades);
+
+const pct = (n: number) => `${Math.round(n * 100)}%`;
+const secs = (s: number) => `${Number.isInteger(s) ? s : s.toFixed(1)}s`;
+
+/** What upgrading adds to a power-up beyond its timer, for the store; null when there is nothing yet. */
+export function effectAt(k: PowerUp, upgrades: number): string | null {
+  switch (k) {
+    case "foresight":
+      return `sees ${secs(Math.round(FORESIGHT_FAR * foresightReachAt(upgrades) * 10) / 10)} ahead`;
+    case "slowmo":
+      return `world at ${pct(slowmoScaleAt(upgrades))} speed`;
+    case "rock": {
+      const n = rockCoinsAt(upgrades);
+      return n ? `+${n} coin${n > 1 ? "s" : ""} per wrecked car` : null;
+    }
+    case "magnet":
+      return `${(Math.round(magnetRadiusAt(upgrades) * 10) / 10).toString()} tile reach`;
+    case "double": {
+      const c = tripleChanceAt(upgrades);
+      return c ? `${pct(c)} triple coins` : null;
+    }
+    case "superhop":
+      return `hops ${superHopRowsAt(upgrades)} rows`;
+    case "shield": {
+      const n = shieldHitsAt(upgrades);
+      return `blocks ${n} hit${n > 1 ? "s" : ""}`;
+    }
+    case "freeze": {
+      const t = freezeThawAt(upgrades);
+      return t ? `${secs(Math.round(t * 10) / 10)} thaw after` : null;
+    }
+    case "wings":
+      return `flies ${(Math.round(flightSpeedAt(upgrades) * 10) / 10).toString()} rows/s`;
+    case "scarecrow": {
+      const t = scarecrowGraceAt(upgrades);
+      return t ? `eagle waits ${secs(Math.round(t * 10) / 10)} after` : null;
+    }
+    case "ghost":
+      return ghostTreesAt(upgrades) ? "through trees too" : null;
+    case "tiny":
+      return `${pct(tinyScaleAt(upgrades))} size`;
+    case "lumberjack": {
+      const c = chopCoinAt(upgrades);
+      return c ? `${pct(c)} chance of a coin per tree` : null;
+    }
+    case "warp":
+      return `${warpRowsAt(upgrades)}+ rows`;
+    case "coinrain":
+      return `${coinRainRowsAt(upgrades)} lanes`;
+  }
+}
+
 /** One line describing what a power-up does after a number of upgrades, for the store. */
 export function strengthAt(k: PowerUp, upgrades: number) {
-  if (k === "warp") return `${warpRowsAt(upgrades)}+ rows`;
-  if (k === "coinrain") return `${coinRainRowsAt(upgrades)} lanes`;
-  const s = durationAt(k, upgrades);
-  return `${Number.isInteger(s) ? s : s.toFixed(1)}s`;
+  const effect = effectAt(k, upgrades);
+  if (isInstant(k)) return effect ?? "";
+  const time = secs(durationAt(k, upgrades));
+  return effect ? `${time}, ${effect}` : time;
+}
+
+/** Just the timer, or the instant effect, for the short line on the store card. */
+export function headlineAt(k: PowerUp, upgrades: number) {
+  return isInstant(k) ? (effectAt(k, upgrades) ?? "") : secs(durationAt(k, upgrades));
 }
