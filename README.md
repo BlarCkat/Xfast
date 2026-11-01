@@ -112,7 +112,7 @@ Stars from achievements fill three chests, opened from **Rewards** on the main m
 | Epic | Every 21 stars earned in a week (Monday to Sunday) | 30-100 coins, 6-15 gems, a 60% chance of an upgrade each for 2 characters the chest picks, and 1-3 power-up upgrades |
 | Mega | Every 90 stars earned in a calendar month | 100-500 coins, 20-50 gems, an 80% chance of a whole free level for the character you play, and 1-5 power-up upgrades |
 
-Every 3 character upgrades from chests level that character up for free. Character rewards only go to characters you own that can still level up; power-up upgrades are free steps along the store's upgrade path. Chests also turn up on the road: 5% of the collectibles that spawn are chests (80% Basic, 17% Epic, 3% Mega), and hopping on one keeps it to open later. Unopened chests never expire.
+Every 3 character upgrades from chests level that character up for free. Character rewards only go to characters you own that can still level up; power-up upgrades are free steps along the store's upgrade path. Chests also turn up on the road: 5% of the collectibles that spawn are chests (80% Basic, 17% Epic, 3% Mega), and hopping on one keeps it. When a run ends, every chest found or earned in it is opened first ("You have found a chest!", tap to open) before the score screen; the rest wait on the Rewards screen and never expire. Opening a chest rattles it for 3 seconds, then it hops up, throws back its lid and hands out its items one at a time with **Next**.
 
 ## Coins and the store
 

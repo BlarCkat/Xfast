@@ -1,5 +1,5 @@
 import { achievements, type Goal } from "./achievements";
-import { CHESTS, chests } from "./chests";
+import { CHESTS, chests, type ChestKind } from "./chests";
 import { events } from "./events";
 import { traitsAt, type Traits } from "./characters";
 import { BIOMES, biomeAt, type BiomeId } from "./biomes";
@@ -100,6 +100,8 @@ export interface UiSnapshot {
   steps: number;
   /** Coins picked up this run (they are banked in the wallet straight away). */
   coins: number;
+  /** Chests found on the road or earned from stars this run, shown one by one before the score. */
+  foundChests: ChestKind[];
   /** Holiday event items picked up this run. */
   eventItems: number;
   /** Whole seconds left on each power-up (0 = inactive); only changes once a second. */
@@ -208,6 +210,7 @@ export class Engine {
       steps: 0,
       coins: 0,
       eventItems: 0,
+      foundChests: [],
       effects: noEffects(),
       toast: null,
       earned: [],
@@ -608,7 +611,7 @@ export class Engine {
     if (!got.length) return;
     const best = got.includes("mega") ? "mega" : got.includes("epic") ? "epic" : "basic";
     const text = `${CHESTS[best].name.toUpperCase()}${got.length > 1 ? ` +${got.length - 1}` : ""}!`;
-    this.setUi({ toast: { text, id: ++this.toastId } });
+    this.setUi({ toast: { text, id: ++this.toastId }, foundChests: [...this.ui.foundChests, ...got] });
   }
 
   /** Queue goals just earned for the achievement card. */
