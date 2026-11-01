@@ -98,20 +98,19 @@ export default function Achievements({ onClose }: { onClose: () => void }) {
   );
 }
 
-const SECTIONS: { kind: GoalKind; title: string; note: string }[] = [
-  { kind: "daily", title: "Today", note: "A star for each, every day." },
-  { kind: "weekly", title: "This week", note: "Three stars for each, new ones every Monday." },
-  { kind: "badge", title: "Badges", note: "Yours to keep once earned." },
+const SECTIONS: { kind: GoalKind; title: string }[] = [
+  { kind: "daily", title: "Today" },
+  { kind: "weekly", title: "This week" },
+  { kind: "badge", title: "Badges" },
 ];
 
 /** Today's and this week's goals and the badges, as listed on this page and on the store's Achievements tab. */
 export function GoalList() {
   return (
     <div className="options-list goals">
-      {SECTIONS.map(({ kind, title, note }) => (
+      {SECTIONS.map(({ kind, title }) => (
         <section key={kind} className="goals-section">
           <h3 className="goals-head">{title}</h3>
-          <p className="goals-note">{note}</p>
           {GOALS.filter((g) => g.kind === kind).map((g) => (
             <GoalRow key={g.id} goal={g} />
           ))}
