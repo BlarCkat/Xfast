@@ -3,7 +3,18 @@
 import { memo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Group, InstancedMesh, Mesh, MeshBasicMaterial } from "three";
-import { Color, MeshBasicMaterial as BasicMaterial, Object3D, PlaneGeometry, SphereGeometry } from "three";
+import {
+  AdditiveBlending,
+  BoxGeometry,
+  Color,
+  EdgesGeometry,
+  LineDashedMaterial,
+  LineSegments,
+  MeshBasicMaterial as BasicMaterial,
+  Object3D,
+  PlaneGeometry,
+  SphereGeometry,
+} from "three";
 import { COLS, FORESIGHT_STEPS, LANE_WIDTH, TRAIN_SPEED, WRAP } from "@/game/config";
 import type { Engine } from "@/game/engine";
 import type { Lane } from "@/game/lanes";
@@ -199,10 +210,51 @@ function RailLane({ lane }: { lane: Lane }) {
 
 const wrap = (x: number) => ((((x + WRAP) % (WRAP * 2)) + WRAP * 2) % (WRAP * 2)) - WRAP;
 
-/** Translucent copies of traffic where it will be shortly, shown while foresight is active. */
+/** Neon blue hologram colours for the foresight ghosts. */
+const HOLO_FILL = "#1a7dff";
+const HOLO_EDGE = "#00f0ff";
+
+/** Hologram box: a see-through neon blue body with dashed glowing edges. */
+function HoloBox({ size, near }: { size: [number, number, number]; near: boolean }) {
+  const [w, h, d] = size;
+  const [edges] = useState(() => {
+    const box = new BoxGeometry(w, h, d);
+    const lines = new LineSegments(
+      new EdgesGeometry(box),
+      new LineDashedMaterial({
+        color: HOLO_EDGE,
+        dashSize: 0.22,
+        gapSize: 0.14,
+        transparent: true,
+        opacity: near ? 1 : 0.6,
+        depthWrite: false,
+        blending: AdditiveBlending,
+      }),
+    );
+    lines.computeLineDistances();
+    box.dispose();
+    return lines;
+  });
+  return (
+    <>
+      <mesh>
+        <boxGeometry args={size} />
+        <meshBasicMaterial
+          color={HOLO_FILL}
+          transparent
+          opacity={near ? 0.38 : 0.2}
+          depthWrite={false}
+        />
+      </mesh>
+      <primitive object={edges} />
+    </>
+  );
+}
+
+/** Hologram copies of traffic where it will be shortly, shown while foresight is active. */
 function ForesightGhosts({ lane, engine }: { lane: Lane; engine: Engine }) {
   const root = useRef<Group>(null);
-  const refs = useRef<(Mesh | null)[]>([]);
+  const refs = useRef<(Group | null)[]>([]);
   const isRail = lane.type === "rail";
   const count = isRail ? 1 : lane.movers.length;
   const len = isRail ? trainLength(lane) : 0;
@@ -240,19 +292,13 @@ function ForesightGhosts({ lane, engine }: { lane: Lane; engine: Engine }) {
           const length = isRail ? len : lane.movers[i].length;
           const river = lane.type === "river";
           return (
-            <mesh
+            <group
               key={`${s}-${i}`}
               ref={(m) => void (refs.current[s * count + i] = m)}
-              position={[0, river ? 0.02 : 0.45, 0]}
+              position={[0, river ? 0.04 : 0.45, 0]}
             >
-              <boxGeometry args={[length, river ? 0.06 : 0.9, 0.8]} />
-              <meshBasicMaterial
-                color={river ? "#ffffff" : "#b388ff"}
-                transparent
-                opacity={s === 0 ? 0.45 : 0.22}
-                depthWrite={false}
-              />
-            </mesh>
+              <HoloBox size={[length, river ? 0.08 : 0.9, 0.8]} near={s === 0} />
+            </group>
           );
         }),
       )}
