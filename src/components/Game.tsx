@@ -16,6 +16,7 @@ import Rewards, { useChests, useEvents } from "./Rewards";
 import { EventIcon } from "./EventArt";
 import { activeEvent, events } from "@/game/events";
 import { chests } from "@/game/chests";
+import { ChestOpening } from "./ChestOpening";
 import { beforeRun, markSeen, tip, type GuidePage, type HintId } from "@/game/guide";
 import type { CharacterId } from "@/game/wallet";
 
@@ -118,6 +119,10 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   const [goalsOpen, setGoalsOpen] = useState(false);
   const [rewardsOpen, setRewardsOpen] = useState(false);
   const eventState = useEvents();
+  // Chests from this run are opened one by one when it ends, before the score screen.
+  const [chestsShown, setChestsShown] = useState({ engine: 0, n: 0 });
+  const nextChest =
+    ui.status === "dead" ? ui.foundChests[chestsShown.engine === engine.id ? chestsShown.n : 0] ?? null : null;
   const unopened = chests.total(useChests()) + (events.claimable(eventState) ? 1 : 0);
   const event = activeEvent();
   const eventItems = event ? events.progress(event, eventState).items : 0;
@@ -234,7 +239,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // The Rewards screen handles its own keys.
-      if (e.repeat || locked || guide || rewardsOpen) return;
+      if (e.repeat || locked || guide || rewardsOpen || nextChest) return;
       if (optionsOpen) {
         if (e.code === "Escape") setOptionsOpen(false);
         else if (e.code === "KeyB") toggleFx();
@@ -277,7 +282,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [engine, restart, storeOpen, optionsOpen, goalsOpen, rewardsOpen, locked, toggleFx, openStore, closeStore, guide, startRun]);
+  }, [engine, restart, storeOpen, optionsOpen, goalsOpen, rewardsOpen, nextChest, locked, toggleFx, openStore, closeStore, guide, startRun]);
 
   const pick = (item: MenuItem) => {
     if (item === "play") startRun("up");
@@ -492,7 +497,20 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
         </div>
       )}
 
-      {ui.status === "dead" && (
+      {nextChest && (
+        <ChestOpening
+          key={`${engine.id}-${chestsShown.engine === engine.id ? chestsShown.n : 0}`}
+          kind={nextChest}
+          found
+          onDone={() => {
+            // The score screen counts its restart delay from when it actually appears.
+            diedAt.current = performance.now();
+            setChestsShown((s) => ({ engine: engine.id, n: (s.engine === engine.id ? s.n : 0) + 1 }));
+          }}
+        />
+      )}
+
+      {ui.status === "dead" && !nextChest && (
         <div className="game-over" role="dialog" aria-label="Run over" onPointerDown={stop} onPointerUp={stop}>
           <ShopBackdrop />
           <div className="game-over-score">

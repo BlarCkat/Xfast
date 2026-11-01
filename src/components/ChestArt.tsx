@@ -2,25 +2,40 @@
 
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { CylinderGeometry, DoubleSide, type Group } from "three";
+import {
+  AdditiveBlending,
+  CanvasTexture,
+  CylinderGeometry,
+  DoubleSide,
+  type Group,
+  type PointLight,
+  RepeatWrapping,
+  type Sprite,
+  SRGBColorSpace,
+} from "three";
 import type { ChestKind } from "@/game/chests";
 import { BonnetArt } from "./EventArt";
 import { Ink } from "./toon";
 
-// The reward chests, in the same toon style as the power-up and coin art: a box with a rounded lid,
-// metal bands, a lock plate and an inked outline. The Basic chest is wood and iron, the Epic chest
-// violet and gold, and the Mega chest gold with red bands and gems set in the lid. The lid hinges at
-// the back and swings open to let out a glow.
+// The reward chests: a box with a rounded lid, metal bands with rivets, a lock plate and an inked
+// outline, like the rest of the illustrated art. Painted textures give each one its material (wood
+// planks with grain, quilted violet, brushed gold, festive red) with light baked in from above and
+// shadow gathering towards the base, and the metal catches highlights. The lid hinges at the back;
+// opening it bounces the chest up and lets out a soft glow with no hard edges.
 
 const W = 1;
 const H = 0.5;
 const D = 0.7;
 const R = D / 2;
-const O = 0.03;
+const O = 0.025;
+
+type Finish = "wood" | "quilt" | "gold" | "festive";
 
 interface Look {
   body: string;
-  side: string;
+  dark: string;
+  light: string;
+  finish: Finish;
   band: string;
   lock: string;
   gem?: string;
@@ -29,19 +44,205 @@ interface Look {
 }
 
 const LOOKS: Record<ChestKind, Look> = {
-  basic: { body: "#b06a2c", side: "#8a4f1e", band: "#7d8796", lock: "#d4dae3" },
-  epic: { body: "#8a4fff", side: "#6a32d8", band: "#ffb703", lock: "#ffd23f" },
-  mega: { body: "#ffc21a", side: "#e59a00", band: "#e63946", lock: "#ffffff", gem: "#2ee6c9" },
-  christmas: { body: "#d62839", side: "#a61b2b", band: "#2f9e44", lock: "#ffd23f", hat: true },
+  basic: { body: "#b46c2e", dark: "#6e3c15", light: "#e09a52", finish: "wood", band: "#8d97a8", lock: "#dfe5ee" },
+  epic: { body: "#8448f0", dark: "#4a1fa6", light: "#b48cff", finish: "quilt", band: "#ffb703", lock: "#ffd23f" },
+  mega: { body: "#ffbf1f", dark: "#c27a00", light: "#fff0a6", finish: "gold", band: "#e63946", lock: "#ffffff", gem: "#2ee6c9" },
+  christmas: { body: "#d62839", dark: "#7d0f1c", light: "#ff7383", finish: "festive", band: "#2f9e44", lock: "#ffd23f", hat: true },
 };
 
+// ---- Painted textures ---------------------------------------------------------
+
+const textures = new Map<string, CanvasTexture>();
+
+/**
+ * The body's paint, as a canvas. `across` lays the pattern along the canvas's height instead of
+ * its width, for the lid, whose texture wraps round the curve.
+ */
+function paint(look: Look, across: boolean) {
+  const key = `${look.finish}:${look.body}:${across}`;
+  const cached = textures.get(key);
+  if (cached) return cached;
+  const S = 256;
+  const c = document.createElement("canvas");
+  c.width = S;
+  c.height = S;
+  const g = c.getContext("2d")!;
+  if (across) {
+    g.translate(S, 0);
+    g.rotate(Math.PI / 2);
+  }
+  // Base coat, lit from above.
+  const base = g.createLinearGradient(0, 0, 0, S);
+  base.addColorStop(0, look.light);
+  base.addColorStop(0.35, look.body);
+  base.addColorStop(1, look.dark);
+  g.fillStyle = base;
+  g.fillRect(0, 0, S, S);
+  let seed = 7;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+
+  if (look.finish === "wood") {
+    // Four planks, each rounded by its own light-to-dark band, with grain and a dark seam.
+    const planks = 4;
+    for (let i = 0; i < planks; i++) {
+      const y = (i * S) / planks;
+      const h = S / planks;
+      const band = g.createLinearGradient(0, y, 0, y + h);
+      band.addColorStop(0, "rgba(255,220,170,0.35)");
+      band.addColorStop(0.5, "rgba(255,255,255,0)");
+      band.addColorStop(1, "rgba(40,15,0,0.35)");
+      g.fillStyle = band;
+      g.fillRect(0, y, S, h);
+      g.strokeStyle = "rgba(70,30,5,0.35)";
+      g.lineWidth = 1.5;
+      for (let k = 0; k < 5; k++) {
+        const gy = y + 6 + rand() * (h - 12);
+        const amp = 1 + rand() * 3;
+        const freq = 0.02 + rand() * 0.03;
+        g.beginPath();
+        for (let x = 0; x <= S; x += 4) g.lineTo(x, gy + Math.sin(x * freq + k) * amp);
+        g.stroke();
+      }
+      // A knot here and there.
+      if (rand() < 0.6) {
+        g.fillStyle = "rgba(60,25,5,0.45)";
+        g.beginPath();
+        g.ellipse(30 + rand() * (S - 60), y + h / 2, 7, 3.5, 0, 0, Math.PI * 2);
+        g.fill();
+      }
+      g.fillStyle = "rgba(35,12,0,0.85)";
+      g.fillRect(0, y + h - 3, S, 3);
+    }
+  } else if (look.finish === "quilt") {
+    // Diamond quilting: light upper-left edges, dark lower-right, and a shine in each cell.
+    const n = 6;
+    const step = S / n;
+    for (let i = -1; i <= n; i++)
+      for (let j = -1; j <= n; j++) {
+        const cx = i * step + (j % 2 ? step / 2 : 0);
+        const cy = j * step * 0.6;
+        const cell = g.createRadialGradient(cx - step * 0.15, cy - step * 0.15, 1, cx, cy, step * 0.6);
+        cell.addColorStop(0, "rgba(255,255,255,0.28)");
+        cell.addColorStop(1, "rgba(255,255,255,0)");
+        g.fillStyle = cell;
+        g.fillRect(cx - step, cy - step, step * 2, step * 2);
+      }
+    g.lineWidth = 2;
+    for (let k = -S; k < S * 2; k += step) {
+      g.strokeStyle = "rgba(30,0,80,0.45)";
+      g.beginPath();
+      g.moveTo(k, 0);
+      g.lineTo(k + S, S);
+      g.stroke();
+      g.strokeStyle = "rgba(220,200,255,0.25)";
+      g.beginPath();
+      g.moveTo(k + 2, 0);
+      g.lineTo(k - S + 2, S);
+      g.stroke();
+    }
+  } else if (look.finish === "gold") {
+    // Brushed gold with a raised scroll of dots and a bright sheen.
+    for (let y = 0; y < S; y += 2) {
+      g.fillStyle = `rgba(${rand() < 0.5 ? "255,255,220" : "120,70,0"},${0.04 + rand() * 0.06})`;
+      g.fillRect(0, y, S, 1);
+    }
+    const sheen = g.createLinearGradient(0, 0, S, S);
+    sheen.addColorStop(0.3, "rgba(255,255,255,0)");
+    sheen.addColorStop(0.45, "rgba(255,255,230,0.45)");
+    sheen.addColorStop(0.6, "rgba(255,255,255,0)");
+    g.fillStyle = sheen;
+    g.fillRect(0, 0, S, S);
+    for (let x = 16; x < S; x += 32)
+      for (let y = 20; y < S; y += 40) {
+        g.fillStyle = "rgba(140,80,0,0.45)";
+        g.beginPath();
+        g.arc(x + 1.5, y + 1.5, 4, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = "rgba(255,250,200,0.8)";
+        g.beginPath();
+        g.arc(x, y, 3.5, 0, Math.PI * 2);
+        g.fill();
+      }
+  } else {
+    // Festive: soft candy stripes and little snowflake dots.
+    g.fillStyle = "rgba(255,255,255,0.08)";
+    for (let k = -S; k < S * 2; k += 40) {
+      g.beginPath();
+      g.moveTo(k, 0);
+      g.lineTo(k + 18, 0);
+      g.lineTo(k + 18 - S, S);
+      g.lineTo(k - S, S);
+      g.fill();
+    }
+    g.fillStyle = "rgba(255,255,255,0.55)";
+    for (let k = 0; k < 22; k++) {
+      g.beginPath();
+      g.arc(rand() * S, rand() * S, 2 + rand() * 2, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+  // Shadow gathering towards the base, and a soft vignette so edges read as rounded.
+  const ao = g.createLinearGradient(0, S * 0.55, 0, S);
+  ao.addColorStop(0, "rgba(0,0,0,0)");
+  ao.addColorStop(1, "rgba(20,5,30,0.35)");
+  g.fillStyle = ao;
+  g.fillRect(0, 0, S, S);
+  const edge = g.createRadialGradient(S / 2, S / 2, S * 0.3, S / 2, S / 2, S * 0.75);
+  edge.addColorStop(0, "rgba(0,0,0,0)");
+  edge.addColorStop(1, "rgba(10,0,20,0.28)");
+  g.fillStyle = edge;
+  g.fillRect(0, 0, S, S);
+
+  const t = new CanvasTexture(c);
+  t.colorSpace = SRGBColorSpace;
+  t.wrapS = t.wrapT = RepeatWrapping;
+  t.anisotropy = 4;
+  textures.set(key, t);
+  return t;
+}
+
+/** A round blob of light fading to nothing at its rim, so glows never show an edge. */
+let glowTexture: CanvasTexture | null = null;
+function glow() {
+  if (glowTexture) return glowTexture;
+  const S = 128;
+  const c = document.createElement("canvas");
+  c.width = c.height = S;
+  const g = c.getContext("2d")!;
+  const r = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  r.addColorStop(0, "rgba(255,246,200,1)");
+  r.addColorStop(0.25, "rgba(255,220,120,0.6)");
+  r.addColorStop(0.6, "rgba(255,190,80,0.15)");
+  r.addColorStop(1, "rgba(255,180,60,0)");
+  g.fillStyle = r;
+  g.fillRect(0, 0, S, S);
+  glowTexture = new CanvasTexture(c);
+  glowTexture.colorSpace = SRGBColorSpace;
+  return glowTexture;
+}
+
+// ---- Parts ----------------------------------------------------------------------
+
+/** A metal part: bright, slightly shiny, picking up highlights. */
+const Metal = ({ color }: { color: string }) => <meshStandardMaterial color={color} metalness={0.35} roughness={0.32} />;
+
 /** A box with its inked outline. */
-function InkBox({ size, position, color, outline = O }: { size: [number, number, number]; position?: [number, number, number]; color: string; outline?: number }) {
+function InkBox({
+  size,
+  position,
+  children,
+  outline = O,
+}: {
+  size: [number, number, number];
+  position?: [number, number, number];
+  children: React.ReactNode;
+  outline?: number;
+}) {
   return (
     <group position={position}>
       <mesh>
         <boxGeometry args={size} />
-        <meshToonMaterial color={color} />
+        {children}
       </mesh>
       {outline > 0 && (
         <mesh>
@@ -53,20 +254,35 @@ function InkBox({ size, position, color, outline = O }: { size: [number, number,
   );
 }
 
+/** Round rivet heads along a band. */
+function Rivets({ points, color }: { points: [number, number, number][]; color: string }) {
+  return (
+    <>
+      {points.map((p, i) => (
+        <mesh key={i} position={p}>
+          <sphereGeometry args={[0.022, 10, 8]} />
+          <Metal color={color} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
 /** Half a cylinder lying along x, flat side down: the rounded lid and the bands round it. */
 function halfDrum(r: number, length: number) {
-  return new CylinderGeometry(r, r, length, 28, 1, false, 0, Math.PI).rotateZ(Math.PI / 2);
+  return new CylinderGeometry(r, r, length, 32, 1, false, 0, Math.PI).rotateZ(Math.PI / 2);
 }
 
 function Lid({ look }: { look: Look }) {
   const [shell, hull, band, bandHull] = useMemo(
-    () => [halfDrum(R, W), halfDrum(R + O, W + 2 * O), halfDrum(R + 0.02, 0.1), halfDrum(R + 0.02 + O, 0.1 + 2 * O)],
+    () => [halfDrum(R, W), halfDrum(R + O, W + 2 * O), halfDrum(R + 0.022, 0.1), halfDrum(R + 0.022 + O, 0.1 + 2 * O)],
     [],
   );
+  const map = useMemo(() => paint(look, true), [look]);
   return (
     <group>
       <mesh geometry={shell}>
-        <meshToonMaterial color={look.body} side={DoubleSide} />
+        <meshStandardMaterial map={map} roughness={look.finish === "gold" ? 0.35 : 0.7} metalness={look.finish === "gold" ? 0.3 : 0} side={DoubleSide} />
       </mesh>
       <mesh geometry={hull}>
         <Ink />
@@ -74,15 +290,21 @@ function Lid({ look }: { look: Look }) {
       {[-1, 1].map((s) => (
         <group key={s} position={[s * (W / 2 - 0.12), 0, 0]}>
           <mesh geometry={band}>
-            <meshToonMaterial color={look.band} />
+            <Metal color={look.band} />
           </mesh>
           <mesh geometry={bandHull}>
             <Ink />
           </mesh>
+          <Rivets
+            color={look.lock}
+            points={[0.35, 0.8, 1.25].map((a) => [0, Math.sin(a) * (R + 0.03), Math.cos(a) * (R + 0.03)])}
+          />
         </group>
       ))}
       {/* The lid's front edge, where the lock hangs down from. */}
-      <InkBox size={[W + 0.02, 0.06, 0.04]} position={[0, 0.03, R - 0.01]} color={look.band} outline={0} />
+      <InkBox size={[W + 0.02, 0.06, 0.04]} position={[0, 0.03, R - 0.01]} outline={0}>
+        <Metal color={look.band} />
+      </InkBox>
       {look.hat && (
         <group position={[0.12, R - 0.02, -0.04]} rotation={[0, -0.4, -0.15]} scale={0.6}>
           <BonnetArt />
@@ -104,7 +326,7 @@ function Gem({ color, position, size, tilt = 0 }: { color: string; position: [nu
     <group position={position} rotation={[tilt, Math.PI / 4, 0]}>
       <mesh>
         <octahedronGeometry args={[size]} />
-        <meshLambertMaterial color={color} flatShading />
+        <meshStandardMaterial color={color} flatShading roughness={0.15} metalness={0.1} emissive={color} emissiveIntensity={0.25} />
       </mesh>
       <mesh scale={1.3}>
         <octahedronGeometry args={[size]} />
@@ -114,49 +336,90 @@ function Gem({ color, position, size, tilt = 0 }: { color: string; position: [nu
   );
 }
 
+/** How long the jump takes when the lid flies open, in seconds. */
+const BOUNCE = 0.55;
+
 /**
- * A reward chest standing on its base. `open` swings the lid back and lights the inside; `shaking`
- * rattles it like something wants out.
+ * A reward chest standing on its base. `shaking` rattles it like something wants out; `open` makes
+ * it hop up, throw back its lid and glow.
  */
 export function ChestArt({ kind, open = false, shaking = false }: { kind: ChestKind; open?: boolean; shaking?: boolean }) {
   const look = LOOKS[kind];
+  const map = useMemo(() => paint(look, false), [look]);
   const lid = useRef<Group>(null);
   const body = useRef<Group>(null);
-  const glow = useRef<Group>(null);
+  const inner = useRef<Group>(null);
+  const halo = useRef<Sprite>(null);
+  const lamp = useRef<PointLight>(null);
+  /** Clock time the chest was opened, for the hop. */
+  const openedAt = useRef<number | null>(null);
+  const shine = useRef(0);
   useFrame(({ clock }, dt) => {
-    if (lid.current) {
-      const want = open ? -1.9 : 0;
-      const r = lid.current.rotation;
-      // Spring the lid open fast, settle it shut gently.
-      r.x += (want - r.x) * Math.min(1, dt * (open ? 9 : 5));
-    }
+    const t = clock.elapsedTime;
+    if (open && openedAt.current === null) openedAt.current = t;
+    if (!open) openedAt.current = null;
+    const since = openedAt.current === null ? Infinity : t - openedAt.current;
     if (body.current) {
-      const t = clock.elapsedTime;
-      body.current.rotation.z = shaking ? Math.sin(t * 38) * 0.08 : 0;
-      body.current.position.y = shaking ? Math.abs(Math.sin(t * 19)) * 0.05 : 0;
+      const b = body.current;
+      if (shaking) {
+        // Rattles harder as it goes on.
+        b.rotation.z = Math.sin(t * 40) * 0.09;
+        b.position.y = Math.abs(Math.sin(t * 20)) * 0.05;
+        b.scale.set(1, 1, 1);
+      } else if (since < BOUNCE) {
+        // Squash, then leap up and land with a little stretch.
+        const p = since / BOUNCE;
+        b.rotation.z = 0;
+        b.position.y = Math.sin(p * Math.PI) * 0.45;
+        const squash = p < 0.15 ? 1 - Math.sin((p / 0.15) * Math.PI) * 0.18 : 1 + Math.sin(p * Math.PI) * 0.08;
+        b.scale.set(2 - squash, squash, 2 - squash);
+      } else {
+        b.rotation.z = 0;
+        b.position.y += (0 - b.position.y) * Math.min(1, dt * 12);
+        b.scale.set(1, 1, 1);
+      }
     }
-    if (glow.current) {
-      const s = glow.current.scale.x + ((open ? 1 : 0) - glow.current.scale.x) * Math.min(1, dt * 6);
-      glow.current.scale.set(s, s, s);
-      glow.current.visible = s > 0.02;
+    if (lid.current) {
+      // The lid bursts open at the top of the hop and settles shut gently.
+      const want = open && since > BOUNCE * 0.3 ? -1.95 : 0;
+      const r = lid.current.rotation;
+      r.x += (want - r.x) * Math.min(1, dt * (open ? 10 : 5));
     }
+    shine.current += ((open && since > BOUNCE * 0.3 ? 1 : 0) - shine.current) * Math.min(1, dt * 4);
+    const s = shine.current;
+    if (inner.current) inner.current.visible = s > 0.02;
+    if (halo.current) {
+      halo.current.visible = s > 0.02;
+      const pulse = 1 + Math.sin(t * 2.2) * 0.05;
+      halo.current.scale.setScalar(1.5 * s * pulse);
+      halo.current.material.opacity = 0.9 * s;
+    }
+    if (lamp.current) lamp.current.intensity = 2.2 * s;
   });
+  const wood = look.finish === "wood";
   return (
     <group ref={body}>
       <group position={[0, -H / 2, 0]}>
-        <InkBox size={[W, H, D]} position={[0, H / 2, 0]} color={look.body} />
-        {/* Planks or panels across the front and back. */}
+        <InkBox size={[W, H, D]} position={[0, H / 2, 0]}>
+          <meshStandardMaterial map={map} roughness={wood ? 0.8 : look.finish === "gold" ? 0.35 : 0.6} metalness={look.finish === "gold" ? 0.3 : 0} />
+        </InkBox>
+        {/* Metal bands round the ends with rivets down the front, and a rim along the bottom. */}
         {[-1, 1].map((s) => (
-          <InkBox key={`p${s}`} size={[W - 0.3, 0.035, D + 0.01]} position={[0, H * (s > 0 ? 0.68 : 0.32), 0]} color={look.side} outline={0} />
+          <group key={`b${s}`}>
+            <InkBox size={[0.1, H + 0.02, D + 0.04]} position={[s * (W / 2 - 0.12), H / 2, 0]} outline={0.02}>
+              <Metal color={look.band} />
+            </InkBox>
+            <Rivets color={look.lock} points={[0.12, 0.26, 0.4].map((y) => [s * (W / 2 - 0.12), y, D / 2 + 0.025])} />
+          </group>
         ))}
-        {/* Metal bands round the ends, and a rim along the bottom. */}
-        {[-1, 1].map((s) => (
-          <InkBox key={`b${s}`} size={[0.1, H + 0.02, D + 0.04]} position={[s * (W / 2 - 0.12), H / 2, 0]} color={look.band} outline={0.02} />
-        ))}
-        <InkBox size={[W + 0.04, 0.08, D + 0.04]} position={[0, 0.04, 0]} color={look.band} outline={0.02} />
+        <InkBox size={[W + 0.04, 0.08, D + 0.04]} position={[0, 0.04, 0]} outline={0.02}>
+          <Metal color={look.band} />
+        </InkBox>
         {/* The lock plate and its keyhole. */}
         <group position={[0, H - 0.08, D / 2 + 0.03]}>
-          <InkBox size={[0.2, 0.22, 0.05]} color={look.lock} outline={0.025} />
+          <InkBox size={[0.2, 0.22, 0.05]} outline={0.022}>
+            <Metal color={look.lock} />
+          </InkBox>
           <mesh position={[0, 0.02, 0.03]}>
             <cylinderGeometry args={[0.03, 0.03, 0.02, 12]} />
             <meshBasicMaterial color="#14101f" />
@@ -166,17 +429,17 @@ export function ChestArt({ kind, open = false, shaking = false }: { kind: ChestK
             <meshBasicMaterial color="#14101f" />
           </mesh>
         </group>
-        {/* The light inside, seen once the lid lifts. */}
-        <group ref={glow} position={[0, H, 0]} scale={0} visible={false}>
-          <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[W - 0.08, D - 0.08]} />
-            <meshBasicMaterial color="#fff3b0" toneMapped={false} />
+        {/* Inside: a warm lit floor, a lamp lighting the lid and a soft halo with no edge to it. */}
+        <group ref={inner} visible={false}>
+          <mesh position={[0, H + 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[W - 0.06, D - 0.06]} />
+            <meshBasicMaterial map={glow()} color="#ffe9a8" transparent toneMapped={false} />
           </mesh>
-          <mesh position={[0, 0.22, 0]}>
-            <cylinderGeometry args={[0.4, 0.32, 0.44, 24, 1, true]} />
-            <meshBasicMaterial color="#ffe27a" transparent opacity={0.22} depthWrite={false} side={DoubleSide} toneMapped={false} />
-          </mesh>
+          <pointLight ref={lamp} position={[0, H + 0.25, 0]} color="#ffd36b" intensity={0} distance={2.5} decay={1.5} />
         </group>
+        <sprite ref={halo} position={[0, H + 0.3, 0]} visible={false}>
+          <spriteMaterial map={glow()} blending={AdditiveBlending} transparent depthWrite={false} toneMapped={false} opacity={0} />
+        </sprite>
         {/* The lid hinges along the back edge. */}
         <group ref={lid} position={[0, H, -R]}>
           <group position={[0, 0, R]}>
@@ -185,5 +448,17 @@ export function ChestArt({ kind, open = false, shaking = false }: { kind: ChestK
         </group>
       </group>
     </group>
+  );
+}
+
+/** Lights for a chest shown on its own: a warm key, a cool rim from behind and a soft fill. */
+export function ChestLights() {
+  return (
+    <>
+      <hemisphereLight args={["#fff6e8", "#5a3fb0", 1.1]} />
+      <directionalLight position={[-2, 4, 3]} intensity={2.2} color="#fff1d6" />
+      <directionalLight position={[2.5, 2, -3]} intensity={1.6} color="#9fd8ff" />
+      <ambientLight intensity={0.25} />
+    </>
   );
 }
