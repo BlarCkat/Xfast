@@ -57,6 +57,9 @@ body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  /* No double-tap or pinch zoom; iOS Safari ignores userScalable: false. */
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
 }
 
 button {
