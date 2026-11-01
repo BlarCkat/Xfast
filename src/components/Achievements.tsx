@@ -79,10 +79,19 @@ export default function Achievements({ onClose }: { onClose: () => void }) {
           </svg>
         </button>
         <h2 className="options-title">ACHIEVEMENTS</h2>
-        <span className="shop-pill goals-pill" aria-label={`${s.stars} stars, ${s.badges.length} badges`}>
-          <GoalArt size={22} /> {s.stars}
-          <GoalArt goal={GOALS.find((g) => g.kind === "badge")} size={22} /> {s.badges.length}
-        </span>
+        {/* Same pills as the store's coins and gems: the count, then the icon in a round badge. */}
+        <div className="shop-pill" aria-label={`${s.stars} stars`}>
+          <span>{s.stars}</span>
+          <span className="shop-pill-coin">
+            <GoalArt size={26} />
+          </span>
+        </div>
+        <div className="shop-pill" aria-label={`${s.badges.length} badges`}>
+          <span>{s.badges.length}</span>
+          <span className="shop-pill-coin">
+            <GoalArt goal={GOALS.find((g) => g.kind === "badge")} size={26} />
+          </span>
+        </div>
       </header>
       <GoalList />
     </div>
