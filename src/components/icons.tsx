@@ -55,7 +55,7 @@ const PATHS: Record<IconId, React.ReactNode> = {
     />
   ),
   luigi: <path fillRule="evenodd" d="M12 3a9 9 0 0 1 9 9v2h2v3H1v-3h2v-2a9 9 0 0 1 9-9Zm-2 4v6h5v-2h-3V7Z" />,
-  // A person, a leopard's spotted head and an owl with ear tufts.
+  // A person, a leopard's spotted head, an owl with ear tufts and a tiger's striped head.
   human: <path d="M12 1a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm-4 9h8a3 3 0 0 1 3 3v5h-3v5h-3v-5h-2v5H8v-5H5v-5a3 3 0 0 1 3-3Z" />,
   leopard: (
     <path
@@ -67,6 +67,12 @@ const PATHS: Record<IconId, React.ReactNode> = {
     <path
       fillRule="evenodd"
       d="M4 1l4 4h8l4-4v12a8 8 0 0 1-3 6.2V22H7v-2.8A8 8 0 0 1 4 13ZM8.5 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Zm7 0a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM12 12l-1.5 2L12 16l1.5-2Z"
+    />
+  ),
+  tiger: (
+    <path
+      fillRule="evenodd"
+      d="M3 2l5 4h8l5-4 1 9a10 10 0 0 1-20 0Zm8 4.5v3h2v-3ZM5.5 11v1.5h3V11Zm10 0v1.5h3V11ZM8 9v2h2V9Zm6 0v2h2V9Zm-2 6-2 1 2 2 2-2Z"
     />
   ),
   // A spiked shell.

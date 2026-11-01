@@ -519,6 +519,12 @@ export class Engine {
       this.syncEffects(true);
       this.setUi({ toast: { text: leapTrait === "warp" ? "POUNCE!" : PICKUP_LABEL[leapTrait], id: ++this.toastId } });
     }
+    // The tiger roars every so many hops and puts up a shield.
+    if (this.character === "tiger" && steps % this.traits.tigerRoarHops === 0) {
+      this.apply("shield");
+      this.syncEffects(true);
+      this.setUi({ toast: { text: "ROAR!", id: ++this.toastId } });
+    }
     const tier = Math.floor(steps / STEPS_PER_SPEEDUP);
     const scale = Math.min(MAX_SPEED_SCALE, 1 + tier * SPEEDUP_STEP);
     if (scale > this.speedScale) {

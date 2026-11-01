@@ -1,7 +1,7 @@
 import { CHARACTER_TIERS, CHARACTER_TIER_COST } from "./characters";
 import { MAX_UPGRADES, POWERUPS, nextUpgrade, noEffects, type PowerUp } from "./powerups";
 
-export type CharacterId = "chicken" | "duck" | "frog" | "cat" | "penguin" | "robot" | "sparrow" | "snail" | "mario" | "luigi" | "bowser" | "human" | "leopard" | "owl";
+export type CharacterId = "chicken" | "duck" | "frog" | "cat" | "penguin" | "robot" | "sparrow" | "snail" | "mario" | "luigi" | "bowser" | "human" | "leopard" | "owl" | "tiger";
 export type StoreItemId = PowerUp | "life";
 
 export interface Character {
@@ -42,6 +42,7 @@ export const CHARACTERS: Character[] = [
   { id: "human", name: "Human", price: 550, trait: "Picks up every coin twice: coins are always doubled." },
   { id: "leopard", name: "Leopard", price: 600, trait: "Pounces every 50 hops, leaping ahead to safe grass like a Warp." },
   { id: "owl", name: "Owl", price: 650, trait: "Takes flight every 50 hops: Wings carry it over rivers for a moment." },
+  { id: "tiger", name: "Tiger", price: 700, trait: "Roars every 60 hops, putting up a shield that soaks up the next hit." },
 ];
 
 export interface StoreItem {
