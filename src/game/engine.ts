@@ -51,6 +51,8 @@ const PICKUP_LABEL = {
   ...Object.fromEntries(POWERUPS.map((p) => [p.key, p.label])),
 } as Record<PickupKind, string>;
 
+/** How long a water splash lasts, in seconds. */
+export const SPLASH_TIME = 1;
 const SUPER_HOP_TIME = 1.6;
 
 const FACING: Record<Direction, number> = {
@@ -154,6 +156,9 @@ export class Engine {
   /** Coins the magnet has pulled off their lanes, flying to the player; banked when they arrive. */
   pulled: { id: number; x: number; row: number; t: number }[] = [];
   private pullId = 0;
+  /** Splashes where the player fell into water (or lava), from 0 to 1 over SPLASH_TIME seconds. */
+  splashes: { id: number; x: number; row: number; t: number; lava: boolean }[] = [];
+  private splashId = 0;
   /** Exact seconds left on each power-up. */
   effects: Effects = noEffects();
   private toastId = 0;
@@ -380,9 +385,17 @@ export class Engine {
     // The duck dives under water, but lava is lava.
     if (this.character === "duck" && lane.biome !== "volcano") {
       sound.splash();
+      this.addSplash();
       this.dive();
     } else this.die("water");
     return true;
+  }
+
+  /** Throw up a splash of water (or lava) where the player is. */
+  private addSplash() {
+    const p = this.player;
+    const lava = this.lanes.get(p.row)?.biome === "volcano";
+    this.splashes.push({ id: ++this.splashId, x: p.x, row: p.row, t: 0, lava });
   }
 
   /** Replace the world ahead with the seabed, from the river the duck fell into. */
@@ -706,6 +719,7 @@ export class Engine {
     else if (kind === "water") {
       if (this.lanes.get(p.row)?.biome === "volcano") sound.sizzle();
       else sound.splash();
+      this.addSplash();
     }
     p.queued = null;
     p.ride = null;
@@ -845,6 +859,9 @@ export class Engine {
         if (lane && lane.coin !== null && Math.abs(lane.coin - p.x) <= reach + 0.5 && Math.abs(r - p.row) <= reach) this.pullCoin(lane);
       }
     }
+
+    for (const s of this.splashes) s.t += dt / SPLASH_TIME;
+    if (this.splashes.some((s) => s.t >= 1)) this.splashes = this.splashes.filter((s) => s.t < 1);
 
     for (const c of this.pulled) c.t += dt / MAGNET_PULL_TIME;
     if (this.pulled.some((c) => c.t >= 1)) {

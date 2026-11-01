@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import type { DirectionalLight, Group, Material, Mesh, OrthographicCamera } from "three";
+import { Color } from "three";
+import type { DirectionalLight, Group, Material, Mesh, MeshBasicMaterial, OrthographicCamera } from "three";
 import { COLS, HOP_HEIGHT, ROWS_AHEAD, ROWS_BEHIND } from "@/game/config";
-import type { Engine } from "@/game/engine";
+import { SPLASH_TIME, type Engine } from "@/game/engine";
 import { CoinArt } from "./CurrencyArt";
 import { Effects } from "./Effects";
 import { LaneView } from "./Lanes";
@@ -25,6 +26,12 @@ import {
 // Camera sits behind, above and slightly to the right of the action, like the original.
 const CAMERA_OFFSET: [number, number, number] = [3.2, 11, 7.5];
 const EAGLE_REACH = 0.7;
+/** The river's surface, where splashes start. */
+const WATER_TOP = -0.28;
+/** How deep a drowning character sinks: deep enough that even the tallest head goes under. */
+const SINK_DEPTH = 2.2;
+/** Below this the character is fully under water and hidden, so nothing pokes through the surface. */
+const SUBMERGED = -1.8;
 
 function Player({ engine }: { engine: Engine }) {
   const root = useRef<Group>(null);
@@ -68,7 +75,7 @@ function Player({ engine }: { engine: Engine }) {
         sz = 1.3;
         y = 0;
       } else if (death.kind === "water") {
-        y = -Math.min(1.2, death.t * 1.6);
+        y = -Math.min(SINK_DEPTH, death.t * 2.4);
       } else if (death.kind === "eagle" && engine.eagle && engine.eagle.t > EAGLE_REACH) {
         const e = eaglePosition(engine);
         z = e.z;
@@ -98,6 +105,8 @@ function Player({ engine }: { engine: Engine }) {
       chicken.current.visible = !showRock;
       g.visible = true;
     }
+    // Fully under water: hide the character so no head or ears poke out of the surface.
+    if (death?.kind === "water" && y < SUBMERGED) g.visible = false;
 
     g.position.set(x, y, z);
     // Tiny shrinks the model; ghost fades it.
@@ -277,6 +286,94 @@ function useQuality() {
   return tier;
 }
 
+/** Enough slots for every splash that can be in the air at once. */
+const SPLASH_SLOTS = 2;
+const DROPS = 14;
+const WATER_SPRAY = [new Color("#ffffff"), new Color("#bfeaff")];
+const LAVA_SPRAY = [new Color("#ffd166").multiplyScalar(2), new Color("#ff6a1a").multiplyScalar(2)];
+
+// Each drop's outward angle, speed, launch speed and size, fixed so every splash looks the same.
+const DROP_PATHS = Array.from({ length: DROPS }, (_, i) => {
+  const inner = i % 2 === 1;
+  return {
+    angle: (i / DROPS) * Math.PI * 2 + (inner ? 0.2 : 0),
+    out: inner ? 0.9 : 1.6,
+    up: inner ? 5.6 : 4.2,
+    size: inner ? 0.14 : 0.19,
+  };
+});
+
+/**
+ * A splash where the player fell in: a ring of blocky drops thrown up and out that fall back
+ * into the river, a column of spray and a ripple that spreads and fades on the surface.
+ */
+function Splashes({ engine }: { engine: Engine }) {
+  const slots = useRef<(Group | null)[]>([]);
+  const drops = useRef<(Mesh | null)[][]>([]);
+  const columns = useRef<(Mesh | null)[]>([]);
+  const ripples = useRef<(Mesh | null)[]>([]);
+  useFrame(() => {
+    const recent = engine.splashes.slice(-SPLASH_SLOTS);
+    slots.current.forEach((g, i) => {
+      if (!g) return;
+      const s = recent[i];
+      g.visible = !!s;
+      if (!s) return;
+      g.position.set(s.x, WATER_TOP, -s.row);
+      const time = s.t * SPLASH_TIME;
+      const spray = s.lava ? LAVA_SPRAY : WATER_SPRAY;
+      drops.current[i]?.forEach((m, j) => {
+        if (!m) return;
+        const d = DROP_PATHS[j];
+        const y = d.up * time - 9 * time * time;
+        m.visible = y > -0.05;
+        const r = d.out * time * 1.1;
+        m.position.set(Math.cos(d.angle) * r, Math.max(0, y), Math.sin(d.angle) * r);
+        m.scale.setScalar(d.size * (1 - s.t * 0.5));
+        (m.material as MeshBasicMaterial).color.copy(spray[j % 2]);
+      });
+      const col = columns.current[i];
+      if (col) {
+        // Shoots up fast, then slumps back down into the water.
+        const h = Math.sin(Math.min(1, s.t * 1.8) * Math.PI) * 1.3;
+        col.visible = h > 0.02;
+        col.scale.set(0.45 + s.t * 0.3, h + 0.001, 0.45 + s.t * 0.3);
+        col.position.y = h / 2;
+        (col.material as MeshBasicMaterial).color.copy(spray[0]);
+      }
+      const rip = ripples.current[i];
+      if (rip) {
+        rip.scale.setScalar(0.3 + s.t * 1.4);
+        const m = rip.material as MeshBasicMaterial;
+        m.opacity = 0.85 * (1 - s.t);
+        m.color.copy(spray[1]);
+      }
+    });
+  });
+  return (
+    <>
+      {Array.from({ length: SPLASH_SLOTS }, (_, i) => (
+        <group key={i} ref={(g) => void (slots.current[i] = g)} visible={false}>
+          {DROP_PATHS.map((_, j) => (
+            <mesh key={j} ref={(m) => void ((drops.current[i] ??= [])[j] = m)}>
+              <boxGeometry args={[1, 1, 1]} />
+              <meshBasicMaterial toneMapped={false} />
+            </mesh>
+          ))}
+          <mesh ref={(m) => void (columns.current[i] = m)}>
+            <cylinderGeometry args={[0.5, 0.7, 1, 10, 1, true]} />
+            <meshBasicMaterial transparent opacity={0.8} toneMapped={false} />
+          </mesh>
+          <mesh ref={(m) => void (ripples.current[i] = m)} position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.55, 0.75, 24]} />
+            <meshBasicMaterial transparent depthWrite={false} toneMapped={false} />
+          </mesh>
+        </group>
+      ))}
+    </>
+  );
+}
+
 /** Enough slots for every coin a magnet can pull at once (one per lane within its reach). */
 const PULL_SLOTS = 8;
 
@@ -336,6 +433,7 @@ export function Scene({ engine, fx }: { engine: Engine; fx: boolean }) {
       <Player engine={engine} />
       <EagleView engine={engine} />
       <PulledCoins engine={engine} />
+      <Splashes engine={engine} />
       {fx && tier > 0 && <Effects full={tier === 2} />}
     </>
   );
