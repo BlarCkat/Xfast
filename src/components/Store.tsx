@@ -401,7 +401,7 @@ export default function Store({ onClose, initialTab = "characters" }: { onClose:
               ) : isChar && CHARACTER_ART[c.id as CharacterId] ? (
                 <img className="shop-tile-art" src={CHARACTER_ART[c.id as CharacterId]} alt="" draggable={false} />
               ) : (
-                <Icon id={c.id as StoreItemId | CharacterId} size={34} />
+                <Icon id={c.id as StoreItemId | CharacterId} size={68} />
               )}
               {count > 0 && <span className="shop-tile-badge">{count}</span>}
               <span className="shop-tile-price">{pack ? `×${pack.amount}` : mine ? (equipped ? "ON" : "OWNED") : c.price}</span>
