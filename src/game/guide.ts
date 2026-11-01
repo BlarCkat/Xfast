@@ -15,7 +15,7 @@ export interface GuidePage {
 }
 
 /** Moments the chicken has something to say about. Power-ups and hearts use their own names. */
-export type HintId = "start" | "side" | "road" | "river" | "rail" | "eagle" | "coin" | "duck-saved" | "inventory" | PickupKind;
+export type HintId = "start" | "characters" | "side" | "road" | "river" | "rail" | "eagle" | "coin" | "duck-saved" | "inventory" | PickupKind;
 
 const KEY = "xfast-guide";
 const BEST_KEY = "xfast-best";
@@ -87,6 +87,11 @@ function tipPages(id: HintId, touch: boolean): GuidePage[] {
       return [
         { text: "Hi! I'm Chicken. I'll help you play!" },
         { text: touch ? "Tap the screen to hop forward. Hop, hop, hop!" : "Press the up arrow to hop forward. Hop, hop, hop!" },
+      ];
+    case "characters":
+      return [
+        { text: "These are your friends. Every friend has their own super power!" },
+        { text: "My super power? Power-ups last longer when I have them!", art: { icon: "slowmo" } },
       ];
     case "side":
       return [{ text: touch ? "A tree is in the way! Swipe left or right to hop around it." : "A tree is in the way! Press left or right to hop around it." }];
@@ -178,14 +183,6 @@ export function tip(id: HintId, touch = isTouch()): GuidePage[] | null {
   return get().seen.includes(id) ? null : tipPages(id, touch);
 }
 
-/** A tip for picking something up; the chicken adds its own power the first time it grabs a power-up. */
-export function pickupTip(kind: PickupKind, character: CharacterId): { pages: GuidePage[]; character: CharacterId | null } | null {
-  const pages = tip(kind) ?? [];
-  const chicken = character === "chicken" && kind !== "life" && !get().met.includes("chicken");
-  if (chicken) pages.push(...meetPages("chicken", 1));
-  return pages.length ? { pages, character: chicken ? "chicken" : null } : null;
-}
-
 /** What to say before a run starts: hello for a new player, and the character if they're new. */
 export function beforeRun(id: CharacterId, tier: number, hasPowerups: boolean): { pages: GuidePage[]; tips: HintId[]; character: CharacterId | null } | null {
   const s = get();
@@ -199,7 +196,7 @@ export function beforeRun(id: CharacterId, tier: number, hasPowerups: boolean): 
     }
   };
   add("start");
-  // The chicken's own power is told the first time it picks up a power-up (see powerupTip).
+  // The chicken explains its own power in the Characters screen (the "characters" tip), not here.
   const meet = id !== "chicken" && !s.met.includes(id);
   if (meet) pages.push(...meetPages(id, tier));
   if (hasPowerups) add("inventory");
