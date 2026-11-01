@@ -47,7 +47,7 @@ const CHARACTER_BLURB: Record<CharacterId, string> = {
   robot: "Hop module v2. Runs on coins and optimism.",
   mario: "Has crossed worse. Mostly pipes, lava and the occasional castle.",
   luigi: "Jumps a little higher, worries a lot more.",
-  bowser: "King of the Koopas. Does not wait for the green man.",
+  bowser: "King of the castle. Does not wait for the green man.",
   human: "Finally, someone who knows what the green man means. Still ignores him.",
   leopard: "Spots an opening, then a few more. Never changes them.",
   owl: "Wise enough to look both ways. Can turn its head far enough to do it at once.",
