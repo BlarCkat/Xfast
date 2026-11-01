@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CylinderGeometry, DoubleSide, type Group } from "three";
 import type { ChestKind } from "@/game/chests";
+import { BonnetArt } from "./EventArt";
 import { Ink } from "./toon";
 
 // The reward chests, in the same toon style as the power-up and coin art: a box with a rounded lid,
@@ -23,12 +24,15 @@ interface Look {
   band: string;
   lock: string;
   gem?: string;
+  /** A Santa bonnet perched on the lid. */
+  hat?: boolean;
 }
 
 const LOOKS: Record<ChestKind, Look> = {
   basic: { body: "#b06a2c", side: "#8a4f1e", band: "#7d8796", lock: "#d4dae3" },
   epic: { body: "#8a4fff", side: "#6a32d8", band: "#ffb703", lock: "#ffd23f" },
   mega: { body: "#ffc21a", side: "#e59a00", band: "#e63946", lock: "#ffffff", gem: "#2ee6c9" },
+  christmas: { body: "#d62839", side: "#a61b2b", band: "#2f9e44", lock: "#ffd23f", hat: true },
 };
 
 /** A box with its inked outline. */
@@ -79,6 +83,11 @@ function Lid({ look }: { look: Look }) {
       ))}
       {/* The lid's front edge, where the lock hangs down from. */}
       <InkBox size={[W + 0.02, 0.06, 0.04]} position={[0, 0.03, R - 0.01]} color={look.band} outline={0} />
+      {look.hat && (
+        <group position={[0.12, R - 0.02, -0.04]} rotation={[0, -0.4, -0.15]} scale={0.6}>
+          <BonnetArt />
+        </group>
+      )}
       {look.gem && (
         <>
           <Gem color={look.gem} position={[0, R + 0.01, 0]} size={0.12} />

@@ -8,14 +8,16 @@ import { wallet, type CharacterId } from "./wallet";
 // (3 a day). Chests also turn up on the road now and then. Earned chests wait in the player's
 // collection until they are opened on the Rewards screen; their loot is rolled when opened.
 
-export type ChestKind = "basic" | "epic" | "mega";
-export const CHEST_KINDS: ChestKind[] = ["basic", "epic", "mega"];
+/** The chests stars earn; holiday events add their own chest kinds on top. */
+export type StarChestKind = "basic" | "epic" | "mega";
+export type ChestKind = StarChestKind | "christmas";
+export const CHEST_KINDS: StarChestKind[] = ["basic", "epic", "mega"];
 
 export interface ChestInfo {
   kind: ChestKind;
   name: string;
   /** How often the chest comes round, for the Rewards screen. */
-  period: "Daily" | "Weekly" | "Monthly";
+  period: "Daily" | "Weekly" | "Monthly" | "Event";
   /** Stars earned in the period for each chest. */
   stars: number;
   /** The words on the period's progress line, such as "today". */
@@ -26,16 +28,17 @@ export const CHESTS: Record<ChestKind, ChestInfo> = {
   basic: { kind: "basic", name: "Basic chest", period: "Daily", stars: 3, scope: "today" },
   epic: { kind: "epic", name: "Epic chest", period: "Weekly", stars: 21, scope: "this week" },
   mega: { kind: "mega", name: "Mega chest", period: "Monthly", stars: 90, scope: "this month" },
+  christmas: { kind: "christmas", name: "Christmas chest", period: "Event", stars: 0, scope: "" },
 };
 
 /** A chest found on the road is one of these, by weight. */
-const FOUND_WEIGHTS: [ChestKind, number][] = [
+const FOUND_WEIGHTS: [StarChestKind, number][] = [
   ["basic", 0.8],
   ["epic", 0.17],
   ["mega", 0.03],
 ];
 
-export function foundChest(rng: () => number): ChestKind {
+export function foundChest(rng: () => number): StarChestKind {
   let r = rng();
   for (const [kind, w] of FOUND_WEIGHTS) {
     if (r < w) return kind;
@@ -90,7 +93,7 @@ const fresh = (): State => ({
   weekStars: 0,
   monthStars: 0,
   seenStars: null,
-  owned: { basic: 0, epic: 0, mega: 0 },
+  owned: { basic: 0, epic: 0, mega: 0, christmas: 0 },
 });
 
 let state: State | null = null;
@@ -165,6 +168,7 @@ const upgradable = () => wallet.get().owned.filter((id) => wallet.tierOf(id) < C
 /** Roll and hand over a chest's loot. */
 function roll(kind: ChestKind): Loot[] {
   const loot: Loot[] = [];
+  if (kind === "christmas") return rollHoliday(randInt(500, 1000), randInt(50, 100), randInt(3, 6));
   const coins = kind === "basic" ? randInt(1, 30) : kind === "epic" ? randInt(30, 100) : randInt(100, 500);
   const gems = kind === "basic" ? randInt(1, 5) : kind === "epic" ? randInt(6, 15) : randInt(20, 50);
   wallet.addCoins(coins);
@@ -205,6 +209,28 @@ function roll(kind: ChestKind): Loot[] {
   return loot;
 }
 
+/** A holiday chest: more than a Mega chest, and the level-up is never left to chance. */
+function rollHoliday(coins: number, gems: number, powerups: number): Loot[] {
+  wallet.addCoins(coins);
+  wallet.addGems(gems);
+  const loot: Loot[] = [{ kind: "coins", amount: coins }, { kind: "gems", amount: gems }];
+  const chars = upgradable();
+  if (chars.length) {
+    const selected = wallet.get().selected;
+    const id = chars.includes(selected) ? selected : pickOne(chars);
+    wallet.grantCharacterLevel(id);
+    loot.push({ kind: "level", character: id, level: wallet.tierOf(id) });
+  }
+  for (let i = 0; i < powerups; i++) {
+    const open = POWERUP_KEYS.filter((k) => wallet.canUpgrade(k));
+    if (!open.length) break;
+    const k = pickOne(open);
+    wallet.grantPowerupUpgrade(k);
+    loot.push({ kind: "powerup", powerup: k });
+  }
+  return loot;
+}
+
 export const chests = {
   subscribe(fn: () => void) {
     listeners.add(fn);
@@ -213,18 +239,24 @@ export const chests = {
   snapshot: () => get(),
 
   /** Stars earned toward the next chest of a kind, and how many it takes. */
-  progress(kind: ChestKind, s: State = get()) {
+  progress(kind: StarChestKind, s: State = get()) {
     const per = CHESTS[kind].stars;
     const have = kind === "basic" ? s.dayStars : kind === "epic" ? s.weekStars : s.monthStars;
     return { have: have % per, need: per, total: have };
   },
 
-  total: (s: State = get()) => s.owned.basic + s.owned.epic + s.owned.mega,
+  total: (s: State = get()) => Object.values(s.owned).reduce((a, b) => a + b, 0),
 
   /** A chest picked up on the road. */
   found(kind: ChestKind) {
     const s = get();
     unannounced.push(kind);
+    save({ ...s, owned: { ...s.owned, [kind]: s.owned[kind] + 1 } });
+  },
+
+  /** A chest given outright, such as a holiday event's chest when it is claimed. */
+  grant(kind: ChestKind) {
+    const s = get();
     save({ ...s, owned: { ...s.owned, [kind]: s.owned[kind] + 1 } });
   },
 

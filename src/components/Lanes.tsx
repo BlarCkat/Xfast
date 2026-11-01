@@ -14,6 +14,7 @@ import { Baked, Box, PickupModel, Train } from "./models";
 import { CoinArt } from "./CurrencyArt";
 import { ART_POWERUPS, PickupArt } from "./PowerupArt";
 import { ChestArt } from "./ChestArt";
+import { EventItemArt } from "./EventArt";
 import { groundTexture, type GroundTexture } from "./textures";
 
 function Ground({
@@ -307,6 +308,28 @@ function ChestView({ lane }: { lane: Lane }) {
   );
 }
 
+/** A holiday event's special item: it spins and bobs like a coin, a little bigger. */
+function SpecialView({ lane }: { lane: Lane }) {
+  const ref = useRef<Group>(null);
+  const [item] = useState(lane.special);
+  useFrame(({ clock }) => {
+    const g = ref.current;
+    if (!g) return;
+    g.visible = lane.special !== null;
+    g.rotation.y = clock.elapsedTime * 2 + lane.row;
+    g.position.y = 0.12 + Math.sin(clock.elapsedTime * 3 + lane.row) * 0.06;
+  });
+  if (!item) return null;
+  return (
+    <group ref={ref} position={[item.x, 0.12, 0]}>
+      {/* Leaned back so the camera, high above, sees the bonnet side-on rather than down its point. */}
+      <group scale={0.85} rotation={[-0.6, 0, 0]}>
+        <EventItemArt id={item.event} />
+      </group>
+    </group>
+  );
+}
+
 function CoinView({ lane }: { lane: Lane }) {
   const ref = useRef<Group>(null);
   // Coins can appear later (coin rain), so read the lane every frame.
@@ -373,6 +396,7 @@ export const LaneView = memo(function LaneView({ lane, engine }: { lane: Lane; e
       {lane.type !== "grass" && <ForesightGhosts lane={lane} engine={engine} />}
       {lane.pickup && <PickupView lane={lane} />}
       {lane.chest && <ChestView lane={lane} />}
+      {lane.special && <SpecialView lane={lane} />}
       {(lane.type === "grass" || lane.type === "road") && <CoinView lane={lane} />}
       {lane.type === "grass" && <GrassLane lane={lane} />}
       {lane.type === "road" && <RoadLane lane={lane} />}

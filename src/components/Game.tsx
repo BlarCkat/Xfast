@@ -12,7 +12,9 @@ import { PowerRing } from "./PowerRing";
 import Achievements, { EarnedToast } from "./Achievements";
 import Store, { ShopBackdrop, useWallet, type StoreTab } from "./Store";
 import Walkthrough from "./Walkthrough";
-import Rewards, { useChests } from "./Rewards";
+import Rewards, { useChests, useEvents } from "./Rewards";
+import { EventIcon } from "./EventArt";
+import { activeEvent, events } from "@/game/events";
 import { chests } from "@/game/chests";
 import { beforeRun, markSeen, pickupTip, tip, type GuidePage, type HintId } from "@/game/guide";
 import type { CharacterId } from "@/game/wallet";
@@ -115,7 +117,10 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [goalsOpen, setGoalsOpen] = useState(false);
   const [rewardsOpen, setRewardsOpen] = useState(false);
-  const unopened = chests.total(useChests());
+  const eventState = useEvents();
+  const unopened = chests.total(useChests()) + (events.claimable(eventState) ? 1 : 0);
+  const event = activeEvent();
+  const eventItems = event ? events.progress(event, eventState).items : 0;
   const [hovered, setHovered] = useState<MenuItem>("play");
   /** The chicken's walkthrough on screen: its pages, who it introduces, and whether finishing starts the run. */
   const [guide, setGuide] = useState<null | {
@@ -335,6 +340,11 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
           <span className="hud-coins">
             <Icon id="coin" size={22} /> {w.coins}
           </span>
+          {event?.phase === "collect" && (
+            <span className="hud-event" aria-label={`${eventItems} of ${event.info.target} ${event.info.items}`}>
+              <EventIcon id={event.info.id} size={20} /> {Math.min(eventItems, event.info.target)}/{event.info.target}
+            </span>
+          )}
         </div>
         <div className="effects">
           {POWERUPS.map(
@@ -493,6 +503,11 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
             <p className="game-over-coins" style={{ "--i": 3 } as React.CSSProperties}>
               <Icon id="coin" size={30} /> +<CountUp to={ui.coins} delay={1.2} />
             </p>
+            {event && ui.eventItems > 0 && (
+              <p className="game-over-coins game-over-event" style={{ "--i": 3 } as React.CSSProperties}>
+                <EventIcon id={event.info.id} size={28} /> +<CountUp to={ui.eventItems} delay={1.2} />
+              </p>
+            )}
           </div>
           <div className="game-over-actions">
             <button className="game-over-store" style={{ "--i": 4 } as React.CSSProperties} onClick={() => openStore("powerups")}>

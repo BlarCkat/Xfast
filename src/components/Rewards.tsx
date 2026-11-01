@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import type { Group } from "three";
-import { CHEST_KINDS, CHESTS, chests, type ChestKind, type Loot } from "@/game/chests";
+import { CHEST_KINDS, CHESTS, chests, type ChestKind, type Loot, type StarChestKind } from "@/game/chests";
+import { activeEvent, dayLabel, events, type ActiveEvent } from "@/game/events";
+import { EventIcon } from "./EventArt";
 import { POWERUPS } from "@/game/powerups";
 import { CHARACTERS, UPGRADES_PER_LEVEL, wallet } from "@/game/wallet";
 import * as sound from "@/game/sound";
@@ -17,6 +19,10 @@ import { ShopBackdrop, useWallet } from "./Store";
 
 export function useChests() {
   return useSyncExternalStore(chests.subscribe, chests.snapshot, chests.snapshot);
+}
+
+export function useEvents() {
+  return useSyncExternalStore(events.subscribe, events.snapshot, events.serverSnapshot);
 }
 
 function Sway({ children, spin }: { children: React.ReactNode; spin: boolean }) {
@@ -149,7 +155,7 @@ function Opening({ kind, onClose }: { kind: ChestKind; onClose: () => void }) {
   );
 }
 
-function ChestCard({ kind, onOpen }: { kind: ChestKind; onOpen: () => void }) {
+function ChestCard({ kind, onOpen }: { kind: StarChestKind; onOpen: () => void }) {
   const c = useChests();
   const info = CHESTS[kind];
   const { have, need } = chests.progress(kind, c);
@@ -178,9 +184,58 @@ function ChestCard({ kind, onOpen }: { kind: ChestKind; onOpen: () => void }) {
   );
 }
 
+/** The running holiday event: items collected toward its chest, and claiming or opening it. */
+function EventCard({ event, onOpen }: { event: ActiveEvent; onOpen: () => void }) {
+  const c = useChests();
+  const s = useEvents();
+  const { info } = event;
+  const { items, claimed } = events.progress(event, s);
+  const have = Math.min(items, info.target);
+  const owned = c.owned[info.id];
+  const claimable = events.claimable(s);
+  const button = owned
+    ? `OPEN ×${owned}`
+    : claimable
+      ? "CLAIM"
+      : claimed
+        ? "CLAIMED"
+        : event.phase === "collect" && have >= info.target
+          ? dayLabel(info.reward)
+          : "LOCKED";
+  const desc =
+    event.phase === "collect"
+      ? `Collect ${info.target} ${info.items} from ${dayLabel(info.start)}. The chest opens on ${dayLabel(info.reward)}!`
+      : `${info.name} is here! Claim it until ${dayLabel(info.end)}.`;
+  const act = () => {
+    if (!owned && !events.claim()) return;
+    onOpen();
+  };
+  return (
+    <div className={`chest-card chest-event${owned || claimable ? " ready" : ""}`}>
+      <div className="chest-card-art">
+        <ChestStage kind={info.id} zoom={62} />
+      </div>
+      <div className="chest-card-text">
+        <span className="goal-title">{info.chestName}</span>
+        <span className="goal-desc">{desc}</span>
+        <div className="chest-bar" role="progressbar" aria-valuemin={0} aria-valuemax={info.target} aria-valuenow={have}>
+          <span style={{ width: `${(have / info.target) * 100}%` }} />
+          <em>
+            {have}/{info.target} <EventIcon id={info.id} size={15} />
+          </em>
+        </div>
+      </div>
+      <button className="chest-card-open" disabled={!owned && !claimable} onClick={act}>
+        {button}
+      </button>
+    </div>
+  );
+}
+
 export default function Rewards({ onClose }: { onClose: () => void }) {
   const w = useWallet();
   const [opening, setOpening] = useState<ChestKind | null>(null);
+  const event = activeEvent();
   const stop = (e: React.PointerEvent) => e.stopPropagation();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -215,6 +270,7 @@ export default function Rewards({ onClose }: { onClose: () => void }) {
         </div>
       </header>
       <div className="options-list chests">
+        {event && <EventCard event={event} onOpen={() => setOpening(event.info.id)} />}
         {CHEST_KINDS.map((kind) => (
           <ChestCard key={kind} kind={kind} onOpen={() => setOpening(kind)} />
         ))}
