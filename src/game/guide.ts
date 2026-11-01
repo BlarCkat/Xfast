@@ -162,6 +162,11 @@ function abilityPages(id: CharacterId, tier: number): GuidePage[] {
       return [{ text: `Every ${t.leapHops} hops, Leopard does a giant pounce to safe grass!`, art: { icon: "warp" } }];
     case "owl":
       return [{ text: `Every ${t.leapHops} hops, Owl flies up. Owl can fly over water!`, art: { icon: "wings" } }];
+    case "tiger":
+      return [
+        { text: `Every ${t.tigerRoarHops} hops, Tiger lets out a big ROAR!`, art: self },
+        { text: "Each roar puts up a shield. The next bump just bounces off!", art: { icon: "shield" } },
+      ];
   }
 }
 
