@@ -1,10 +1,8 @@
-/* Readable text is hand-lettered; digits anywhere switch to the pixel face via unicode-range. */
+/* Readable text uses Brady Bunch Remastered; digits anywhere switch to the pixel face via unicode-range. */
 @font-face {
-  font-family: "Just Another Hand";
-  src: url("/fonts/JustAnotherHand.woff2") format("woff2");
+  font-family: "BradBunR";
+  src: url("/fonts/BradBunR.woff2") format("woff2");
   font-display: swap;
-  /* The face draws small for its em box, so scale it up to sit level with the old UI sizes. */
-  size-adjust: 135%;
 }
 
 /* Both pixel faces point at the same file, so the browser fetches it once. */
@@ -35,7 +33,7 @@
   --ui-text: #ffffff;
   --ui-text-dim: rgba(255, 255, 255, 0.72);
   --ui-shadow: rgba(20, 50, 90, 0.28);
-  --font-ui: "Roadmasters Digits", "Just Another Hand", "Helvetica Neue", Arial, sans-serif;
+  --font-ui: "Roadmasters Digits", "BradBunR", "Helvetica Neue", Arial, sans-serif;
   /* Subtexts and captions: Geist Sans at 32px by default, digits still pixel. */
   --font-caption: "Roadmasters Digits", var(--font-geist-sans, "Geist"), "Helvetica Neue", Arial, sans-serif;
   --caption-size: 32px;
@@ -53,7 +51,7 @@ body {
   overflow: hidden;
   background: #7fd0f5;
   font-family: var(--font-ui);
-  /* Just Another Hand has one weight; faux bold smears it. */
+  /* BradBunR has one weight; faux bold smears it. */
   font-synthesis: none;
   letter-spacing: 0.5px;
   -webkit-user-select: none;
