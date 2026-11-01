@@ -179,6 +179,27 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 
+.hud-event {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ffd6dc;
+  font-variant-numeric: tabular-nums;
+}
+
+.event-icon {
+  flex: none;
+  vertical-align: middle;
+}
+
+.game-over-event {
+  color: #ffd6dc;
+}
+
+.chest-event {
+  background: linear-gradient(135deg, #2b1b4f, #4a1630);
+}
+
 .effects {
   display: flex;
   flex-wrap: wrap;
@@ -1783,6 +1804,203 @@ kbd {
   .guide-chicken,
   .guide-art-icon img,
   .guide-art-icon svg {
+    animation: none;
+  }
+}
+
+/* ---- Rewards: the three chests and the moment one opens ------------- */
+
+.menu-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  margin-left: 10px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--ui-gold);
+  color: #2a1a00;
+  font-size: 20px;
+  line-height: 1;
+  vertical-align: 6px;
+}
+
+.chests {
+  gap: 12px;
+}
+
+.chest-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px 8px 8px;
+  border-radius: 14px;
+  background: #1f1b45;
+}
+
+.chest-card.ready {
+  box-shadow: inset 0 0 0 3px var(--ui-gold);
+}
+
+.chest-card-art {
+  flex: none;
+  width: 96px;
+  height: 96px;
+}
+
+.chest-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.chest-card-text .goal-desc {
+  font-size: 16px;
+  line-height: 1.1;
+}
+
+.chest-bar {
+  position: relative;
+  height: 20px;
+  margin-top: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #34306a;
+}
+
+.chest-bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--ui-gold);
+  transition: width 0.4s ease-out;
+}
+
+.chest-bar em {
+  position: relative;
+  display: block;
+  font-style: normal;
+  font-size: 15px;
+  line-height: 20px;
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+}
+
+.chest-card-open {
+  flex: none;
+  padding: 8px 12px 6px;
+  border: none;
+  border-radius: 12px;
+  background: var(--ui-teal);
+  color: #0b2f2a;
+  font-size: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chest-card-open:disabled {
+  background: #34306a;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: default;
+}
+
+.chest-note {
+  margin: 4px 0 0;
+  color: var(--ui-text-dim);
+  font-size: 17px;
+  text-align: center;
+}
+
+.chest-open {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+  background: radial-gradient(circle at 50% 32%, #8a63ff, #2a1d6e 55%, #160f3d);
+  color: var(--ui-text);
+  animation: chest-fade 0.25s ease-out both;
+}
+
+.chest-open-title {
+  margin: 0;
+  font-weight: 400;
+  font-size: 34px;
+}
+
+.chest-open-stage {
+  width: min(360px, 90vw);
+  height: min(300px, 38vh);
+}
+
+.chest-loot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(420px, 100%);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chest-loot li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 14px;
+  border-radius: 12px;
+  background: #1f1b45;
+  font-size: 22px;
+  animation: earned-pop 0.35s ease-out both;
+  animation-delay: calc(0.15s + var(--i) * 0.12s);
+}
+
+.chest-loot li.loot-big {
+  background: #6b4a00;
+  box-shadow: inset 0 0 0 2px var(--ui-gold);
+}
+
+.chest-open-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.chest-open-actions button {
+  padding: 10px 22px 8px;
+  border: none;
+  border-radius: 14px;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.chest-collect {
+  background: var(--ui-teal);
+  color: #0b2f2a;
+}
+
+.chest-again {
+  background: var(--ui-gold);
+  color: #2a1a00;
+}
+
+@keyframes chest-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chest-open,
+  .chest-loot li {
     animation: none;
   }
 }

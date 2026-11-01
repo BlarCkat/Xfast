@@ -1,7 +1,7 @@
 import { CHARACTER_TIERS, CHARACTER_TIER_COST } from "./characters";
 import { MAX_UPGRADES, POWERUPS, nextUpgrade, noEffects, type PowerUp } from "./powerups";
 
-export type CharacterId = "chicken" | "duck" | "frog" | "cat" | "penguin" | "robot" | "sparrow" | "snail" | "mario" | "luigi" | "bowser" | "human" | "leopard" | "owl";
+export type CharacterId = "chicken" | "duck" | "frog" | "cat" | "penguin" | "robot" | "sparrow" | "snail" | "mario" | "luigi" | "bowser" | "human" | "leopard" | "owl" | "tiger";
 export type StoreItemId = PowerUp | "life";
 
 export interface Character {
@@ -42,6 +42,7 @@ export const CHARACTERS: Character[] = [
   { id: "human", name: "Human", price: 550, trait: "Picks up every coin twice: coins are always doubled." },
   { id: "leopard", name: "Leopard", price: 600, trait: "Pounces every 50 hops, leaping ahead to safe grass like a Warp." },
   { id: "owl", name: "Owl", price: 650, trait: "Takes flight every 50 hops: Wings carry it over rivers for a moment." },
+  { id: "tiger", name: "Tiger", price: 700, trait: "Roars every 60 hops, putting up a shield that soaks up the next hit." },
 ];
 
 export interface StoreItem {
@@ -72,7 +73,12 @@ export interface WalletState {
   upgrades: Record<PowerUp, number>;
   /** Each character's tier, 1 to CHARACTER_TIERS (see characters.ts). */
   charTiers: Partial<Record<CharacterId, number>>;
+  /** Character upgrades from chests toward each character's next free tier (see UPGRADES_PER_LEVEL). */
+  charUpgrades: Partial<Record<CharacterId, number>>;
 }
+
+/** Chest upgrades a character collects to step up a tier for free. */
+export const UPGRADES_PER_LEVEL = 3;
 
 const KEY = "xfast-wallet";
 
@@ -84,6 +90,7 @@ const fresh = (): WalletState => ({
   inventory: { life: 0, ...noEffects() },
   upgrades: Object.fromEntries(POWERUPS.map((p) => [p.key, 0])) as Record<PowerUp, number>,
   charTiers: {},
+  charUpgrades: {},
 });
 
 /** Older saves kept a level from 1 to 5; each level above 1 becomes one filled tier-1 box. */
@@ -106,6 +113,7 @@ function load(): WalletState {
       inventory: { ...base.inventory, ...saved.inventory },
       upgrades: { ...base.upgrades, ...(saved.upgrades ?? fromLevels(saved.levels)) },
       charTiers: { ...saved.charTiers },
+      charUpgrades: { ...saved.charUpgrades },
     };
   } catch {
     return fresh();
@@ -140,6 +148,11 @@ class Wallet {
   addCoins(n: number) {
     const s = this.get();
     this.set({ ...s, coins: s.coins + n });
+  }
+
+  addGems(n: number) {
+    const s = this.get();
+    this.set({ ...s, gems: s.gems + n });
   }
 
   buyCharacter(id: CharacterId) {
@@ -183,6 +196,50 @@ class Wallet {
     const cost = CHARACTER_TIER_COST[tier];
     if (!s.owned.includes(id) || tier >= CHARACTER_TIERS || s.coins < cost) return false;
     this.set({ ...s, coins: s.coins - cost, charTiers: { ...s.charTiers, [id]: tier + 1 } });
+    return true;
+  }
+
+  /** Chest upgrades a character has toward its next tier. */
+  upgradesOf(id: CharacterId) {
+    return this.get().charUpgrades[id] ?? 0;
+  }
+
+  /**
+   * A character upgrade from a chest. Every UPGRADES_PER_LEVEL of them step the character up a
+   * tier for free; returns true when this one did.
+   */
+  grantCharacterUpgrade(id: CharacterId) {
+    const s = this.get();
+    const tier = this.tierOf(id);
+    if (tier >= CHARACTER_TIERS) return false;
+    const have = (s.charUpgrades[id] ?? 0) + 1;
+    const levelUp = have >= UPGRADES_PER_LEVEL;
+    this.set({
+      ...s,
+      charUpgrades: { ...s.charUpgrades, [id]: levelUp ? 0 : have },
+      charTiers: levelUp ? { ...s.charTiers, [id]: tier + 1 } : s.charTiers,
+    });
+    return levelUp;
+  }
+
+  /** A whole free tier for a character, from a chest. */
+  grantCharacterLevel(id: CharacterId) {
+    const s = this.get();
+    const tier = this.tierOf(id);
+    if (tier >= CHARACTER_TIERS) return false;
+    this.set({ ...s, charTiers: { ...s.charTiers, [id]: tier + 1 }, charUpgrades: { ...s.charUpgrades, [id]: 0 } });
+    return true;
+  }
+
+  canUpgrade(id: PowerUp) {
+    return this.get().upgrades[id] < MAX_UPGRADES;
+  }
+
+  /** A free upgrade step on a power-up, from a chest. */
+  grantPowerupUpgrade(id: PowerUp) {
+    const s = this.get();
+    if (!this.canUpgrade(id)) return false;
+    this.set({ ...s, upgrades: { ...s.upgrades, [id]: s.upgrades[id] + 1 } });
     return true;
   }
 

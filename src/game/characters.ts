@@ -6,6 +6,7 @@ import {
   LEAP_TRAIT_HOPS,
   MAGNET_RADIUS,
   MARIO_COINS_PER_LIFE,
+  TIGER_ROAR_HOPS,
   TIME_TRAIT_HOPS,
 } from "./config";
 import type { CharacterId } from "./wallet";
@@ -44,6 +45,8 @@ export interface Traits {
   humanTriple: number;
   /** Leopard and owl: hops between each pounce or flight. */
   leapHops: number;
+  /** Tiger: hops between each roar, which puts up a shield. */
+  tigerRoarHops: number;
 }
 
 const BASE: Traits = {
@@ -60,6 +63,7 @@ const BASE: Traits = {
   bowserFireRows: BOWSER_FIRE_ROWS,
   humanTriple: 0,
   leapHops: LEAP_TRAIT_HOPS,
+  tigerRoarHops: TIGER_ROAR_HOPS,
 };
 
 /** Each character's trait values from tier 1 to tier 5. */
@@ -78,6 +82,7 @@ const LADDER: { [K in CharacterId]: Partial<{ [T in keyof Traits]: number[] }> }
   human: { humanTriple: [0, 0.1, 0.2, 0.3, 0.4] },
   leopard: { leapHops: [50, 45, 40, 35, 30] },
   owl: { leapHops: [50, 45, 40, 35, 30] },
+  tiger: { tigerRoarHops: [60, 52, 45, 38, 30] },
 };
 
 const clampTier = (tier: number) => Math.max(1, Math.min(CHARACTER_TIERS, Math.round(tier) || 1));
@@ -125,6 +130,8 @@ export function traitText(id: CharacterId, tier: number): string {
       return `Pounces every ${t.leapHops} hops, leaping ahead to safe grass like a Warp.`;
     case "owl":
       return `Takes flight every ${t.leapHops} hops: Wings carry it over rivers for a moment.`;
+    case "tiger":
+      return `Roars every ${t.tigerRoarHops} hops, putting up a shield that soaks up the next hit.`;
   }
 }
 
@@ -163,5 +170,7 @@ export function nextPerk(id: CharacterId, tier: number): string | null {
       return `pounce every ${next.leapHops} hops`;
     case "owl":
       return `fly every ${next.leapHops} hops`;
+    case "tiger":
+      return `roar every ${next.tigerRoarHops} hops`;
   }
 }
