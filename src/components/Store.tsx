@@ -51,6 +51,7 @@ const CHARACTER_BLURB: Record<CharacterId, string> = {
   human: "Finally, someone who knows what the green man means. Still ignores him.",
   leopard: "Spots an opening, then a few more. Never changes them.",
   owl: "Wise enough to look both ways. Can turn its head far enough to do it at once.",
+  tiger: "Earned every stripe the hard way. Crosses on its own schedule, loudly.",
 };
 
 const cellsFor = (tab: StoreTab, w: WalletState): Cell[] =>

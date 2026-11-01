@@ -1,4 +1,6 @@
 import { achievements, type Goal } from "./achievements";
+import { CHESTS, chests } from "./chests";
+import { events } from "./events";
 import { traitsAt, type Traits } from "./characters";
 import { BIOMES, biomeAt, type BiomeId } from "./biomes";
 import {
@@ -96,6 +98,8 @@ export interface UiSnapshot {
   steps: number;
   /** Coins picked up this run (they are banked in the wallet straight away). */
   coins: number;
+  /** Holiday event items picked up this run. */
+  eventItems: number;
   /** Whole seconds left on each power-up (0 = inactive); only changes once a second. */
   effects: Effects;
   /** `icon` is an image shown before the text, such as an achievement star. */
@@ -196,6 +200,7 @@ export class Engine {
       lives: character === "cat" ? CAT_LIVES : START_LIVES,
       steps: 0,
       coins: 0,
+      eventItems: 0,
       effects: noEffects(),
       toast: null,
       earned: [],
@@ -334,7 +339,9 @@ export class Engine {
     }
     if (lane?.type === "grass" && lane.blocked.has(Math.round(p.x))) this.chop(lane, Math.round(p.x));
     if (lane?.pickup && Math.round(p.x) === lane.pickup.x) this.collect(lane);
+    if (lane?.chest && Math.round(p.x) === lane.chest.x) this.collectChest(lane);
     if (lane && lane.coin !== null && Math.round(p.x) === lane.coin) this.collectCoin(lane);
+    if (lane?.special && Math.round(p.x) === lane.special.x) this.collectSpecial(lane);
     // Standing at the edge of something new: explain it before the first crossing.
     const ahead = this.lanes.get(p.row + 1)?.type;
     if (ahead === "road" || ahead === "river" || ahead === "rail") this.hint(ahead);
@@ -519,6 +526,12 @@ export class Engine {
       this.syncEffects(true);
       this.setUi({ toast: { text: leapTrait === "warp" ? "POUNCE!" : PICKUP_LABEL[leapTrait], id: ++this.toastId } });
     }
+    // The tiger roars every so many hops and puts up a shield.
+    if (this.character === "tiger" && steps % this.traits.tigerRoarHops === 0) {
+      this.apply("shield");
+      this.syncEffects(true);
+      this.setUi({ toast: { text: "ROAR!", id: ++this.toastId } });
+    }
     const tier = Math.floor(steps / STEPS_PER_SPEEDUP);
     const scale = Math.min(MAX_SPEED_SCALE, 1 + tier * SPEEDUP_STEP);
     if (scale > this.speedScale) {
@@ -550,11 +563,43 @@ export class Engine {
     this.hint(kind);
   }
 
+  /** A reward chest found on the road goes into the player's collection, to open on the Rewards screen. */
+  private collectChest(lane: Lane) {
+    const kind = lane.chest!.kind;
+    lane.chest = null;
+    chests.found(kind);
+    sound.coin(true);
+    this.announceChests();
+  }
+
+  /** A holiday event's special item: counted toward the event's chest. */
+  private collectSpecial(lane: Lane) {
+    lane.special = null;
+    const got = events.collect();
+    // The event can close mid-run (past midnight on the holiday); the item then just vanishes.
+    if (!got) return;
+    sound.coin(false);
+    this.setUi({ eventItems: this.ui.eventItems + 1 });
+    if (got.total === got.info.target) {
+      this.setUi({ toast: { text: `${got.info.target} ${got.info.items.toUpperCase()}! CHEST UNLOCKED`, id: ++this.toastId } });
+    }
+  }
+
+  /** Say so when stars or the road just added chests to the collection. */
+  private announceChests() {
+    const got = chests.takeNew();
+    if (!got.length) return;
+    const best = got.includes("mega") ? "mega" : got.includes("epic") ? "epic" : "basic";
+    const text = `${CHESTS[best].name.toUpperCase()}${got.length > 1 ? ` +${got.length - 1}` : ""}!`;
+    this.setUi({ toast: { text, id: ++this.toastId } });
+  }
+
   /** Queue goals just earned for the achievement card. */
   private award(goals: Goal[]) {
     if (!goals.length) return;
     sound.coin(true);
     this.setUi({ earned: [...this.ui.earned, ...goals.map((goal) => ({ goal, id: ++this.toastId }))] });
+    this.announceChests();
   }
 
   /** The HUD has finished showing an achievement card; move on to the next. */

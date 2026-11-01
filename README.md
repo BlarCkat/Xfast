@@ -91,9 +91,9 @@ Each character has its own trait, shown on the start screen and in the store.
 | Robot | 250 | Foresight is always on. |
 | Sparrow | 300 | Stops time (Freeze) every 100 hops. |
 | Snail | 350 | Slows time (Slowmo) every 100 hops. |
-| Mario | 400 | Super Mushroom: the first car or train hit shrinks him instead of costing a life, and he grows back in each new biome. Every 100 coins in a run is a 1-UP. |
-| Luigi | 450 | Poltergust: pulls in coins within 2 tiles. Ghost hunter: nothing can hit him in the Spooky biome. |
-| Bowser | 500 | Smashes through trees and rocks, and breathes fire every 50 hops to wreck the traffic on the next 4 lanes. |
+| Red Plumber | 400 | Super Mushroom: the first car or train hit shrinks him instead of costing a life, and he grows back in each new biome. Every 100 coins in a run is a 1-UP. |
+| Green Plumber | 450 | Poltergust: pulls in coins within 2 tiles. Ghost hunter: nothing can hit him in the Spooky biome. |
+| Giant Turtle | 500 | Smashes through trees and rocks, and breathes fire every 50 hops to wreck the traffic on the next 4 lanes. |
 | Human | 550 | Coins are always doubled. |
 | Leopard | 600 | Pounces ahead to safe grass (Warp) every 50 hops. |
 | Owl | 650 | Takes flight (Wings) every 50 hops. |
@@ -102,8 +102,20 @@ Each character has its own trait, shown on the start screen and in the store.
 
 Every power-up can be upgraded in the store (select it on the Power-ups tab and tap the red button, or press **U**). Upgrades come in three tiers of seven, shown as the row of boxes under the card: lime for tier 1, light red for tier 2, gold for tier 3. Each upgrade costs 50 coins in tier 1, 100 in tier 2 and 150 in tier 3. Once a tier's seven boxes are full, stepping up to tier 2 costs 200 coins and to tier 3 costs 500, and the boxes start again. A fully upgraded power-up lasts three times as long; Warp reaches up to 12 more rows and Coin rain up to 24 more lanes. Upgrades apply to power-ups you pick up on the road as well as ones bought in the store, and stack with the Chicken's 50% bonus.
 
+## Reward chests
+
+Stars from achievements fill three chests, opened from **Rewards** on the main menu:
+
+| Chest | Earned | Inside |
+| --- | --- | --- |
+| Basic | Every 3 stars earned in a day | 1-30 coins, 1-5 gems, and an 80% chance of an upgrade for the character you play |
+| Epic | Every 21 stars earned in a week (Monday to Sunday) | 30-100 coins, 6-15 gems, a 60% chance of an upgrade each for 2 characters the chest picks, and 1-3 power-up upgrades |
+| Mega | Every 90 stars earned in a calendar month | 100-500 coins, 20-50 gems, an 80% chance of a whole free level for the character you play, and 1-5 power-up upgrades |
+
+Every 3 character upgrades from chests level that character up for free. Character rewards only go to characters you own that can still level up; power-up upgrades are free steps along the store's upgrade path. Chests also turn up on the road: 5% of the collectibles that spawn are chests (80% Basic, 17% Epic, 3% Mega), and hopping on one keeps it to open later. Unopened chests never expire.
+
 ## Coins and the store
 
 - Coins sit on grass and road lanes. They are saved in your browser as soon as you pick them up, even if you die.
-- Open the **Store** from the start or game over screen to unlock characters (Duck 50, Frog 100, Penguin 150, Cat 200, Robot 250, Sparrow 300, Snail 350, Mario 400, Luigi 450, Bowser 500, Human 550, Leopard 600, Owl 650) and buy power-ups (Foresight 30, Slowmo 30, Rock 40, Extra life 60).
+- Open the **Store** from the start or game over screen to unlock characters (Duck 50, Frog 100, Penguin 150, Cat 200, Robot 250, Sparrow 300, Snail 350, Red Plumber 400, Green Plumber 450, Giant Turtle 500, Human 550, Leopard 600, Owl 650) and buy power-ups (Foresight 30, Slowmo 30, Rock 40, Extra life 60).
 - Bought power-ups appear as buttons in the bottom right during a run, or use keys 1 to 0 for the first ten power-ups in store order. Bought extra lives are added when your next run starts.

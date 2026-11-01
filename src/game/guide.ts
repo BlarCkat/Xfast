@@ -159,18 +159,18 @@ function abilityPages(id: CharacterId, tier: number): GuidePage[] {
       ];
     case "mario":
       return [
-        { text: "The first bump makes Mario small. But he keeps playing!", art: self },
-        { text: `Every ${t.marioCoinsPerLife} coins gives Mario an extra life!`, art: { icon: "life" } },
+        { text: "The first bump makes Red Plumber small. But he keeps playing!", art: self },
+        { text: `Every ${t.marioCoinsPerLife} coins gives Red Plumber an extra life!`, art: { icon: "life" } },
       ];
     case "luigi":
       return [
-        { text: "Luigi's vacuum sucks up coins near him. Whoosh!", art: { icon: "magnet" } },
-        { text: "In the spooky land, nothing can hurt Luigi!", art: { icon: "ghost" } },
+        { text: "Green Plumber's vacuum sucks up coins near him. Whoosh!", art: { icon: "magnet" } },
+        { text: "In the spooky land, nothing can hurt Green Plumber!", art: { icon: "ghost" } },
       ];
     case "bowser":
       return [
-        { text: "Bowser smashes right through trees and rocks. Crash!", art: { icon: "lumberjack" } },
-        { text: `Every ${t.bowserFireHops} hops, Bowser breathes fire and burns the cars ahead!`, art: self },
+        { text: "Giant Turtle smashes right through trees and rocks. Crash!", art: { icon: "lumberjack" } },
+        { text: `Every ${t.bowserFireHops} hops, Giant Turtle breathes fire and burns the cars ahead!`, art: self },
       ];
     case "human":
       return [{ text: "Every coin Human picks up counts two times. Double coins!", art: { icon: "double" } }];
@@ -178,6 +178,11 @@ function abilityPages(id: CharacterId, tier: number): GuidePage[] {
       return [{ text: `Every ${t.leapHops} hops, Leopard does a giant pounce to safe grass!`, art: { icon: "warp" } }];
     case "owl":
       return [{ text: `Every ${t.leapHops} hops, Owl flies up. Owl can fly over water!`, art: { icon: "wings" } }];
+    case "tiger":
+      return [
+        { text: `Every ${t.tigerRoarHops} hops, Tiger lets out a big ROAR!`, art: self },
+        { text: "Each roar puts up a shield. The next bump just bounces off!", art: { icon: "shield" } },
+      ];
   }
 }
 
