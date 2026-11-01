@@ -11,6 +11,9 @@ import { Hex, Icon } from "./icons";
 import { PowerRing } from "./PowerRing";
 import Achievements from "./Achievements";
 import Store, { ShopBackdrop, useWallet, type StoreTab } from "./Store";
+import Walkthrough from "./Walkthrough";
+import { basicsPages, markSeen, pendingGuide, type GuidePage } from "@/game/guide";
+import type { CharacterId } from "@/game/wallet";
 
 const KEYS: Record<string, Direction> = {
   ArrowUp: "up",
@@ -109,6 +112,8 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [goalsOpen, setGoalsOpen] = useState(false);
   const [hovered, setHovered] = useState<MenuItem>("play");
+  /** The chicken's walkthrough on screen: its pages, who it introduces, and whether finishing starts the run. */
+  const [guide, setGuide] = useState<null | { pages: GuidePage[]; character: CharacterId | null; thenPlay: boolean }>(null);
   const openStore = useCallback((tab: StoreTab) => {
     setStoreTab(tab);
     setStoreOpen(true);
@@ -150,9 +155,34 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
     setEngine(new Engine(wallet.get().selected));
   }, []);
 
+  /**
+   * Every way of starting a run comes through here. A new player, or a character played for the
+   * first time, hears from the chicken first; the hop happens once the walkthrough is done.
+   */
+  const startRun = useCallback(
+    (dir: Direction) => {
+      if (engine.status === "ready") {
+        const pending = pendingGuide(engine.character, engine.tier);
+        if (pending) {
+          setGuide({ ...pending, thenPlay: true });
+          return;
+        }
+      }
+      engine.move(dir);
+    },
+    [engine],
+  );
+
+  const endGuide = useCallback(() => {
+    if (!guide) return;
+    markSeen(guide.character);
+    setGuide(null);
+    if (guide.thenPlay && engine.status === "ready") engine.move("up");
+  }, [guide, engine]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat || locked) return;
+      if (e.repeat || locked || guide) return;
       if (optionsOpen) {
         if (e.code === "Escape") setOptionsOpen(false);
         else if (e.code === "KeyB") toggleFx();
@@ -190,15 +220,15 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
       const dir = KEYS[e.code] ?? (e.code === "Space" ? "up" : undefined);
       if (dir) {
         e.preventDefault();
-        engine.move(dir);
+        startRun(dir);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [engine, restart, storeOpen, optionsOpen, goalsOpen, locked, toggleFx, openStore, closeStore]);
+  }, [engine, restart, storeOpen, optionsOpen, goalsOpen, locked, toggleFx, openStore, closeStore, guide, startRun]);
 
   const pick = (item: MenuItem) => {
-    if (item === "play") engine.move("up");
+    if (item === "play") startRun("up");
     else if (item === "characters") openStore("characters");
     else if (item === "store") openStore("powerups");
     else if (item === "achievements") setGoalsOpen(true);
@@ -221,9 +251,9 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
     }
     const dx = e.clientX - s.x;
     const dy = e.clientY - s.y;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_MIN) engine.move("up");
-    else if (Math.abs(dx) > Math.abs(dy)) engine.move(dx > 0 ? "right" : "left");
-    else engine.move(dy > 0 ? "down" : "up");
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_MIN) startRun("up");
+    else if (Math.abs(dx) > Math.abs(dy)) startRun(dx > 0 ? "right" : "left");
+    else startRun(dy > 0 ? "down" : "up");
   };
 
   return (
@@ -314,7 +344,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
         </div>
       )}
 
-      {ui.status === "ready" && (
+      {ui.status === "ready" && !guide && (
         <div className="main-menu">
           {/* Text stand-in until the Roadmasters logo arrives. */}
           <h1 className="title">ROADMASTERS</h1>
@@ -354,6 +384,16 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
               <span>Graphics</span>
               <span className="options-value">{fx ? "Realistic" : "Classic"}</span>
               <kbd>B</kbd>
+            </button>
+            <button
+              className="options-row"
+              onClick={() => {
+                setOptionsOpen(false);
+                setGuide({ pages: basicsPages(), character: null, thenPlay: false });
+              }}
+            >
+              <span>How to play</span>
+              <span className="options-value">Ask Chicken</span>
             </button>
             <Volume label="Sound effects" value={sound.sfx} onChange={(sfx) => setAudioSettings({ sfx })} />
             <button className="options-row" onClick={() => setAudioSettings({ musicOn: !sound.musicOn })}>
@@ -403,6 +443,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
 
       {goalsOpen && <Achievements onClose={() => setGoalsOpen(false)} />}
       {storeOpen && <Store initialTab={storeTab} onClose={closeStore} />}
+      {guide && <Walkthrough pages={guide.pages} onDone={endGuide} />}
     </div>
   );
 }

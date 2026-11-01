@@ -1412,3 +1412,222 @@ kbd {
 .shop.wide .shop-card-desc {
   font-size: 15px;
 }
+
+/* ---- Chicken walkthrough ---------------------------------------------- */
+/* A visual-novel scene: the chicken stands bottom-left beside a speech box, one line at a time. */
+
+.guide {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to bottom, rgba(16, 20, 40, 0.25) 0%, rgba(16, 20, 40, 0.7) 100%);
+  cursor: pointer;
+  animation: guide-in 0.25s ease-out;
+}
+
+@keyframes guide-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.guide-skip {
+  position: absolute;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  right: 16px;
+  padding: 6px 18px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(31, 27, 69, 0.75);
+  color: var(--ui-text);
+  font-size: 26px;
+  cursor: pointer;
+}
+
+.guide-art {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-height: 260px;
+  min-height: 0;
+  pointer-events: none;
+}
+
+.guide-art-icon img,
+.guide-art-icon svg {
+  width: 120px;
+  height: 120px;
+  color: var(--ui-gold);
+  filter: drop-shadow(0 6px 0 rgba(16, 20, 24, 0.3));
+  animation: guide-bob 1.6s ease-in-out infinite;
+}
+
+.guide-art-model {
+  flex: none;
+  width: 240px;
+  height: 240px;
+}
+
+@keyframes guide-bob {
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.guide-stage {
+  position: relative;
+  width: min(100%, 760px);
+  padding-left: 150px;
+}
+
+.guide-chicken {
+  position: absolute;
+  left: -8px;
+  bottom: 12px;
+  width: 200px;
+  height: auto;
+  z-index: 1;
+  filter: drop-shadow(0 6px 0 rgba(16, 20, 24, 0.3));
+  transform-origin: 50% 100%;
+  animation: guide-talk 0.45s ease-out;
+  pointer-events: none;
+}
+
+/* A little hop each time the chicken starts a new line. */
+@keyframes guide-talk {
+  0% {
+    transform: translateY(0) scale(1, 1);
+  }
+  35% {
+    transform: translateY(-14px) scale(0.96, 1.05);
+  }
+  70% {
+    transform: translateY(0) scale(1.04, 0.96);
+  }
+}
+
+.guide-box {
+  position: relative;
+  padding: 26px 22px 12px 54px;
+  border-radius: 22px;
+  background: var(--ui-paper);
+  color: var(--ui-ink);
+  box-shadow: 0 6px 0 var(--ui-shadow), 0 0 0 4px var(--ui-gold);
+}
+
+.guide-name {
+  position: absolute;
+  top: -16px;
+  left: 44px;
+  padding: 2px 16px;
+  border-radius: 999px;
+  background: #ff4d6d;
+  color: var(--ui-text);
+  font-size: 26px;
+  line-height: 1.2;
+  box-shadow: 0 3px 0 var(--ui-shadow);
+}
+
+.guide-text {
+  margin: 0;
+  min-height: 2.2em;
+  font: 22px/1.35 var(--font-caption);
+  font-weight: 600;
+}
+
+.guide-hidden {
+  visibility: hidden;
+}
+
+.guide-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  min-height: 34px;
+}
+
+.guide-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.guide-dots i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(16, 20, 24, 0.15);
+}
+
+.guide-dots i.done {
+  background: var(--ui-teal-deep);
+}
+
+.guide-dots i.on {
+  background: var(--ui-gold);
+  transform: scale(1.3);
+}
+
+.guide-next {
+  flex: none;
+  padding: 2px 16px;
+  border-radius: 999px;
+  background: var(--ui-teal);
+  color: var(--ui-ink);
+  font-size: 26px;
+  animation: guide-nudge 0.9s ease-in-out infinite;
+}
+
+@keyframes guide-nudge {
+  50% {
+    transform: translateX(4px);
+  }
+}
+
+@media (max-width: 520px) {
+  .guide-stage {
+    padding-left: 0;
+    padding-top: 96px;
+  }
+  .guide-chicken {
+    left: 0;
+    bottom: auto;
+    top: 0;
+    width: 110px;
+  }
+  .guide-box {
+    padding-left: 18px;
+    padding-top: 28px;
+  }
+  .guide-name {
+    left: 120px;
+  }
+  .guide-text {
+    font-size: 19px;
+  }
+  .guide-art {
+    max-height: 200px;
+  }
+  .guide-art-model {
+    width: 190px;
+    height: 190px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide,
+  .guide-chicken,
+  .guide-next,
+  .guide-art-icon img,
+  .guide-art-icon svg {
+    animation: none;
+  }
+}
