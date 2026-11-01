@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { achievements, goalColor, goalIcon, GOALS, STARS_FOR, type Goal, type GoalKind } from "../game/achievements";
 import { PowerRing } from "./PowerRing";
 import { ShopBackdrop } from "./Store";
@@ -98,24 +98,41 @@ export default function Achievements({ onClose }: { onClose: () => void }) {
   );
 }
 
-const SECTIONS: { kind: GoalKind; title: string }[] = [
+/** Today's and this week's goals share one spot, switched by a pair of tabs; badges sit below. */
+const TABS: { kind: GoalKind; title: string }[] = [
   { kind: "daily", title: "Today" },
   { kind: "weekly", title: "This week" },
-  { kind: "badge", title: "Badges" },
 ];
 
 /** Today's and this week's goals and the badges, as listed on this page and on the store's Achievements tab. */
 export function GoalList() {
+  const [kind, setKind] = useState<GoalKind>("daily");
   return (
     <div className="options-list goals">
-      {SECTIONS.map(({ kind, title }) => (
-        <section key={kind} className="goals-section">
-          <h3 className="goals-head">{title}</h3>
-          {GOALS.filter((g) => g.kind === kind).map((g) => (
-            <GoalRow key={g.id} goal={g} />
-          ))}
-        </section>
-      ))}
+      <div className="goals-tabs" role="tablist" aria-label="Goals">
+        {TABS.map((t) => (
+          <button
+            key={t.kind}
+            role="tab"
+            aria-selected={kind === t.kind}
+            className={kind === t.kind ? "on" : ""}
+            onClick={() => setKind(t.kind)}
+          >
+            {t.title}
+          </button>
+        ))}
+      </div>
+      <section className="goals-section" role="tabpanel">
+        {GOALS.filter((g) => g.kind === kind).map((g) => (
+          <GoalRow key={g.id} goal={g} />
+        ))}
+      </section>
+      <section className="goals-section">
+        <h3 className="goals-head">Badges</h3>
+        {GOALS.filter((g) => g.kind === "badge").map((g) => (
+          <GoalRow key={g.id} goal={g} />
+        ))}
+      </section>
     </div>
   );
 }
