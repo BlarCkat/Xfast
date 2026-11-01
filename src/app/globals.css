@@ -1484,8 +1484,8 @@ kbd {
   font-size: 15px;
 }
 
-/* ---- Chicken walkthrough ---------------------------------------------- */
-/* A visual-novel scene: the chicken stands bottom-left beside a speech box, one line at a time. */
+/* ---- Chicken tips ------------------------------------------------------ */
+/* The chicken stands bottom-left beside a speech box drawn like the store card (see GuideFrame). */
 
 .guide {
   position: absolute;
@@ -1496,7 +1496,7 @@ kbd {
   justify-content: flex-end;
   align-items: center;
   padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(18px + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(to bottom, rgba(16, 20, 40, 0.25) 0%, rgba(16, 20, 40, 0.7) 100%);
+  background: linear-gradient(to bottom, rgba(16, 20, 40, 0.2) 0%, rgba(16, 20, 40, 0.6) 100%);
   cursor: pointer;
   animation: guide-in 0.25s ease-out;
 }
@@ -1511,12 +1511,12 @@ kbd {
   position: absolute;
   top: calc(14px + env(safe-area-inset-top, 0px));
   right: 16px;
-  padding: 6px 18px;
+  padding: 0 16px;
   border: none;
-  border-radius: 999px;
-  background: rgba(31, 27, 69, 0.75);
+  background: #212139;
   color: var(--ui-text);
-  font-size: 26px;
+  font-size: 24px;
+  transform: skewX(-10deg);
   cursor: pointer;
 }
 
@@ -1525,15 +1525,15 @@ kbd {
   display: grid;
   place-items: center;
   width: 100%;
-  max-height: 260px;
+  max-height: 240px;
   min-height: 0;
   pointer-events: none;
 }
 
 .guide-art-icon img,
 .guide-art-icon svg {
-  width: 120px;
-  height: 120px;
+  width: 110px;
+  height: 110px;
   color: var(--ui-gold);
   filter: drop-shadow(0 6px 0 rgba(16, 20, 24, 0.3));
   animation: guide-bob 1.6s ease-in-out infinite;
@@ -1541,8 +1541,8 @@ kbd {
 
 .guide-art-model {
   flex: none;
-  width: 240px;
-  height: 240px;
+  width: 220px;
+  height: 220px;
 }
 
 @keyframes guide-bob {
@@ -1553,15 +1553,15 @@ kbd {
 
 .guide-stage {
   position: relative;
-  width: min(100%, 760px);
-  padding-left: 150px;
+  width: min(100%, 680px);
+  padding-left: 130px;
 }
 
 .guide-chicken {
   position: absolute;
-  left: -8px;
-  bottom: 12px;
-  width: 200px;
+  left: -6px;
+  bottom: 10px;
+  width: 180px;
   height: auto;
   z-index: 1;
   filter: drop-shadow(0 6px 0 rgba(16, 20, 24, 0.3));
@@ -1572,9 +1572,6 @@ kbd {
 
 /* A little hop each time the chicken starts a new line. */
 @keyframes guide-talk {
-  0% {
-    transform: translateY(0) scale(1, 1);
-  }
   35% {
     transform: translateY(-14px) scale(0.96, 1.05);
   }
@@ -1585,31 +1582,35 @@ kbd {
 
 .guide-box {
   position: relative;
-  padding: 26px 22px 12px 54px;
-  border-radius: 22px;
-  background: var(--ui-paper);
-  color: var(--ui-ink);
-  box-shadow: 0 6px 0 var(--ui-shadow), 0 0 0 4px var(--ui-gold);
+  min-height: 170px;
+  padding: 74px 34px 28px 58px;
+  color: var(--ui-text);
+}
+
+.guide-frame {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  filter: drop-shadow(0 6px 0 rgba(30, 20, 80, 0.25));
+  pointer-events: none;
 }
 
 .guide-name {
   position: absolute;
-  top: -16px;
-  left: 44px;
-  padding: 2px 16px;
-  border-radius: 999px;
-  background: #ff4d6d;
-  color: var(--ui-text);
-  font-size: 26px;
-  line-height: 1.2;
-  box-shadow: 0 3px 0 var(--ui-shadow);
+  top: 26px;
+  left: 39px;
+  width: 157px;
+  text-align: center;
+  color: #15142a;
+  font-size: 28px;
+  line-height: 1;
 }
 
 .guide-text {
+  position: relative;
   margin: 0;
-  min-height: 2.2em;
-  font: 22px/1.35 var(--font-caption);
-  font-weight: 600;
+  font: 30px/1.05 var(--font-ui);
+  letter-spacing: 0.5px;
 }
 
 .guide-hidden {
@@ -1617,12 +1618,12 @@ kbd {
 }
 
 .guide-foot {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 8px;
-  min-height: 34px;
+  margin-top: 10px;
 }
 
 .guide-dots {
@@ -1634,69 +1635,97 @@ kbd {
 .guide-dots i {
   width: 9px;
   height: 9px;
-  border-radius: 50%;
-  background: rgba(16, 20, 24, 0.15);
+  background: rgba(255, 255, 255, 0.2);
+  transform: skewX(-10deg);
 }
 
 .guide-dots i.done {
-  background: var(--ui-teal-deep);
+  background: #2dded3;
 }
 
 .guide-dots i.on {
   background: var(--ui-gold);
-  transform: scale(1.3);
 }
 
+/* Same teal slanted button as the store card's Buy. */
 .guide-next {
   flex: none;
-  padding: 2px 16px;
-  border-radius: 999px;
-  background: var(--ui-teal);
-  color: var(--ui-ink);
-  font-size: 26px;
-  animation: guide-nudge 0.9s ease-in-out infinite;
+  padding: 0 14px;
+  background: #2dded3;
+  color: #15142a;
+  font-size: 24px;
+  transform: skewX(-10deg);
+  transition: opacity 0.15s;
 }
 
-@keyframes guide-nudge {
-  50% {
-    transform: translateX(4px);
-  }
+.guide-next.waiting {
+  opacity: 0;
 }
 
 @media (max-width: 520px) {
   .guide-stage {
     padding-left: 0;
-    padding-top: 96px;
+    padding-top: 92px;
   }
   .guide-chicken {
-    left: 0;
+    left: auto;
+    right: 4px;
     bottom: auto;
     top: 0;
-    width: 110px;
+    width: 112px;
   }
   .guide-box {
-    padding-left: 18px;
-    padding-top: 28px;
-  }
-  .guide-name {
-    left: 120px;
+    padding: 70px 26px 26px 44px;
   }
   .guide-text {
-    font-size: 19px;
+    font-size: 26px;
   }
   .guide-art {
-    max-height: 200px;
+    max-height: 190px;
   }
   .guide-art-model {
-    width: 190px;
-    height: 190px;
+    width: 180px;
+    height: 180px;
   }
+}
+
+/* The reset row: red, and asks before erasing. */
+.options-reset span:first-child {
+  color: #ff8a7a;
+}
+
+.options-confirm {
+  flex-wrap: wrap;
+  cursor: default;
+}
+
+.options-confirm > span {
+  flex: 1 1 100%;
+}
+
+.options-cancel,
+.options-danger {
+  flex: 1;
+  padding: 2px 12px;
+  border: none;
+  font-size: 24px;
+  transform: skewX(-10deg);
+  cursor: pointer;
+}
+
+.options-cancel {
+  background: #2dded3;
+  color: #15142a;
+}
+
+.options-danger {
+  background: #f6533f;
+  color: #fff;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .guide,
   .guide-chicken,
-  .guide-next,
   .guide-art-icon img,
   .guide-art-icon svg {
     animation: none;
