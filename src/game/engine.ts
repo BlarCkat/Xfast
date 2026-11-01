@@ -204,15 +204,15 @@ export class Engine {
   private listeners = new Set<() => void>();
 
   readonly character: CharacterId;
-  /** The character's trait numbers at the tier it has been upgraded to. */
+  /** The character's trait numbers at the upgrade steps it has taken. */
   readonly traits: Traits;
-  /** The character's upgrade tier this run plays at. */
-  readonly tier: number;
+  /** The character's upgrade steps this run plays at (see characterLevelOf). */
+  readonly steps: number;
 
   constructor(character: CharacterId = "chicken", seed = Math.floor(Math.random() * 1e9)) {
     this.character = character;
-    this.tier = wallet.tierOf(character);
-    this.traits = traitsAt(character, this.tier);
+    this.steps = wallet.stepsOf(character);
+    this.traits = traitsAt(character, this.steps);
     this.generator = new LaneGenerator(seed);
     this.ui = {
       status: "ready",

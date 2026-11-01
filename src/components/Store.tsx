@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExter
 import { Canvas, useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 import { TIER_SIZE, isInstant, nextUpgrade, strengthAt, tierOf, type PowerUp } from "@/game/powerups";
-import { CHARACTER_TIERS, CHARACTER_TIER_COST, nextPerk, traitText } from "@/game/characters";
+import { CHARACTER_BOXES, CHARACTER_LEVELS, CHARACTER_LEVEL_COLORS, MAX_CHARACTER_STEPS, nextCharacterStep, nextPerk, stepsAtLevel, traitText } from "@/game/characters";
 import { CHARACTERS, STORE_ITEMS, wallet, type CharacterId, type StoreItemId, type WalletState } from "@/game/wallet";
 import { Icon } from "./icons";
 import { CharacterModel } from "./models";
@@ -65,13 +65,13 @@ const cellsFor = (tab: StoreTab, w: WalletState): Cell[] =>
       }))
     : tab === "characters"
     ? CHARACTERS.map((c) => {
-        const tier = wallet.tierOf(c.id);
+        const steps = wallet.stepsOf(c.id);
         return {
           id: c.id,
           name: c.name,
           price: c.price,
-          kind: w.owned.includes(c.id) ? `Character · Level ${tier}` : "Character",
-          description: `${traitText(c.id, tier)} ${CHARACTER_BLURB[c.id]}`,
+          kind: w.owned.includes(c.id) ? `Character · Level ${wallet.levelOf(c.id).level}` : "Character",
+          description: `${traitText(c.id, steps)} ${CHARACTER_BLURB[c.id]}`,
         };
       })
     : STORE_ITEMS.map((i) => ({
@@ -141,24 +141,26 @@ function action(tab: StoreTab, cell: Cell, w: WalletState) {
   return { label: `Buy · ${cell.price}`, run: w.coins >= cell.price ? () => wallet.buyItem(id) : null };
 }
 
-/** Tier colours, shared by the boxes under the card and the upgrade sweep: lime, light red, gold, sky, violet. */
-const TIER_COLORS = ["#b4e33d", "#f2867a", "#f4c542", "#5bc0eb", "#c77dff"];
+/** Power-up tier colours, shared by the boxes under the card and the upgrade sweep: lime, light red, gold. */
+const TIER_COLORS = ["#b4e33d", "#f2867a", "#f4c542"];
 
 /**
- * Upgrading a power-up (longer duration, or more rows for the instant ones), or stepping an owned
- * character up a tier, which strengthens its trait.
+ * Upgrading a power-up (longer duration, or more rows for the instant ones), or an owned character:
+ * filling the next box on its level, or stepping up a level once they're all full. Both strengthen it.
  */
 function upgradeAction(tab: StoreTab, cell: Cell, w: WalletState) {
   if (tab === "characters") {
     const id = cell.id as CharacterId;
     if (!w.owned.includes(id)) return null;
-    const tier = wallet.tierOf(id);
-    if (tier >= CHARACTER_TIERS) return { label: "Max level", run: null, next: null };
-    const cost = CHARACTER_TIER_COST[tier];
+    const steps = wallet.stepsOf(id);
+    const step = nextCharacterStep(steps);
+    if (!step) return { label: "Max level", run: null, next: null };
+    // The preview looks ahead to where this level's boxes are heading: the trait with all five full.
+    const full = step.level >= CHARACTER_LEVELS ? MAX_CHARACTER_STEPS : stepsAtLevel(step.level + 1) - 1;
     return {
-      label: `Level ${tier + 1} · ${cost}`,
-      next: `Level ${tier + 1}: ${nextPerk(id, tier)}`,
-      run: w.coins >= cost ? () => wallet.upgradeCharacter(id) : null,
+      label: step.kind === "level" ? `Level ${step.level} · ${step.cost}` : `Upgrade · ${step.cost}`,
+      next: `Level ${step.level} full: ${nextPerk(id, steps, full)}`,
+      run: w.gems >= step.cost ? () => wallet.upgradeCharacter(id) : null,
     };
   }
   if (tab !== "powerups" || cell.id === "life") return null;
@@ -169,7 +171,7 @@ function upgradeAction(tab: StoreTab, cell: Cell, w: WalletState) {
   return {
     label: step.kind === "tier" ? `Level ${step.tier} · ${step.cost}` : `Upgrade · ${step.cost}`,
     next: `Next level: ${strengthAt(id, done + 1)}`,
-    run: w.coins >= step.cost ? () => wallet.upgrade(id) : null,
+    run: w.gems >= step.cost ? () => wallet.upgrade(id) : null,
   };
 }
 
@@ -283,11 +285,15 @@ export default function Store({
   const isBank = tab === "bank";
   const upgradable = tab === "powerups" && cell.id !== "life";
   const tier = upgradable ? tierOf(w.upgrades[cell.id as PowerUp]) : null;
-  // An owned character's boxes are its five tiers instead, each in its tier's colour.
-  const charTier = owned ? wallet.tierOf(cell.id as CharacterId) : 0;
-  const pips = charTier ? CHARACTER_TIERS : PIPS;
-  const filled = tier ? tier.filled : charTier || Math.min(PIPS, Math.floor((w.coins / cell.price) * PIPS));
-  const boostColor = TIER_COLORS[(tier?.tier ?? charTier ?? 1) - 1] ?? TIER_COLORS[0];
+  // An owned character's boxes are its current level's five upgrades. Each fills in that level's colour
+  // over the last level's (all full by then), so level 1 starts on see-through white boxes.
+  const charLevel = owned ? wallet.levelOf(cell.id as CharacterId) : null;
+  const pips = charLevel ? CHARACTER_BOXES : PIPS;
+  const filled = tier ? tier.filled : charLevel ? charLevel.filled : Math.min(PIPS, Math.floor((w.coins / cell.price) * PIPS));
+  const levelColor = (level: number) => CHARACTER_LEVEL_COLORS[level - 1];
+  const charBox = (i: number) =>
+    !charLevel ? undefined : i < charLevel.filled ? levelColor(charLevel.level) : charLevel.level > 1 ? levelColor(charLevel.level - 1) : "rgba(255, 255, 255, 0.3)";
+  const boostColor = charLevel ? levelColor(charLevel.level) : TIER_COLORS[(tier?.tier ?? 1) - 1] ?? TIER_COLORS[0];
 
   return (
     <div
@@ -357,11 +363,13 @@ export default function Store({
                 {act.label}
               </button>
               {up?.next && (
-                <button className={`shop-card-up${up.run ? " ready" : ""}`} disabled={!doUpgrade} onClick={() => doUpgrade?.()} aria-label={up.label}>
+                <button className={`shop-card-up${up.run ? " ready" : ""}`} disabled={!doUpgrade} onClick={() => doUpgrade?.()} aria-label={`${up.label} gems`}>
                   <svg viewBox="0 0 24 24" width={16} height={16} aria-hidden="true">
                     <path d="M12 4 4 13h5v7h6v-7h5Z" fill="currentColor" />
                   </svg>
                   {up.label.replace(/^Upgrade · /, "")}
+                  {/* Upgrades are paid in gems. */}
+                  <Icon id="gem" size={14} />
                 </button>
               )}
             </div>
@@ -373,19 +381,19 @@ export default function Store({
           aria-label={
             tier
               ? `Level ${tier.tier}, ${tier.filled} of ${TIER_SIZE} upgrades`
-              : charTier
-              ? `Level ${charTier} of ${CHARACTER_TIERS}`
+              : charLevel
+              ? `Level ${charLevel.level}, ${charLevel.filled} of ${CHARACTER_BOXES} upgrades`
               : undefined
           }
           // Packs have nothing to save toward; keep the space so the card doesn't jump between tabs.
           style={isBank ? { visibility: "hidden" } : undefined}
         >
-          {(tier || charTier > 0) && <span className="shop-pips-tier">LEVEL {tier?.tier ?? charTier}</span>}
+          {(tier || charLevel) && <span className="shop-pips-tier">LEVEL {tier?.tier ?? charLevel?.level}</span>}
           {Array.from({ length: pips }, (_, i) => (
             <span
               key={i}
-              className={`pip${i < filled ? " full" : i === filled ? " next" : ""}`}
-              style={charTier && i < filled ? { background: TIER_COLORS[i] } : undefined}
+              className={charLevel ? "pip" : `pip${i < filled ? " full" : i === filled ? " next" : ""}`}
+              style={charLevel ? { background: charBox(i) } : undefined}
             />
           ))}
         </div>

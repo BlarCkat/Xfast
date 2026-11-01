@@ -159,11 +159,11 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
     durationAt(key, w.upgrades[key]) * (engine.character === "chicken" ? engine.traits.powerupBonus : 1);
 
   // Show a newly picked or upgraded character straight away on the start screen.
-  const selectedTier = w.charTiers[w.selected] ?? 1;
+  const selectedSteps = w.charSteps[w.selected] ?? 0;
   useEffect(() => {
     if (engine.status !== "ready") return;
-    if (engine.character !== w.selected || engine.tier !== selectedTier) setEngine(new Engine(w.selected));
-  }, [engine, w.selected, selectedTier]);
+    if (engine.character !== w.selected || engine.steps !== selectedSteps) setEngine(new Engine(w.selected));
+  }, [engine, w.selected, selectedSteps]);
 
   useEffect(() => {
     if (ui.status === "dead") diedAt.current = performance.now();
@@ -189,7 +189,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
     (dir: Direction) => {
       if (engine.status === "ready") {
         const inv = wallet.get().inventory;
-        const pending = beforeRun(engine.character, engine.tier, POWERUPS.some((p) => inv[p.key] > 0));
+        const pending = beforeRun(engine.character, engine.steps, POWERUPS.some((p) => inv[p.key] > 0));
         if (pending) {
           setGuide({ ...pending, thenPlay: true });
           return;

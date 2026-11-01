@@ -47,10 +47,10 @@ export const isInstant = (k: PowerUp) => POWERUP_DURATION[k] === 0;
 
 export const TIERS = 3;
 export const TIER_SIZE = 7;
-/** Coins for one upgrade inside each tier. */
-export const LEVEL_COST = [50, 100, 150];
-/** Coins to step up into tier 2 and tier 3. */
-export const TIER_COST = [0, 200, 500];
+/** Gems for one upgrade inside each tier. */
+export const LEVEL_COST = [2, 4, 6];
+/** Gems to step up into tier 2 and tier 3. */
+export const TIER_COST = [0, 10, 20];
 export const MAX_UPGRADES = TIERS * (TIER_SIZE + 1) - 1;
 
 /** Which tier (1-3) a power-up is on, and how many of that tier's boxes are filled. */

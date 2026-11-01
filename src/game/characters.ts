@@ -11,14 +11,41 @@ import {
 } from "./config";
 import type { CharacterId } from "./wallet";
 
-// Character upgrades. Every character climbs five tiers; each tier strengthens its own trait, and
-// nothing else. Tier 1 is the character as bought.
+// Character upgrades. Every character climbs nine levels of five boxes each, like the power-ups:
+// each upgrade fills the next box of the current level, and once all five are full the character can
+// step up a level, which starts filling the boxes again in that level's colour. Every step (box or
+// level) strengthens the character's own trait a little, and nothing else. A character's progress is
+// one count of steps taken, from 0 (level 1 as bought) up to MAX_CHARACTER_STEPS.
 
-export const CHARACTER_TIERS = 5;
-/** Coins to step up into tiers 2 to 5. */
-export const CHARACTER_TIER_COST = [0, 150, 300, 500, 800];
+export const CHARACTER_LEVELS = 9;
+export const CHARACTER_BOXES = 5;
+export const MAX_CHARACTER_STEPS = CHARACTER_LEVELS * (CHARACTER_BOXES + 1) - 1;
+/** Gems for one box upgrade on each level, 1 to 9. */
+export const CHARACTER_BOX_COST = [2, 3, 4, 5, 6, 7, 8, 9, 10];
+/** Gems to step up into each level, indexed by that level (levels 2 to 9). */
+export const CHARACTER_LEVEL_COST = [0, 0, 10, 15, 20, 25, 30, 35, 40, 45];
+/** Each level's box colour: green, yellow, orange, red, pink, sky, teal, lavender, white. */
+export const CHARACTER_LEVEL_COLORS = ["#7ed957", "#f4d03f", "#ff9a3c", "#f2545b", "#ff7ac8", "#5bc0eb", "#2ee6c4", "#c9a7ff", "#ffffff"];
 
-/** The numbers behind every trait. A character only uses its own; the rest stay at tier 1. */
+/** Which level (1-9) a character is on, and how many of that level's boxes are filled. */
+export function characterLevelOf(steps: number) {
+  const s = Math.max(0, Math.min(MAX_CHARACTER_STEPS, Math.round(steps) || 0));
+  const level = Math.min(CHARACTER_LEVELS, Math.floor(s / (CHARACTER_BOXES + 1)) + 1);
+  return { level, filled: s - (level - 1) * (CHARACTER_BOXES + 1) };
+}
+
+/** Steps taken by the time a character first reaches this level, with no boxes filled. */
+export const stepsAtLevel = (level: number) => (Math.max(1, Math.min(CHARACTER_LEVELS, level)) - 1) * (CHARACTER_BOXES + 1);
+
+/** The next step for a character: another box on this level, a step up a level, or nothing at max. */
+export function nextCharacterStep(steps: number): { kind: "box" | "level"; level: number; cost: number } | null {
+  if (steps >= MAX_CHARACTER_STEPS) return null;
+  const { level, filled } = characterLevelOf(steps);
+  if (filled < CHARACTER_BOXES) return { kind: "box", level, cost: CHARACTER_BOX_COST[level - 1] };
+  return { kind: "level", level: level + 1, cost: CHARACTER_LEVEL_COST[level + 1] };
+}
+
+/** The numbers behind every trait. A character only uses its own; the rest stay as bought. */
 export interface Traits {
   /** Chicken: power-ups last this many times longer. */
   powerupBonus: number;
@@ -66,14 +93,18 @@ const BASE: Traits = {
   tigerRoarHops: TIGER_ROAR_HOPS,
 };
 
-/** Each character's trait values from tier 1 to tier 5. */
+/**
+ * Each character's trait values along the upgrade path, from bought to fully upgraded. A trait moves
+ * smoothly between these points with every step taken.
+ */
 const LADDER: { [K in CharacterId]: Partial<{ [T in keyof Traits]: number[] }> } = {
   chicken: { powerupBonus: [1.5, 1.6, 1.75, 1.9, 2] },
   duck: { duckStart: [0, 1, 2, 3, 4] },
   frog: { frogCoin: [0, 0.25, 0.5, 0.75, 1] },
   penguin: { penguinShield: [1, 1.5, 2, 2.5, 3] },
   cat: { catRefillHops: [20, 17, 14, 12, 10] },
-  robot: { robotCoinHops: [0, 50, 40, 30, 20] },
+  // Off as bought; the first upgrade switches it on (see OFF_AS_BOUGHT).
+  robot: { robotCoinHops: [50, 40, 30, 20] },
   sparrow: { timeTraitHops: [100, 85, 70, 60, 50] },
   snail: { timeTraitHops: [100, 85, 70, 60, 50] },
   mario: { marioCoinsPerLife: [100, 90, 80, 70, 60] },
@@ -85,20 +116,35 @@ const LADDER: { [K in CharacterId]: Partial<{ [T in keyof Traits]: number[] }> }
   tiger: { tigerRoarHops: [60, 52, 45, 38, 30] },
 };
 
-const clampTier = (tier: number) => Math.max(1, Math.min(CHARACTER_TIERS, Math.round(tier) || 1));
+/** Traits a character doesn't have at all until its first upgrade. */
+const OFF_AS_BOUGHT: (keyof Traits)[] = ["robotCoinHops"];
 
-export function traitsAt(id: CharacterId, tier: number): Traits {
-  const t = clampTier(tier) - 1;
+/** A trait's value this far (0 to 1) along its ladder: whole numbers stay whole, the rest keep two decimals. */
+function along(values: number[], progress: number) {
+  const x = Math.max(0, Math.min(1, progress)) * (values.length - 1);
+  const i = Math.min(values.length - 2, Math.floor(x));
+  const v = values[i] + (values[i + 1] - values[i]) * (x - i);
+  return values.every(Number.isInteger) ? Math.round(v) : Math.round(v * 100) / 100;
+}
+
+/** The character's trait numbers after this many upgrade steps (see characterLevelOf). */
+export function traitsAt(id: CharacterId, steps: number): Traits {
   const out = { ...BASE };
-  for (const [key, values] of Object.entries(LADDER[id]) as [keyof Traits, number[]][]) out[key] = values[t];
+  for (const [key, values] of Object.entries(LADDER[id]) as [keyof Traits, number[]][]) {
+    if (OFF_AS_BOUGHT.includes(key)) out[key] = steps > 0 ? along(values, (steps - 1) / (MAX_CHARACTER_STEPS - 1)) : 0;
+    else out[key] = along(values, steps / MAX_CHARACTER_STEPS);
+  }
   return out;
 }
 
+/** One decimal at most, for the numbers the cards show. */
+const short = (n: number) => String(Math.round(n * 10) / 10);
+
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
-/** The character's trait as it plays at this tier, for the store card. */
-export function traitText(id: CharacterId, tier: number): string {
-  const t = traitsAt(id, tier);
+/** The character's trait as it plays after this many steps, for the store card. */
+export function traitText(id: CharacterId, steps: number): string {
+  const t = traitsAt(id, steps);
   switch (id) {
     case "chicken":
       return `Power-ups last ${pct(t.powerupBonus - 1)} longer.`;
@@ -109,7 +155,7 @@ export function traitText(id: CharacterId, tier: number): string {
     case "frog":
       return `Never drowns: always lands on the nearest log ahead.${t.frogCoin ? ` Catches a coin on ${pct(t.frogCoin)} of logs.` : ""}`;
     case "penguin":
-      return t.penguinShield > 1 ? `Starts every run with a shield that lasts ${t.penguinShield}× as long.` : "Starts every run with a shield.";
+      return t.penguinShield > 1 ? `Starts every run with a shield that lasts ${short(t.penguinShield)}× as long.` : "Starts every run with a shield.";
     case "cat":
       return `Nine lives, and regrows lost ones: half a life every ${t.catRefillHops} hops, twice as slow after each life spent.`;
     case "robot":
@@ -121,7 +167,7 @@ export function traitText(id: CharacterId, tier: number): string {
     case "mario":
       return `Super Mushroom: the first hit shrinks him instead of costing a life, and he grows back in each new biome. Every ${t.marioCoinsPerLife} coins is a 1-UP.`;
     case "luigi":
-      return `Poltergust: sucks up coins within ${t.luigiRadius} tiles. Ghost hunter: nothing can hit him in the Spooky biome.`;
+      return `Poltergust: sucks up coins within ${short(t.luigiRadius)} tiles. Ghost hunter: nothing can hit him in the Spooky biome.`;
     case "bowser":
       return `Smashes through trees and rocks, and breathes fire every ${t.bowserFireHops} hops to wreck ${t.bowserFireRows} rows of traffic ahead.`;
     case "human":
@@ -135,11 +181,11 @@ export function traitText(id: CharacterId, tier: number): string {
   }
 }
 
-/** What the next tier improves, in a few words, for the store card. */
-export function nextPerk(id: CharacterId, tier: number): string | null {
-  if (tier >= CHARACTER_TIERS) return null;
-  const now = traitsAt(id, tier);
-  const next = traitsAt(id, tier + 1);
+/** What the trait becomes after this many steps, compared with now, in a few words for the store card. */
+export function nextPerk(id: CharacterId, steps: number, at: number): string | null {
+  if (steps >= MAX_CHARACTER_STEPS) return null;
+  const now = traitsAt(id, steps);
+  const next = traitsAt(id, Math.min(MAX_CHARACTER_STEPS, at));
   switch (id) {
     case "chicken":
       return `power-ups +${pct(next.powerupBonus - 1)}`;
@@ -148,7 +194,7 @@ export function nextPerk(id: CharacterId, tier: number): string | null {
     case "frog":
       return `coin on ${pct(next.frogCoin)} of logs`;
     case "penguin":
-      return `${next.penguinShield}× starting shield`;
+      return `${short(next.penguinShield)}× starting shield`;
     case "cat":
       return `regrow every ${next.catRefillHops} hops`;
     case "robot":
@@ -159,7 +205,7 @@ export function nextPerk(id: CharacterId, tier: number): string | null {
     case "mario":
       return `1-UP every ${next.marioCoinsPerLife} coins`;
     case "luigi":
-      return `${next.luigiRadius}-tile Poltergust`;
+      return `${short(next.luigiRadius)}-tile Poltergust`;
     case "bowser":
       return next.bowserFireRows > now.bowserFireRows
         ? `fire every ${next.bowserFireHops} hops, ${next.bowserFireRows} rows`

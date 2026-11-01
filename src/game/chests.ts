@@ -1,5 +1,4 @@
 import { achievements } from "./achievements";
-import { CHARACTER_TIERS } from "./characters";
 import { POWERUP_KEYS, type PowerUp } from "./powerups";
 import { wallet, type CharacterId } from "./wallet";
 
@@ -51,7 +50,7 @@ export function foundChest(rng: () => number): StarChestKind {
 export type Loot =
   | { kind: "coins"; amount: number }
   | { kind: "gems"; amount: number }
-  /** One character upgrade; every UPGRADES_PER_LEVEL of them on a character level it up for free. */
+  /** One character upgrade: the next box, or the level-up once a level's boxes are all full. */
   | { kind: "upgrade"; character: CharacterId; levelUp: boolean }
   /** A whole free level for a character. */
   | { kind: "level"; character: CharacterId; level: number }
@@ -163,7 +162,7 @@ const pickOne = <T,>(items: T[]) => items[Math.floor(Math.random() * items.lengt
 const shuffled = <T,>(items: T[]) => [...items].sort(() => Math.random() - 0.5);
 
 /** Owned characters that still have a level to climb. */
-const upgradable = () => wallet.get().owned.filter((id) => wallet.tierOf(id) < CHARACTER_TIERS);
+const upgradable = () => wallet.get().owned.filter((id) => wallet.canUpgradeCharacter(id));
 
 /** Roll and hand over a chest's loot. */
 function roll(kind: ChestKind): Loot[] {
@@ -186,7 +185,7 @@ function roll(kind: ChestKind): Loot[] {
     // Two upgrades on two different characters, picked by the chest. With one character it gets both.
     const ids = shuffled(chars);
     for (const id of [ids[0], ids[1] ?? ids[0]]) {
-      if (wallet.tierOf(id) >= CHARACTER_TIERS) continue;
+      if (!wallet.canUpgradeCharacter(id)) continue;
       loot.push({ kind: "upgrade", character: id, levelUp: wallet.grantCharacterUpgrade(id) });
     }
   }
@@ -194,7 +193,7 @@ function roll(kind: ChestKind): Loot[] {
     const selected = wallet.get().selected;
     const id = chars.includes(selected) ? selected : pickOne(chars);
     wallet.grantCharacterLevel(id);
-    loot.push({ kind: "level", character: id, level: wallet.tierOf(id) });
+    loot.push({ kind: "level", character: id, level: wallet.levelOf(id).level });
   }
   if (kind !== "basic") {
     const n = kind === "epic" ? randInt(1, 3) : randInt(1, 5);
@@ -219,7 +218,7 @@ function rollHoliday(coins: number, gems: number, powerups: number): Loot[] {
     const selected = wallet.get().selected;
     const id = chars.includes(selected) ? selected : pickOne(chars);
     wallet.grantCharacterLevel(id);
-    loot.push({ kind: "level", character: id, level: wallet.tierOf(id) });
+    loot.push({ kind: "level", character: id, level: wallet.levelOf(id).level });
   }
   for (let i = 0; i < powerups; i++) {
     const open = POWERUP_KEYS.filter((k) => wallet.canUpgrade(k));

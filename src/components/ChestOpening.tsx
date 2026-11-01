@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { Group } from "three";
 import { CHESTS, chests, type ChestKind, type Loot } from "@/game/chests";
+import { CHARACTER_BOXES, CHARACTER_LEVELS } from "@/game/characters";
 import { POWERUPS } from "@/game/powerups";
-import { CHARACTERS, UPGRADES_PER_LEVEL, wallet, type CharacterId, type StoreItemId } from "@/game/wallet";
+import { CHARACTERS, wallet, type CharacterId, type StoreItemId } from "@/game/wallet";
 import * as sound from "@/game/sound";
 import { ChestArt, ChestLights } from "./ChestArt";
 import { Icon } from "./icons";
@@ -84,6 +85,13 @@ function group(loot: Loot[]): Item[] {
   return out;
 }
 
+/** Where a character stands after a chest upgrade: boxes filled on this level, or a level-up ready. */
+function upgradeLine(id: CharacterId) {
+  const { level, filled } = wallet.levelOf(id);
+  if (level >= CHARACTER_LEVELS) return `UPGRADE · ${filled}/${CHARACTER_BOXES} ON LEVEL ${level}`;
+  return filled >= CHARACTER_BOXES ? `UPGRADE · LEVEL ${level + 1} READY` : `UPGRADE · ${filled}/${CHARACTER_BOXES} TO LEVEL ${level + 1}`;
+}
+
 /** What an item looks like on its own: its icon, its headline and the line under it. */
 function describe(item: Item): { icon: StoreItemId | CharacterId | "coin" | "gem"; title: string; sub: string; big?: boolean } {
   switch (item.kind) {
@@ -93,11 +101,11 @@ function describe(item: Item): { icon: StoreItemId | CharacterId | "coin" | "gem
       return { icon: "gem", title: `+${item.amount}`, sub: "GEMS" };
     case "upgrade":
       return item.levelUp
-        ? { icon: item.character, title: charName(item.character), sub: `LEVEL UP! LEVEL ${wallet.tierOf(item.character)}`, big: true }
+        ? { icon: item.character, title: charName(item.character), sub: `LEVEL UP! LEVEL ${wallet.levelOf(item.character).level}`, big: true }
         : {
             icon: item.character,
             title: charName(item.character),
-            sub: `UPGRADE · ${wallet.upgradesOf(item.character)}/${UPGRADES_PER_LEVEL} TO NEXT LEVEL`,
+            sub: upgradeLine(item.character),
           };
     case "level":
       return { icon: item.character, title: charName(item.character), sub: `LEVEL UP! LEVEL ${item.level}`, big: true };
