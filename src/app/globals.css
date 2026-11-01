@@ -1,20 +1,14 @@
-/* Readable text uses Brady Bunch Remastered; digits anywhere switch to the pixel face via unicode-range. */
+/* All text, digits included, uses Brady Bunch Remastered. */
 @font-face {
   font-family: "BradBunR";
   src: url("/fonts/BradBunR.woff2") format("woff2");
   font-display: swap;
 }
 
-/* Both pixel faces point at the same file, so the browser fetches it once. */
+/* Digits-only alias of the same file, so Geist Sans captions still show BradBunR numbers. */
 @font-face {
-  font-family: "Geist Pixel Circle";
-  src: url("/fonts/GeistPixel-Circle.woff2") format("woff2");
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Roadmasters Digits";
-  src: url("/fonts/GeistPixel-Circle.woff2") format("woff2");
+  font-family: "BradBunR Digits";
+  src: url("/fonts/BradBunR.woff2") format("woff2");
   font-display: swap;
   unicode-range: U+0030-0039;
 }
@@ -33,11 +27,11 @@
   --ui-text: #ffffff;
   --ui-text-dim: rgba(255, 255, 255, 0.72);
   --ui-shadow: rgba(20, 50, 90, 0.28);
-  --font-ui: "Roadmasters Digits", "BradBunR", "Helvetica Neue", Arial, sans-serif;
-  /* Subtexts and captions: Geist Sans at 32px by default, digits still pixel. */
-  --font-caption: "Roadmasters Digits", var(--font-geist-sans, "Geist"), "Helvetica Neue", Arial, sans-serif;
+  --font-ui: "BradBunR", "Helvetica Neue", Arial, sans-serif;
+  /* Subtexts and captions: Geist Sans at 32px by default, digits in BradBunR. */
+  --font-caption: "BradBunR Digits", var(--font-geist-sans, "Geist"), "Helvetica Neue", Arial, sans-serif;
   --caption-size: 32px;
-  --font-score: "Geist Pixel Circle", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-score: "BradBunR", "Helvetica Neue", Arial, sans-serif;
 }
 
 * {
