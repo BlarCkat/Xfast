@@ -145,7 +145,7 @@ function SwipeToConfirm({ onConfirm, disabled }: { onConfirm: () => void; disabl
   const [dragging, setDragging] = useState(false);
 
   // How far the button can stretch: the track's inner width less the button's resting width.
-  const max = () => (track.current ? track.current.clientWidth - 2 - KNOB_MIN - 2 * KNOB_INSET : 0);
+  const max = () => (track.current ? track.current.clientWidth - KNOB_MIN - 2 * KNOB_INSET : 0);
   const finish = () => {
     setDone(true);
     setX(max());
@@ -192,7 +192,7 @@ function SwipeToConfirm({ onConfirm, disabled }: { onConfirm: () => void; disabl
           }
         }}
       >
-        <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
+        <svg viewBox="0 0 24 24" width={24} height={24} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
           <circle cx="12" cy="12" r="10" />
           <path d="M9.5 9.2a4 4 0 0 1 0 5.6" />
           <path d="M12.4 7.4a6.6 6.6 0 0 1 0 9.2" />
@@ -206,4 +206,4 @@ function SwipeToConfirm({ onConfirm, disabled }: { onConfirm: () => void; disabl
 /** Gap between the button and the track's edge, in px (keep in sync with .pay-swipe-knob in globals.css). */
 const KNOB_INSET = 2;
 /** The button's width at rest, in px (keep in sync with .pay-swipe-knob in globals.css). */
-const KNOB_MIN = 52;
+const KNOB_MIN = 84;
