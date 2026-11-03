@@ -480,10 +480,14 @@ const WIDE_CHROME = 190;
 const CARD_MARGIN = 22;
 /** Extra height (in card SVG units) added to the middle of the card; keep in sync with --card-h in globals.css. */
 const CARD_STRETCH = 80;
-/** Illustrated portraits that replace the glyph on a character's tile. */
-const CHARACTER_ART: Partial<Record<CharacterId, string>> = {
-  chicken: "/characters/chicken.png",
-};
+/**
+ * Portraits on the characters' tiles. The chicken has its illustration; the rest are stand-ins
+ * rendered from each character's in-game voxel model in isometric view, until illustrations arrive.
+ * To swap one, replace public/characters/<id>.png (keep it square with a transparent background).
+ */
+const CHARACTER_ART: Partial<Record<CharacterId, string>> = Object.fromEntries(
+  CHARACTERS.map((c) => [c.id, `/characters/${c.id}.png`]),
+);
 const PIPS = TIER_SIZE;
 
 /** The purple backdrop with its darker diagonal bands and thin swirl lines. */
