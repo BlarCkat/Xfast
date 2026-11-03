@@ -12,6 +12,7 @@ import { CurrencyHeap } from "./CurrencyArt";
 import { ART_POWERUPS } from "./PowerupArt";
 import * as sound from "@/game/sound";
 import { GoalList } from "./Achievements";
+import Payment from "./Payment";
 
 export type StoreTab = "characters" | "powerups" | "bank" | "achievements";
 const TABS: { id: StoreTab; label: string }[] = [
@@ -21,10 +22,16 @@ const TABS: { id: StoreTab; label: string }[] = [
   { id: "achievements", label: "ACHIEVEMENTS" },
 ];
 
-// Coin and gem packs. Payments aren't wired up yet, so they can't be bought.
+// Coin and gem packs, priced in Ghana cedis. Payment is a mock for now (see Payment.tsx).
 type PackId = `${"coins" | "gems"}-${number}`;
+const PACK_PRICES: [amount: number, ghs: number][] = [
+  [10, 0.5],
+  [50, 1],
+  [100, 4.99],
+  [1000, 9.99],
+];
 const PACKS = (["coins", "gems"] as const).flatMap((kind) =>
-  [10, 50, 100, 1000].map((amount) => ({ id: `${kind}-${amount}` as PackId, kind, amount })),
+  PACK_PRICES.map(([amount, ghs]) => ({ id: `${kind}-${amount}` as PackId, kind, amount, ghs })),
 );
 const packOf = (id: Cell["id"]) => PACKS.find((p) => p.id === id);
 
@@ -58,8 +65,8 @@ const cellsFor = (tab: StoreTab, w: WalletState): Cell[] =>
   tab === "bank"
     ? PACKS.map((p) => ({
         id: p.id,
-        name: `${p.amount} ${p.kind}`,
-        price: 0,
+        name: `${p.amount.toLocaleString("en-US")} ${p.kind}`,
+        price: p.ghs,
         kind: p.kind === "coins" ? "Coin pack" : "Gem pack",
         description: `Adds ${p.amount} ${p.kind} to your wallet.`,
       }))
@@ -129,8 +136,8 @@ export function useWallet() {
   return useSyncExternalStore(wallet.subscribe, wallet.get, wallet.get);
 }
 
-function action(tab: StoreTab, cell: Cell, w: WalletState) {
-  if (tab === "bank") return { label: "Coming soon", run: null };
+function action(tab: StoreTab, cell: Cell, w: WalletState, buyPack: (id: PackId) => void) {
+  if (tab === "bank") return { label: `Buy · GHS ${cell.price.toFixed(2)}`, run: () => buyPack(cell.id as PackId) };
   if (tab === "characters") {
     const id = cell.id as CharacterId;
     if (w.selected === id) return { label: "Equipped", run: null };
@@ -218,7 +225,10 @@ export default function Store({
     tab === "characters" ? Math.max(0, CHARACTERS.findIndex((c) => c.id === w.selected)) : 0,
   );
   const cell = cells[Math.min(focus, cells.length - 1)];
-  const act = action(tab, cell, w);
+  // A pack being bought: shows the processing screens and confirm sheet over the store.
+  const [paying, setPaying] = useState<PackId | null>(null);
+  const act = action(tab, cell, w, setPaying);
+  const payPack = paying ? packOf(paying) : undefined;
   const up = upgradeAction(tab, cell, w);
   // An upgrade turns the card the new tier's colour and sweeps a dot grid up it three times, with a ticking sound.
   const [boosting, setBoosting] = useState(0);
@@ -247,11 +257,12 @@ export default function Store({
   };
 
   // Keyboard: arrows move through the grid, Enter buys or equips, Q/E switch tabs, Esc closes.
-  const latest = useRef({ act, doUpgrade, cells, tab });
-  latest.current = { act, doUpgrade, cells, tab };
+  const latest = useRef({ act, doUpgrade, cells, tab, paying });
+  latest.current = { act, doUpgrade, cells, tab, paying };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const { act, doUpgrade, cells, tab } = latest.current;
+      const { act, doUpgrade, cells, tab, paying } = latest.current;
+      if (paying) return;
       const n = cells.length;
       // The grid has more columns on wide screens; read how many it has now.
       const cols = grid.current
@@ -431,6 +442,21 @@ export default function Store({
         })}
       </div>
       </div>
+      )}
+
+      {payPack && (
+        <Payment
+          key={payPack.id}
+          pack={{ kind: payPack.kind, amount: payPack.amount, price: payPack.ghs, art: `/currency/${payPack.id}.png` }}
+          onCancel={() => setPaying(null)}
+          onPaid={() => {
+            // Mock checkout: the swipe validated it, so credit the pack and head back to the game.
+            if (payPack.kind === "coins") wallet.addCoins(payPack.amount);
+            else wallet.addGems(payPack.amount);
+            setPaying(null);
+            onClose();
+          }}
+        />
       )}
     </div>
   );
