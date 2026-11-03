@@ -117,9 +117,9 @@ function tipPages(id: HintId, touch: boolean): GuidePage[] {
     case "coin":
       return [{ text: "You got a coin! Save coins to buy new friends.", art: { icon: "coin" } }];
     case "duck-saved":
-      return [{ text: touch ? "Duck saved it! Tap it at the bottom when you need it." : "Duck saved it! Press its number key when you need it.", art: { icon: "shield" } }];
+      return [{ text: touch ? "Duck saved it! Find it in your bag when you need it." : "Duck saved it! Press its number key when you need it.", art: { icon: "shield" } }];
     case "inventory":
-      return [{ text: touch ? "Your power-ups wait at the bottom. Tap one to use it!" : "Your power-ups wait at the bottom. Press its number key to use it!", art: { icon: "magnet" } }];
+      return [{ text: touch ? "Your power-ups wait in the bag. Tap it and time slows down while you pick!" : "Your power-ups wait in the bag. Press E and time slows down while you pick, or press a number key!", art: { icon: "magnet" } }];
   }
   return [];
 }

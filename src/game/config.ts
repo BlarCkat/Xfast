@@ -79,5 +79,9 @@ export const MAGNET_PULL_TIME = 0.35;
 export const SLOWMO_SCALE = 0.35;
 /** Seconds the world takes to ease into slowmo, and back up to full speed when it ends. */
 export const SLOWMO_EASE = 0.8;
+/** Real seconds the power-up bag stays open before it closes itself. */
+export const BAG_TIME = 3;
+/** World speed (everything, the player included) while the bag is open. */
+export const BAG_SCALE = 0.2;
 /** How far ahead (seconds) the foresight ghosts show traffic. */
 export const FORESIGHT_STEPS = [0.6, 1.2];

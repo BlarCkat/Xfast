@@ -436,7 +436,7 @@ export function button() {
 if (typeof window !== "undefined") {
   const target = (e: Event) => {
     const el = (e.target as Element | null)?.closest?.("button");
-    return el && !el.disabled && !el.closest(".use-power") ? el : null;
+    return el && !el.disabled && !el.closest(".use-power, .bag-button") ? el : null;
   };
   let hovered: Element | null = null;
   window.addEventListener(
