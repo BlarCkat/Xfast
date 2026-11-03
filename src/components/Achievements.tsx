@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { achievements, goalColor, goalIcon, GOALS, STARS_FOR, type Goal, type GoalKind } from "../game/achievements";
+import { achievements, goalColor, goalIcon, STARS_FOR, type Goal, type GoalKind } from "../game/achievements";
+import { wallet } from "../game/wallet";
 import { PowerRing } from "./PowerRing";
 import { ShopBackdrop } from "./Store";
 
 // Rings only fill a segment once that fifth of the goal is done, so a full ring always means finished.
-// The achievements page: today's goals worth a star each, this week's worth three, and the
-// long-term badges. GoalCard is also the card that pops up in a run when a goal is earned.
+// The achievements page: today's goals worth a star each, this week's worth three, this month's
+// worth ten, and the long-term badges. GoalCard is also the card that pops up in a run when a goal is earned.
 
 /** What a finished goal gives, as shown on its row and card. */
 function reward(goal: Goal, earnedLabel: string) {
@@ -86,10 +87,10 @@ export default function Achievements({ onClose }: { onClose: () => void }) {
             <GoalArt size={26} />
           </span>
         </div>
-        <div className="shop-pill" aria-label={`${s.badges.length} badges`}>
-          <span>{s.badges.length}</span>
+        <div className="shop-pill" aria-label={`${achievements.badgeCount(s)} badges`}>
+          <span>{achievements.badgeCount(s)}</span>
           <span className="shop-pill-coin">
-            <GoalArt goal={GOALS.find((g) => g.kind === "badge")} size={26} />
+            <GoalArt goal={achievements.goals("badge", s)[0]} size={26} />
           </span>
         </div>
       </header>
@@ -98,15 +99,18 @@ export default function Achievements({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Today's and this week's goals share one spot, switched by a pair of tabs; badges sit below. */
+/** Today's, this week's and this month's goals share one spot, switched by tabs; badges sit below. */
 const TABS: { kind: GoalKind; title: string }[] = [
   { kind: "daily", title: "Today" },
   { kind: "weekly", title: "This week" },
+  { kind: "monthly", title: "This month" },
 ];
 
-/** Today's and this week's goals and the badges, as listed on this page and on the store's Achievements tab. */
+/** The timed goals and the badges, as listed on this page and on the store's Achievements tab. */
 export function GoalList() {
   const [kind, setKind] = useState<GoalKind>("daily");
+  const s = useSyncExternalStore(achievements.subscribe, achievements.snapshot, achievements.snapshot);
+  const owned = useSyncExternalStore(wallet.subscribe, () => wallet.get().owned, () => wallet.get().owned);
   return (
     <div className="options-list goals">
       <div className="goals-tabs" role="tablist" aria-label="Goals">
@@ -123,13 +127,13 @@ export function GoalList() {
         ))}
       </div>
       <section className="goals-section" role="tabpanel">
-        {GOALS.filter((g) => g.kind === kind).map((g) => (
+        {achievements.goals(kind, s).map((g) => (
           <GoalRow key={g.id} goal={g} />
         ))}
       </section>
       <section className="goals-section">
         <h3 className="goals-head">Badges</h3>
-        {GOALS.filter((g) => g.kind === "badge").map((g) => (
+        {achievements.badgesFor(owned, s).map((g) => (
           <GoalRow key={g.id} goal={g} />
         ))}
       </section>
