@@ -13,8 +13,9 @@ import { Icon } from "./icons";
 import { ShopBackdrop } from "./Store";
 
 // Opening a chest, full screen. The chest can wait for a tap ("You have found a chest!"), then it
-// rattles for three seconds, hops up and throws back its lid, and what was inside comes out one item
-// at a time, each on its own, as the player taps Next.
+// rattles for a second and a half, hops up and throws back its lid, and what was inside comes out one item
+// at a time, each on its own, as the player taps Next. Once the lid is open a halo of light streaks
+// turns slowly behind the chest.
 
 function Sway({ children, spin, bob }: { children: React.ReactNode; spin: boolean; bob: boolean }) {
   const ref = useRef<Group>(null);
@@ -115,7 +116,7 @@ function describe(item: Item): { icon: StoreItemId | CharacterId | "coin" | "gem
 }
 
 /** Seconds the chest rattles before it opens. */
-const SHAKE_MS = 3000;
+const SHAKE_MS = 1500;
 /** The hop and the lid flying open, before the first item comes out. */
 const BOUNCE_MS = 650;
 
@@ -212,6 +213,13 @@ export function ChestOpening({
         </div>
       )}
       <div className="chest-open-stage">
+        {(phase === "bounce" || phase === "reveal") && (
+          <div className="chest-halo" aria-hidden="true">
+            <span className="chest-halo-rays" />
+            <span className="chest-halo-rays back" />
+            <span className="chest-halo-glow" />
+          </div>
+        )}
         <ChestStage
           kind={kind}
           zoom={phase === "reveal" ? 105 : 150}

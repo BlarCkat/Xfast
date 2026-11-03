@@ -49,6 +49,8 @@ function BagIcon() {
 const stop = (e: React.PointerEvent) => e.stopPropagation();
 // Ignore input for a moment after dying so a held key doesn't skip the score screen.
 const RESTART_DELAY = 600;
+/** A beat after the run ends, so the crash plays out before the chest and score screens. */
+const END_SCREEN_DELAY = 1000;
 
 const FX_KEY = "xfast-fx";
 /** Realistic rendering (bloom, ambient occlusion) is on unless the player switched it off. */
@@ -134,8 +136,11 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   const eventState = useEvents();
   // Chests from this run are opened one by one when it ends, before the score screen.
   const [chestsShown, setChestsShown] = useState({ engine: 0, n: 0 });
+  // Which run's end screens may show yet: they wait END_SCREEN_DELAY after it ends.
+  const [endShownFor, setEndShownFor] = useState(0);
+  const ended = ui.status === "dead" && endShownFor === engine.id;
   const nextChest =
-    ui.status === "dead" ? ui.foundChests[chestsShown.engine === engine.id ? chestsShown.n : 0] ?? null : null;
+    ended ? ui.foundChests[chestsShown.engine === engine.id ? chestsShown.n : 0] ?? null : null;
   const unopened = chests.total(useChests()) + (events.claimable(eventState) ? 1 : 0);
   const event = activeEvent();
   const eventItems = event ? events.progress(event, eventState).items : 0;
@@ -180,8 +185,14 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   }, [engine, w.selected, selectedSteps]);
 
   useEffect(() => {
-    if (ui.status === "dead") diedAt.current = performance.now();
-  }, [ui.status]);
+    if (ui.status !== "dead") return;
+    const id = engine.id;
+    const t = setTimeout(() => {
+      diedAt.current = performance.now();
+      setEndShownFor(id);
+    }, END_SCREEN_DELAY);
+    return () => clearTimeout(t);
+  }, [ui.status, engine.id]);
 
   // Leaving the store goes back to the main menu, even when it was opened from the score screen.
   const closeStore = useCallback(() => {
@@ -190,10 +201,11 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   }, []);
 
   const restart = useCallback(() => {
+    if (!ended) return;
     if (performance.now() - diedAt.current < RESTART_DELAY) return;
     setStoreOpen(false);
     setEngine(new Engine(wallet.get().selected));
-  }, []);
+  }, [ended]);
 
   /**
    * Every way of starting a run comes through here. A new player, or a character played for the
@@ -556,7 +568,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
         />
       )}
 
-      {ui.status === "dead" && !nextChest && (
+      {ended && !nextChest && (
         <div className="game-over" role="dialog" aria-label="Run over" onPointerDown={stop} onPointerUp={stop}>
           <ShopBackdrop />
           <div className="game-over-score">

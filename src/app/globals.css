@@ -2044,6 +2044,75 @@ kbd {
   transition: height 0.5s ease-out;
 }
 
+.chest-open-stage canvas {
+  position: relative;
+  z-index: 1;
+}
+
+/* Light streaking out from behind an opened chest, turning slowly. */
+.chest-halo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(520px, 130vw);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: chest-halo-in 0.6s ease-out both;
+}
+
+.chest-halo > span {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.chest-halo-rays {
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 236, 160, 0.55) 0deg 7deg,
+    rgba(255, 236, 160, 0) 11deg 30deg
+  );
+  -webkit-mask: radial-gradient(circle, #000 12%, rgba(0, 0, 0, 0.6) 38%, transparent 70%);
+  mask: radial-gradient(circle, #000 12%, rgba(0, 0, 0, 0.6) 38%, transparent 70%);
+  animation: chest-halo-spin 18s linear infinite;
+}
+
+.chest-halo-rays.back {
+  background: repeating-conic-gradient(
+    from 15deg,
+    rgba(255, 255, 255, 0.3) 0deg 3deg,
+    rgba(255, 255, 255, 0) 6deg 45deg
+  );
+  animation-duration: 26s;
+  animation-direction: reverse;
+}
+
+.chest-halo-glow {
+  background: radial-gradient(circle, rgba(255, 244, 200, 0.9) 0%, rgba(255, 214, 90, 0.45) 18%, rgba(255, 200, 60, 0) 46%);
+  animation: chest-halo-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes chest-halo-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+}
+
+@keyframes chest-halo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes chest-halo-pulse {
+  50% {
+    opacity: 0.75;
+    transform: scale(0.94);
+  }
+}
+
 .chest-phase-reveal .chest-open-stage {
   height: min(230px, 30vh);
 }
@@ -2188,6 +2257,8 @@ kbd {
 
 @media (prefers-reduced-motion: reduce) {
   .chest-open,
+  .chest-halo,
+  .chest-halo > span,
   .chest-open-tap,
   .chest-item,
   .chest-tally li.on,
