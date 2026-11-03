@@ -329,7 +329,7 @@ export class Engine {
     if (toRow > this.ui.score) {
       this.setUi({ score: toRow });
       this.ensureLanes();
-      this.award(achievements.scored(toRow));
+      this.award(achievements.scored(toRow, this.lanes.get(toRow)?.type));
     }
   }
 
@@ -347,6 +347,7 @@ export class Engine {
       if (slot !== null) p.x = slot;
     }
     if (lane?.type === "river" && !this.boardLog(lane) && this.splash(lane)) return;
+    if (p.ride) this.award(achievements.rodeLog());
     // An upgraded frog sometimes catches a coin as it lands on a log.
     if (lane?.type === "river" && p.ride && this.character === "frog" && Math.random() < this.traits.frogCoin) this.bankCoin();
 
@@ -460,11 +461,10 @@ export class Engine {
     while (f.row < to) {
       f.row++;
       p.row = f.row;
-      if (f.row > this.ui.score) {
-        this.setUi({ score: f.row });
-        this.award(achievements.scored(f.row));
-      }
+      const higher = f.row > this.ui.score;
+      if (higher) this.setUi({ score: f.row });
       this.ensureLanes();
+      if (higher) this.award(achievements.scored(f.row, this.lanes.get(f.row)?.type));
       const lane = this.lanes.get(f.row);
       if (!lane) continue;
       this.enterBiome(lane);
@@ -696,6 +696,7 @@ export class Engine {
     const kind = lane.chest!.kind;
     lane.chest = null;
     chests.found(kind);
+    this.award(achievements.foundChest());
     sound.coin(true);
     this.announceChests();
   }

@@ -753,7 +753,8 @@ kbd {
 
 .goals-tabs button {
   flex: 1;
-  padding: 8px 12px 6px;
+  padding: 8px 6px 6px;
+  white-space: nowrap;
   border: none;
   border-radius: 999px;
   background: none;
