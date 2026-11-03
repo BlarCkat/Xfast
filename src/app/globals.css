@@ -231,15 +231,110 @@ kbd {
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
 }
 
-.inventory {
+/* The power-up bag: one button in the corner, opening a panel of everything the player holds. */
+.bag-dock {
   position: absolute;
   right: max(16px, env(safe-area-inset-right, 0px));
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   display: flex;
-  flex-wrap: wrap-reverse;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.bag-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  padding: 0;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #7a4b2a;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+
+.bag-button.open {
+  background: #a0692e;
+  transform: translateY(2px) scale(0.96);
+}
+
+.bag-count {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 12px;
+  background: #ff4d6d;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 24px;
+  text-align: center;
+}
+
+.bag-button kbd {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  min-width: 18px;
+  height: 18px;
+  font-size: 10px;
+}
+
+.bag {
+  width: min(calc(100vw - 32px), 340px);
+  padding: 10px 12px 14px;
+  border-radius: 18px;
+  background: rgba(20, 24, 40, 0.82);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  animation: bag-pop 0.16s ease-out;
+  transform-origin: bottom right;
+}
+
+@keyframes bag-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+.bag-timer {
+  height: 6px;
+  margin-bottom: 12px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+
+.bag-timer span {
+  display: block;
+  height: 100%;
+  background: #ffd34d;
+  transform-origin: left;
+  animation: bag-drain linear forwards;
+}
+
+@keyframes bag-drain {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.bag-items {
+  display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
-  max-width: min(70vw, 340px);
   gap: 14px 8px;
+}
+
+.tint-bag {
+  box-shadow: inset 0 0 120px 30px rgba(122, 75, 42, 0.45);
 }
 
 .use-power {

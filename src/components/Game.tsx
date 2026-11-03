@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Engine, type Direction } from "@/game/engine";
+import { BAG_TIME } from "@/game/config";
 import { POWERUPS, TIER_SIZE, durationAt, hotkeyFor, tierOf, type PowerUp } from "@/game/powerups";
 import { TRACKS, audioSettings, onAudioSettings, setAudioSettings, type TrackId } from "@/game/sound";
 import { wallet } from "@/game/wallet";
@@ -32,6 +33,18 @@ const KEYS: Record<string, Direction> = {
 };
 
 const SWIPE_MIN = 24;
+
+/** A drawstring sack for the power-up bag button. */
+function BagIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={30} height={30} aria-hidden="true">
+      <path d="M8 2h8l-2 4h-4Z" fill="#c98a4b" />
+      <path d="M9 6h6c4.5 3 7 7 7 10.5C22 20.5 18 22 12 22S2 20.5 2 16.5C2 13 4.5 9 9 6Z" fill="#e0a35f" />
+      <path d="M8.5 6.5h7" stroke="#7a4b2a" strokeWidth={2} strokeLinecap="round" />
+      <circle cx={12} cy={15} r={3.4} fill="#ffd34d" stroke="#b07a1a" strokeWidth={1.2} />
+    </svg>
+  );
+}
 
 const stop = (e: React.PointerEvent) => e.stopPropagation();
 // Ignore input for a moment after dying so a held key doesn't skip the score screen.
@@ -153,6 +166,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
     });
   }, []);
   const diedAt = useRef(0);
+  const bagCount = POWERUPS.reduce((n, { key }) => n + w.inventory[key] + ui.stash[key], 0);
   // Upgrades, the chicken's bonus and doubling stretch power-ups, so the HUD rings measure against the real length.
   const fullDuration = (key: PowerUp) =>
     engine.effectSpan[key] ||
@@ -265,9 +279,14 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
         openStore("characters");
         return;
       }
+      if (e.code === "KeyE" && engine.status === "playing") {
+        if (engine.getSnapshot().bagOpen) engine.closeBag();
+        else engine.openBag();
+        return;
+      }
       const power = POWERUPS.find((_, i) => hotkeyFor(i) === e.code);
       if (power) {
-        engine.activate(power.key);
+        if (engine.activate(power.key)) engine.closeBag();
         return;
       }
       if (engine.status === "dead") {
@@ -337,6 +356,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
       </Canvas>
 
       {ui.effects.slowmo > 0 && <div className="tint tint-slowmo" />}
+      {ui.bagOpen && <div className="tint tint-bag" />}
       {ui.effects.foresight > 0 && <div className="tint tint-foresight" />}
       {ui.effects.freeze > 0 && <div className="tint tint-freeze" />}
 
@@ -379,34 +399,60 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
         <span>×{ui.lives}</span>
       </div>
 
-      {ui.status === "playing" && (
-        <div className="inventory">
-          {POWERUPS.map(({ key, label, color }, i) =>
-            w.inventory[key] + ui.stash[key] > 0 ? (
-              <button
-                key={key}
-                className="use-power"
-                aria-label={`Use ${label}${hotkeyFor(i) ? ` (key ${hotkeyFor(i)!.slice(-1)})` : ""}`}
-                onPointerDown={stop}
-                onPointerUp={(e) => {
-                  e.stopPropagation();
-                  engine.activate(key);
-                }}
-              >
-                {/* The ring drains while the power-up runs; otherwise it shows the progress through its upgrade tier. */}
-                <PowerRing
-                  color={color}
-                  size={58}
-                  active={ui.effects[key] > 0}
-                  lit={ui.effects[key] > 0 ? ui.effects[key] / fullDuration(key) : tierOf(w.upgrades[key]).filled / TIER_SIZE}
-                  label={`×${w.inventory[key] + ui.stash[key]}`}
-                >
-                  <Icon id={key} size={26} />
-                </PowerRing>
-                {hotkeyFor(i) && <kbd>{hotkeyFor(i)!.slice(-1)}</kbd>}
-              </button>
-            ) : null,
+      {ui.status === "playing" && bagCount > 0 && (
+        <div className="bag-dock">
+          {ui.bagOpen && (
+            <div className="bag" role="dialog" aria-label="Power-up bag" onPointerDown={stop} onPointerUp={stop}>
+              {/* Drains over the bag's real-time countdown; the bag closes itself when it runs out. */}
+              <div className="bag-timer" aria-hidden="true">
+                <span style={{ animationDuration: `${BAG_TIME}s` }} />
+              </div>
+              <div className="bag-items">
+                {POWERUPS.map(({ key, label, color }, i) =>
+                  w.inventory[key] + ui.stash[key] > 0 ? (
+                    <button
+                      key={key}
+                      className="use-power"
+                      aria-label={`Use ${label}${hotkeyFor(i) ? ` (key ${hotkeyFor(i)!.slice(-1)})` : ""}`}
+                      onPointerDown={stop}
+                      onPointerUp={(e) => {
+                        e.stopPropagation();
+                        engine.activate(key);
+                        engine.closeBag();
+                      }}
+                    >
+                      {/* The ring drains while the power-up runs; otherwise it shows the progress through its upgrade tier. */}
+                      <PowerRing
+                        color={color}
+                        size={54}
+                        active={ui.effects[key] > 0}
+                        lit={ui.effects[key] > 0 ? ui.effects[key] / fullDuration(key) : tierOf(w.upgrades[key]).filled / TIER_SIZE}
+                        label={`×${w.inventory[key] + ui.stash[key]}`}
+                      >
+                        <Icon id={key} size={24} />
+                      </PowerRing>
+                      {hotkeyFor(i) && <kbd>{hotkeyFor(i)!.slice(-1)}</kbd>}
+                    </button>
+                  ) : null,
+                )}
+              </div>
+            </div>
           )}
+          <button
+            className={`bag-button${ui.bagOpen ? " open" : ""}`}
+            aria-label={ui.bagOpen ? "Close power-up bag (key E)" : `Open power-up bag, ${bagCount} items (key E)`}
+            aria-expanded={ui.bagOpen}
+            onPointerDown={stop}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              if (engine.getSnapshot().bagOpen) engine.closeBag();
+              else engine.openBag();
+            }}
+          >
+            <BagIcon />
+            <span className="bag-count">{bagCount}</span>
+            <kbd>E</kbd>
+          </button>
         </div>
       )}
 

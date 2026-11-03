@@ -18,6 +18,8 @@ import {
   RESPAWN_DELAY,
   RESPAWN_SHIELD,
   SLOWMO_EASE,
+  BAG_SCALE,
+  BAG_TIME,
   SLOWMO_SCALE,
   START_LIVES,
   CAT_LIVES,
@@ -132,6 +134,8 @@ export interface UiSnapshot {
   refill: number | null;
   /** Duck only: power-ups picked up this run and saved for later. */
   stash: Effects;
+  /** The power-up bag is open: time runs slow until the player picks something or it closes itself. */
+  bagOpen: boolean;
 }
 
 const BEST_KEY = "xfast-best";
@@ -235,6 +239,7 @@ export class Engine {
       earned: [],
       refill: character === "cat" ? 0 : null,
       stash: noEffects(),
+      bagOpen: false,
     };
     this.ensureLanes();
   }
@@ -792,6 +797,22 @@ export class Engine {
     this.setUi({ earned: this.ui.earned.filter((e) => e.id !== id) });
   }
 
+  /** Real seconds left before the open bag closes itself (0 when closed). */
+  bagLeft = 0;
+
+  /** Open the power-up bag, slowing time for BAG_TIME seconds while the player chooses. */
+  openBag() {
+    if (this.ui.status !== "playing" || this.player.death || this.ui.bagOpen) return;
+    this.bagLeft = BAG_TIME;
+    this.setUi({ bagOpen: true });
+  }
+
+  /** Close the bag and let time run at normal speed again. */
+  closeBag() {
+    this.bagLeft = 0;
+    if (this.ui.bagOpen) this.setUi({ bagOpen: false });
+  }
+
   /** Use a power-up bought in the store. */
   activate(kind: PowerUp) {
     if (this.ui.status !== "playing" || this.player.death) return false;
@@ -974,7 +995,17 @@ export class Engine {
 
   update(rawDt: number) {
     if (this.paused) return;
-    const dt = Math.min(rawDt, 1 / 20);
+    let dt = Math.min(rawDt, 1 / 20);
+    // The open bag counts down in real time and slows everything else while it is open.
+    if (this.ui.bagOpen) {
+      if (this.ui.status !== "playing" || this.player.death) this.closeBag();
+      else {
+        // Real elapsed time, not the capped step, so the bag closes after BAG_TIME even on a slow frame rate.
+        this.bagLeft -= Math.min(rawDt, 0.5);
+        if (this.bagLeft <= 0) this.closeBag();
+        else dt *= BAG_SCALE;
+      }
+    }
     // Slowmo slows the world down, easing in and out; the chicken's own hops stay at full speed.
     const step = dt / SLOWMO_EASE;
     this.slowmoBlend = this.effects.slowmo > 0 ? Math.min(1, this.slowmoBlend + step) : Math.max(0, this.slowmoBlend - step);
