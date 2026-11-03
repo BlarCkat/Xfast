@@ -55,7 +55,10 @@ const PICKUP_LABEL = {
 
 /** How long a water splash lasts, in seconds. */
 export const SPLASH_TIME = 1;
-const SUPER_HOP_TIME = 1.6;
+/** Extra hop time for each row a super hop leaps beyond the first. */
+const SUPER_HOP_TIME = 0.6;
+/** How far ahead a super hop looks for somewhere safe to land. */
+const SUPER_HOP_REACH = 16;
 
 const FACING: Record<Direction, number> = {
   up: 0,
@@ -83,6 +86,8 @@ export interface PlayerState {
     drift: number;
     /** Duration multiplier; super hops take longer and fly higher. */
     span: number;
+    /** A super hop leap: the player can still steer left and right while in the air. */
+    leap: boolean;
   };
   queued: Direction | null;
   ride: Mover | null;
@@ -96,9 +101,11 @@ export interface PlayerState {
    * last; then it glides down onto the nearest safe grass ahead (`land`).
    */
   flight: null | {
-    /** Last row flown over (coins, pickups and score are taken row by row). */
+    /** Last row flown over (score and biomes are counted row by row; nothing is picked up in the air). */
     row: number;
-    land: null | { row: number; x: number; fromX: number; fromZ: number; fromY: number; t: number; time: number };
+    /** The column the player is steering towards. */
+    x: number;
+    land: null | { row: number; x: number; fromZ: number; fromY: number; t: number; time: number };
   };
 }
 
@@ -275,7 +282,17 @@ export class Engine {
       }
     }
     const p = this.player;
-    if (p.death || p.flight) return;
+    if (p.death) return;
+    const lateral = dir === "left" || dir === "right";
+    // Airborne (flight or a super hop leap): left and right still steer, nothing else does.
+    if (p.flight) {
+      if (lateral) this.steerFlight(dir === "left" ? -1 : 1);
+      return;
+    }
+    if (p.hop?.leap && lateral) {
+      this.steerLeap(dir === "left" ? -1 : 1);
+      return;
+    }
     if (p.hop) {
       p.queued = dir;
       return;
@@ -303,11 +320,17 @@ export class Engine {
     };
 
     if (Math.abs(toX) > COLS + 0.01) return;
-    // Super hop clears a whole extra row when the landing spot is open.
+    // Super hop leaps straight to the nearest safe grass ahead, clearing every road, river, rail and
+    // tree in between, however many there are in a row.
     let span = 1;
-    if (dir === "up" && this.effects.superhop > 0 && open(toRow + 1)) {
-      toRow++;
-      span = SUPER_HOP_TIME;
+    let leap = false;
+    if (dir === "up" && this.effects.superhop > 0) {
+      const safe = this.safeRowAhead(p.row, Math.round(toX));
+      if (safe !== null) {
+        leap = safe > toRow;
+        span = 1 + (safe - toRow) * SUPER_HOP_TIME;
+        toRow = safe;
+      }
     }
     if (!open(toRow)) {
       // Bumped into a tree: a good moment to show hopping around it.
@@ -320,7 +343,7 @@ export class Engine {
       if (lane?.type === "river") toX = this.nearestLogSlot(lane, toX, HOP_DURATION * span) ?? toX;
     }
 
-    p.hop = { fromX: p.x, toX, fromZ: p.z, toZ: toRow, t: 0, drift, span };
+    p.hop = { fromX: p.x, toX, fromZ: p.z, toZ: toRow, t: 0, drift, span, leap };
     p.row = toRow;
     sound.pop(span > 1);
     p.ride = null;
@@ -331,6 +354,41 @@ export class Engine {
       this.ensureLanes();
       this.award(achievements.scored(toRow, this.lanes.get(toRow)?.type));
     }
+  }
+
+  /** The first row ahead of `row` with open grass in column `x`, or null if none is in reach. */
+  private safeRowAhead(row: number, x: number) {
+    for (let r = row + 1; r <= row + SUPER_HOP_REACH; r++) {
+      const lane = this.lanes.get(r);
+      if (!lane) return null;
+      // Lumberjack and Bowser can land on a tree; they chop it down.
+      if (lane.type === "grass" && (!lane.blocked.has(x) || this.smashes)) return r;
+    }
+    return null;
+  }
+
+  /** Shift a super hop leap one column while it is in the air, if there is room to land there. */
+  private steerLeap(dx: number) {
+    const hop = this.player.hop!;
+    const x = Math.round(hop.toX) + dx;
+    const lane = this.lanes.get(this.player.row);
+    if (Math.abs(x) > COLS || !lane || (lane.blocked.has(x) && !this.smashes)) return;
+    hop.toX = x;
+    this.player.facing = FACING[dx < 0 ? "left" : "right"];
+  }
+
+  /** Shift the flight path one column; the landing spot moves with it. */
+  private steerFlight(dx: number) {
+    const f = this.player.flight!;
+    if (!f.land) {
+      f.x = Math.max(-COLS, Math.min(COLS, f.x + dx));
+      return;
+    }
+    const lane = this.lanes.get(f.land.row);
+    const x = f.land.x + dx;
+    if (Math.abs(x) > COLS || !lane || lane.blocked.has(x)) return;
+    f.land.x = x;
+    f.x = x;
   }
 
   private land() {
@@ -401,11 +459,11 @@ export class Engine {
     p.x = Math.max(-COLS, Math.min(COLS, p.x));
     p.facing = FACING.up;
     p.row = Math.round(p.z);
-    p.flight = { row: p.row, land: null };
+    p.flight = { row: p.row, x: Math.round(p.x), land: null };
     sound.pop(true);
   }
 
-  /** Fly forward, taking each row's coins and pickups on the way, then glide down onto safe grass. */
+  /** Fly forward (steerable left and right) high over everything, then glide down onto safe grass. */
   private updateFlight(dt: number) {
     const p = this.player;
     const f = p.flight!;
@@ -413,10 +471,11 @@ export class Engine {
     if (!f.land) {
       p.z += FLIGHT_SPEED * dt;
       p.y += (FLIGHT_ALTITUDE - p.y) * Math.min(1, dt * 5);
+      p.x += (f.x - p.x) * Math.min(1, dt * 12);
       this.flyOver(Math.floor(p.z));
       if (this.effects.wings > 0) return;
       // Out of wings: pick the first grass a short glide ahead with a free spot near our column.
-      const want = Math.round(p.x);
+      const want = f.x;
       for (let row = Math.floor(p.z) + 2; ; row++) {
         const lane = this.lanes.get(row);
         if (!lane) {
@@ -428,7 +487,8 @@ export class Engine {
         const x = this.freeColumn(lane, want);
         if (x === null) continue;
         const time = Math.max(0.5, (row - p.z) / FLIGHT_SPEED);
-        f.land = { row, x, fromX: p.x, fromZ: p.z, fromY: p.y, t: 0, time };
+        f.land = { row, x, fromZ: p.z, fromY: p.y, t: 0, time };
+        f.x = x;
         break;
       }
       return;
@@ -436,7 +496,7 @@ export class Engine {
     const l = f.land;
     l.t = Math.min(1, l.t + dt / l.time);
     const e = l.t * l.t * (3 - 2 * l.t);
-    p.x = l.fromX + (l.x - l.fromX) * e;
+    p.x += (l.x - p.x) * Math.min(1, dt * 12);
     p.z = l.fromZ + (l.row - l.fromZ) * l.t;
     p.y = l.fromY * (1 - e);
     this.flyOver(Math.min(l.row - 1, Math.floor(p.z)));
@@ -454,7 +514,7 @@ export class Engine {
     if (ahead === "road" || ahead === "river" || ahead === "rail") this.hint(ahead);
   }
 
-  /** Count the rows flown over up to `to`: score, biomes, and anything in the player's column. */
+  /** Count the rows flown over up to `to`: score and biomes. Coins and items stay on the ground. */
   private flyOver(to: number) {
     const p = this.player;
     const f = p.flight!;
@@ -466,11 +526,7 @@ export class Engine {
       this.ensureLanes();
       if (higher) this.award(achievements.scored(f.row, this.lanes.get(f.row)?.type));
       const lane = this.lanes.get(f.row);
-      if (!lane) continue;
-      this.enterBiome(lane);
-      this.collectAt(lane);
-      // A pickup tip can pause the game mid-flight; carry on from here when it resumes.
-      if (this.paused || !p.flight) return;
+      if (lane) this.enterBiome(lane);
     }
   }
 
@@ -950,7 +1006,8 @@ export class Engine {
       const t = Math.min(1, hop.t);
       p.x = hop.fromX + (hop.toX - hop.fromX) * t;
       p.z = hop.fromZ + (hop.toZ - hop.fromZ) * t;
-      p.y = Math.sin(Math.PI * t) * (hop.span > 1 ? 2 : 1);
+      // Longer super hop leaps arc higher, clearing the traffic underneath.
+      p.y = Math.sin(Math.PI * t) * (hop.span > 1 ? Math.min(4, 1 + hop.span * 0.6) : 1);
       if (hop.t >= 1 && !p.death) this.land();
     }
 

@@ -18,7 +18,7 @@ export const POWERUPS: PowerUpInfo[] = [
   { key: "rock", label: "ROCK", color: "#6f7177", price: 40, description: "Wreck any car that hits you." },
   { key: "magnet", label: "MAGNET", color: "#d63c3c", price: 25, description: "Pull in coins within 2 tiles." },
   { key: "double", label: "2X COINS", color: "#d9a400", price: 25, description: "Every coin counts twice." },
-  { key: "superhop", label: "SUPER HOP", color: "#2e9e4f", price: 35, description: "Forward hops jump 2 rows." },
+  { key: "superhop", label: "SUPER HOP", color: "#2e9e4f", price: 35, description: "Forward hops leap to the nearest safe grass, over everything in between." },
   { key: "shield", label: "SHIELD", color: "#1fa3b8", price: 45, description: "A bubble that absorbs one hit from a car or train." },
   { key: "freeze", label: "FREEZE", color: "#5bc0eb", price: 40, description: "Stop all traffic and trains." },
   { key: "wings", label: "FLIGHT", color: "#9aa5b1", price: 35, description: "Soar forward over everything, then land on safe grass." },
