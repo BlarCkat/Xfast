@@ -450,11 +450,10 @@ export default function Store({
           pack={{ kind: payPack.kind, amount: payPack.amount, price: payPack.ghs, art: `/currency/${payPack.id}.png` }}
           onCancel={() => setPaying(null)}
           onPaid={() => {
-            // Mock checkout: the swipe validated it, so credit the pack and head back to the game.
+            // Mock checkout: the swipe validated it, so credit the pack and stay on the bank.
             if (payPack.kind === "coins") wallet.addCoins(payPack.amount);
             else wallet.addGems(payPack.amount);
             setPaying(null);
-            onClose();
           }}
         />
       )}

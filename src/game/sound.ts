@@ -61,6 +61,8 @@ let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let musicBus: GainNode | null = null;
 let music: HTMLAudioElement | null = null;
+/** Music is held off while something (a purchase) wants quiet; see holdMusic(). */
+let musicHeld = false;
 let noiseBuffer: AudioBuffer | null = null;
 // The button sound (see the end of this file); declared up here because unlocking audio loads it.
 const BUTTON_SRC = "/audio/ui/button.wav";
@@ -97,7 +99,7 @@ function audio() {
         music?.pause();
       } else {
         void ctx?.resume();
-        if (settings.musicOn) void music?.play().catch(() => {});
+        if (settings.musicOn && !musicHeld) void music?.play().catch(() => {});
       }
     });
   }
@@ -119,7 +121,15 @@ function startMusic() {
   const opus = music.canPlayType('audio/webm; codecs="opus"') !== "";
   const src = `/audio/${settings.track}.${opus ? "webm" : "mp3"}`;
   if (!music.src.endsWith(src)) music.src = src;
+  if (musicHeld) return Promise.resolve();
   return music.paused ? music.play().catch(() => {}) : Promise.resolve();
+}
+
+/** Pause the background music (true) while the player is buying something, and pick it back up (false). */
+export function holdMusic(on: boolean) {
+  musicHeld = on;
+  if (on) music?.pause();
+  else if (settings.musicOn) void startMusic();
 }
 
 // Music starts as soon as the game opens where the browser allows it. Most only allow sound after a
@@ -132,7 +142,7 @@ if (typeof window !== "undefined") {
     if (!ac) return;
     const playing = settings.musicOn ? startMusic() : Promise.resolve();
     void Promise.all([ac.resume().catch(() => {}), playing]).then(() => {
-      if (ac.state !== "running" || (settings.musicOn && music?.paused)) return;
+      if (ac.state !== "running" || (settings.musicOn && !musicHeld && music?.paused)) return;
       for (const e of events) window.removeEventListener(e, unlock, true);
     });
   };

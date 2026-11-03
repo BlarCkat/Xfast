@@ -46,7 +46,12 @@ export default function Payment({
   };
   useEffect(() => {
     after(PROCESSING_MS, () => setStage("confirm"));
-    return () => clearTimeout(timer.current);
+    // The music stays paused for the whole purchase, however it ends.
+    sound.holdMusic(true);
+    return () => {
+      clearTimeout(timer.current);
+      sound.holdMusic(false);
+    };
   }, []);
   // Mount the sheet off-screen, then slide it up on the next frame.
   useEffect(() => {
@@ -127,7 +132,10 @@ export default function Payment({
   );
 }
 
-/** A pill track with a red knob: drag it to the far end to confirm. Enter or Space on the knob also confirms. */
+/**
+ * A slim pill track with a red button at its left end: dragging stretches the button across the track,
+ * and reaching the far end confirms. Enter or Space on the button also confirms.
+ */
 function SwipeToConfirm({ onConfirm, disabled }: { onConfirm: () => void; disabled: boolean }) {
   const track = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLButtonElement>(null);
@@ -136,7 +144,8 @@ function SwipeToConfirm({ onConfirm, disabled }: { onConfirm: () => void; disabl
   const [done, setDone] = useState(false);
   const [dragging, setDragging] = useState(false);
 
-  const max = () => (track.current && knob.current ? track.current.clientWidth - knob.current.offsetWidth - 2 * KNOB_INSET : 0);
+  // How far the button can stretch: the track's inner width less the button's resting width.
+  const max = () => (track.current ? track.current.clientWidth - 2 - KNOB_MIN - 2 * KNOB_INSET : 0);
   const finish = () => {
     setDone(true);
     setX(max());
@@ -145,15 +154,13 @@ function SwipeToConfirm({ onConfirm, disabled }: { onConfirm: () => void; disabl
 
   return (
     <div className={`pay-swipe${done ? " done" : ""}`} ref={track}>
-      <span className="pay-swipe-label" style={{ opacity: 1 - Math.min(1, x / Math.max(1, max() * 0.6)) }}>
-        Swipe to confirm
-      </span>
+      <span className="pay-swipe-label">Swipe to confirm</span>
       <button
         ref={knob}
         className="pay-swipe-knob"
         aria-label="Swipe to confirm purchase"
         disabled={disabled || done}
-        style={{ transform: `translateX(${x}px)`, transition: dragging ? "none" : undefined }}
+        style={{ width: KNOB_MIN + x, transition: dragging ? "none" : undefined }}
         onPointerDown={(e) => {
           if (disabled || done) return;
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -185,7 +192,7 @@ function SwipeToConfirm({ onConfirm, disabled }: { onConfirm: () => void; disabl
           }
         }}
       >
-        <svg viewBox="0 0 24 24" width={30} height={30} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
+        <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
           <circle cx="12" cy="12" r="10" />
           <path d="M9.5 9.2a4 4 0 0 1 0 5.6" />
           <path d="M12.4 7.4a6.6 6.6 0 0 1 0 9.2" />
@@ -196,5 +203,7 @@ function SwipeToConfirm({ onConfirm, disabled }: { onConfirm: () => void; disabl
   );
 }
 
-/** Gap between the knob and the track's edge, in px (keep in sync with .pay-swipe in globals.css). */
-const KNOB_INSET = 8;
+/** Gap between the button and the track's edge, in px (keep in sync with .pay-swipe-knob in globals.css). */
+const KNOB_INSET = 2;
+/** The button's width at rest, in px (keep in sync with .pay-swipe-knob in globals.css). */
+const KNOB_MIN = 52;
