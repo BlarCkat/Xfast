@@ -64,7 +64,7 @@ export const STORE_ITEMS: StoreItem[] = [
 
 export interface WalletState {
   coins: number;
-  /** The premium currency; bought in the store once payments are in. */
+  /** The premium currency; earned in runs and chests, and claimed free from the bank. */
   gems: number;
   owned: CharacterId[];
   selected: CharacterId;
@@ -73,6 +73,15 @@ export interface WalletState {
   upgrades: Record<PowerUp, number>;
   /** Upgrade steps taken on each character, 0 to MAX_CHARACTER_STEPS (see characterLevelOf). */
   charSteps: Partial<Record<CharacterId, number>>;
+  /** Bank packs claimed, by pack id, with the week (its Monday) each was last claimed in. */
+  packClaims: Record<string, string>;
+}
+
+/** The local date of this week's Monday; bank packs come back when it changes, like the weekly goals. */
+export function weekKey(d = new Date()) {
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return `${monday.getFullYear()}-${monday.getMonth() + 1}-${monday.getDate()}`;
 }
 
 const KEY = "xfast-wallet";
@@ -85,6 +94,7 @@ const fresh = (): WalletState => ({
   inventory: { life: 0, ...noEffects() },
   upgrades: Object.fromEntries(POWERUPS.map((p) => [p.key, 0])) as Record<PowerUp, number>,
   charSteps: {},
+  packClaims: {},
 });
 
 /**
@@ -125,6 +135,7 @@ function load(): WalletState {
       inventory: { ...base.inventory, ...saved.inventory },
       upgrades: { ...base.upgrades, ...(saved.upgrades ?? fromLevels(saved.levels)) },
       charSteps: { ...(saved.charSteps ?? fromTiers(saved.charTiers, saved.charUpgrades)) },
+      packClaims: saved.packClaims && typeof saved.packClaims === "object" ? { ...saved.packClaims } : {},
     };
   } catch {
     return fresh();
@@ -164,6 +175,24 @@ class Wallet {
   addGems(n: number) {
     const s = this.get();
     this.set({ ...s, gems: s.gems + n });
+  }
+
+  /** Whether a bank pack has already been claimed this week. */
+  claimedThisWeek(packId: string) {
+    return this.get().packClaims[packId] === weekKey();
+  }
+
+  /** Claim a free bank pack: adds its coins or gems, once a week. Returns false if already claimed. */
+  claimPack(packId: string, kind: "coins" | "gems", amount: number) {
+    if (this.claimedThisWeek(packId)) return false;
+    const s = this.get();
+    this.set({
+      ...s,
+      coins: kind === "coins" ? s.coins + amount : s.coins,
+      gems: kind === "gems" ? s.gems + amount : s.gems,
+      packClaims: { ...s.packClaims, [packId]: weekKey() },
+    });
+    return true;
   }
 
   buyCharacter(id: CharacterId) {
