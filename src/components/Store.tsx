@@ -5,14 +5,13 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 import { TIER_SIZE, isInstant, nextUpgrade, strengthAt, tierOf, type PowerUp } from "@/game/powerups";
 import { CHARACTER_BOXES, CHARACTER_LEVELS, CHARACTER_LEVEL_COLORS, MAX_CHARACTER_STEPS, nextCharacterStep, nextPerk, stepsAtLevel, traitText } from "@/game/characters";
-import { CHARACTERS, STORE_ITEMS, wallet, type CharacterId, type StoreItemId, type WalletState } from "@/game/wallet";
+import { CHARACTERS, STORE_ITEMS, wallet, type CharacterId, type StoreItemId, type WalletState, weekKey } from "@/game/wallet";
 import { Icon } from "./icons";
 import { CharacterModel } from "./models";
 import { CurrencyHeap } from "./CurrencyArt";
 import { ART_POWERUPS } from "./PowerupArt";
 import * as sound from "@/game/sound";
 import { GoalList } from "./Achievements";
-import Payment from "./Payment";
 
 export type StoreTab = "characters" | "powerups" | "bank" | "achievements";
 const TABS: { id: StoreTab; label: string }[] = [
@@ -22,16 +21,11 @@ const TABS: { id: StoreTab; label: string }[] = [
   { id: "achievements", label: "ACHIEVEMENTS" },
 ];
 
-// Coin and gem packs, priced in Ghana cedis. Payment is a mock for now (see Payment.tsx).
+// Coin and gem packs in the bank. Each is free, and can be claimed once a week (it comes back on Monday).
 type PackId = `${"coins" | "gems"}-${number}`;
-const PACK_PRICES: [amount: number, ghs: number][] = [
-  [10, 0.5],
-  [50, 1],
-  [100, 4.99],
-  [1000, 9.99],
-];
+const PACK_AMOUNTS = [10, 50, 100, 1000];
 const PACKS = (["coins", "gems"] as const).flatMap((kind) =>
-  PACK_PRICES.map(([amount, ghs]) => ({ id: `${kind}-${amount}` as PackId, kind, amount, ghs })),
+  PACK_AMOUNTS.map((amount) => ({ id: `${kind}-${amount}` as PackId, kind, amount })),
 );
 const packOf = (id: Cell["id"]) => PACKS.find((p) => p.id === id);
 
@@ -66,9 +60,11 @@ const cellsFor = (tab: StoreTab, w: WalletState): Cell[] =>
     ? PACKS.map((p) => ({
         id: p.id,
         name: `${p.amount.toLocaleString("en-US")} ${p.kind}`,
-        price: p.ghs,
+        price: 0,
         kind: p.kind === "coins" ? "Coin pack" : "Gem pack",
-        description: `Adds ${p.amount} ${p.kind} to your wallet.`,
+        description: w.packClaims[p.id] === weekKey()
+          ? `Claimed this week. It comes back on Monday.`
+          : `Free once a week. Adds ${p.amount} ${p.kind} to your wallet.`,
       }))
     : tab === "characters"
     ? CHARACTERS.map((c) => {
@@ -136,8 +132,19 @@ export function useWallet() {
   return useSyncExternalStore(wallet.subscribe, wallet.get, wallet.get);
 }
 
-function action(tab: StoreTab, cell: Cell, w: WalletState, buyPack: (id: PackId) => void) {
-  if (tab === "bank") return { label: `Buy · GHS ${cell.price.toFixed(2)}`, run: () => buyPack(cell.id as PackId) };
+/** Claim a bank pack for free; each can be claimed once a week. */
+function claimPack(id: PackId) {
+  const pack = packOf(id);
+  if (pack && wallet.claimPack(pack.id, pack.kind, pack.amount)) sound.coin(true);
+}
+
+function action(tab: StoreTab, cell: Cell, w: WalletState) {
+  if (tab === "bank") {
+    const id = cell.id as PackId;
+    return w.packClaims[id] === weekKey()
+      ? { label: "Claimed · back Monday", run: null }
+      : { label: "Claim · Free", run: () => claimPack(id) };
+  }
   if (tab === "characters") {
     const id = cell.id as CharacterId;
     if (w.selected === id) return { label: "Equipped", run: null };
@@ -225,10 +232,7 @@ export default function Store({
     tab === "characters" ? Math.max(0, CHARACTERS.findIndex((c) => c.id === w.selected)) : 0,
   );
   const cell = cells[Math.min(focus, cells.length - 1)];
-  // A pack being bought: shows the processing screens and confirm sheet over the store.
-  const [paying, setPaying] = useState<PackId | null>(null);
-  const act = action(tab, cell, w, setPaying);
-  const payPack = paying ? packOf(paying) : undefined;
+  const act = action(tab, cell, w);
   const up = upgradeAction(tab, cell, w);
   // An upgrade turns the card the new tier's colour and sweeps a dot grid up it three times, with a ticking sound.
   const [boosting, setBoosting] = useState(0);
@@ -257,12 +261,11 @@ export default function Store({
   };
 
   // Keyboard: arrows move through the grid, Enter buys or equips, Q/E switch tabs, Esc closes.
-  const latest = useRef({ act, doUpgrade, cells, tab, paying });
-  latest.current = { act, doUpgrade, cells, tab, paying };
+  const latest = useRef({ act, doUpgrade, cells, tab });
+  latest.current = { act, doUpgrade, cells, tab };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const { act, doUpgrade, cells, tab, paying } = latest.current;
-      if (paying) return;
+      const { act, doUpgrade, cells, tab } = latest.current;
       const n = cells.length;
       // The grid has more columns on wide screens; read how many it has now.
       const cols = grid.current
@@ -416,7 +419,8 @@ export default function Store({
           const equipped = isChar && w.selected === c.id;
           const pack = packOf(c.id);
           const count = tab === "powerups" ? w.inventory[c.id as StoreItemId] : 0;
-          const locked = !mine && !pack && w.coins < c.price;
+          const claimed = !!pack && w.packClaims[pack.id] === weekKey();
+          const locked = pack ? claimed : !mine && w.coins < c.price;
           const focused = i === focus;
           return (
             <button
@@ -426,7 +430,14 @@ export default function Store({
               aria-selected={focused}
               aria-label={c.name}
               className={`shop-tile${focused ? " on" : ""}${locked ? " locked" : ""}${equipped ? " equipped" : ""}`}
-              onClick={() => (focused ? act.run?.() : setFocus(i))}
+              // Bank packs are claimed with one tap; other tiles take a tap to pick, then one to buy.
+              onClick={() => {
+                if (pack) {
+                  setFocus(i);
+                  if (!claimed) claimPack(pack.id);
+                } else if (focused) act.run?.();
+                else setFocus(i);
+              }}
             >
               {pack ? (
                 <img className="shop-tile-art pack" src={`/currency/${pack.id}.png`} alt="" draggable={false} />
@@ -436,7 +447,7 @@ export default function Store({
                 <Icon id={c.id as StoreItemId | CharacterId} size={68} />
               )}
               {count > 0 && <span className="shop-tile-badge">{count}</span>}
-              <span className="shop-tile-price">{pack ? `×${pack.amount}` : mine ? (equipped ? "ON" : "OWNED") : c.price}</span>
+              <span className="shop-tile-price">{pack ? (claimed ? "CLAIMED" : `×${pack.amount}`) : mine ? (equipped ? "ON" : "OWNED") : c.price}</span>
             </button>
           );
         })}
@@ -444,19 +455,6 @@ export default function Store({
       </div>
       )}
 
-      {payPack && (
-        <Payment
-          key={payPack.id}
-          pack={{ kind: payPack.kind, amount: payPack.amount, price: payPack.ghs, art: `/currency/${payPack.id}.png` }}
-          onCancel={() => setPaying(null)}
-          onPaid={() => {
-            // Mock checkout: the swipe validated it, so credit the pack and stay on the bank.
-            if (payPack.kind === "coins") wallet.addCoins(payPack.amount);
-            else wallet.addGems(payPack.amount);
-            setPaying(null);
-          }}
-        />
-      )}
     </div>
   );
 }
