@@ -5,7 +5,7 @@ import { Canvas } from "@react-three/fiber";
 import { Engine, type Direction } from "@/game/engine";
 import { BAG_TIME } from "@/game/config";
 import { POWERUPS, TIER_SIZE, durationAt, hotkeyFor, tierOf, type PowerUp } from "@/game/powerups";
-import { TRACKS, audioSettings, onAudioSettings, setAudioSettings, type TrackId } from "@/game/sound";
+import { TRACKS, audioSettings, fadeMusic, onAudioSettings, setAudioSettings, type TrackId } from "@/game/sound";
 import { wallet } from "@/game/wallet";
 import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
@@ -183,6 +183,11 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
     if (engine.status !== "ready") return;
     if (engine.character !== w.selected || engine.steps !== selectedSteps) setEngine(new Engine(w.selected));
   }, [engine, w.selected, selectedSteps]);
+
+  // The music fades away when a run ends and comes back with the next one.
+  useEffect(() => {
+    fadeMusic(ui.status === "dead");
+  }, [ui.status]);
 
   useEffect(() => {
     if (ui.status !== "dead") return;
