@@ -157,7 +157,7 @@ export function ChestOpening({
         }
         setItems(group(loot));
         setPhase("bounce");
-        sound.upgrade();
+        sound.chestOpen();
       }, SHAKE_MS);
       return () => clearTimeout(t);
     }

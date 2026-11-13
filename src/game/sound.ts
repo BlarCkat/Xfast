@@ -63,17 +63,26 @@ let musicBus: GainNode | null = null;
 let music: HTMLAudioElement | null = null;
 /** Music is held off while something (a purchase) wants quiet; see holdMusic(). */
 let musicHeld = false;
+/** Music fades away when a run ends and comes back for the next one; see fadeMusic(). */
+let musicFaded = false;
+let fadeTimer: ReturnType<typeof setTimeout> | undefined;
+/** How long the music takes to fade out at the end of a run, in seconds. */
+const MUSIC_FADE = 1.5;
+const musicWanted = () => settings.musicOn && !musicHeld && !musicFaded;
 let noiseBuffer: AudioBuffer | null = null;
-// The button sound (see the end of this file); declared up here because unlocking audio loads it.
-const BUTTON_SRC = "/audio/ui/button.wav";
-let buttonData: Promise<ArrayBuffer | null> | null = null;
-let buttonBuffer: AudioBuffer | null = null;
+// The recorded effects (see the end of this file); declared up here because unlocking audio loads them.
+const SAMPLES = { button: "/audio/ui/button.wav", chestOpen: "/audio/ui/chest-open.mp3" } as const;
+type SampleId = keyof typeof SAMPLES;
+const sampleData: Partial<Record<SampleId, Promise<ArrayBuffer | null>>> = {};
+const sampleBuffers: Partial<Record<SampleId, AudioBuffer>> = {};
 let lastButton = -1;
 
 function applyVolumes() {
   if (!ctx || !master || !musicBus) return;
   // Squared, so the sliders feel even to the ear rather than all the change bunching at the top.
   master.gain.setTargetAtTime(settings.sfx ** 2, ctx.currentTime, 0.05);
+  if (musicFaded) return;
+  musicBus.gain.cancelScheduledValues(ctx.currentTime);
   musicBus.gain.setTargetAtTime(settings.musicOn ? settings.music ** 2 * MUSIC_HEADROOM : 0, ctx.currentTime, 0.05);
   if (music && !settings.musicOn) music.pause();
 }
@@ -91,7 +100,7 @@ function audio() {
     musicBus = ctx.createGain();
     musicBus.connect(ctx.destination);
     applyVolumes();
-    loadButtonSound(ctx);
+    loadSamples(ctx);
     // Go quiet with the tab, so the music and the river don't keep running in the background.
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
@@ -99,7 +108,7 @@ function audio() {
         music?.pause();
       } else {
         void ctx?.resume();
-        if (settings.musicOn && !musicHeld) void music?.play().catch(() => {});
+        if (musicWanted()) void music?.play().catch(() => {});
       }
     });
   }
@@ -121,7 +130,7 @@ function startMusic() {
   const opus = music.canPlayType('audio/webm; codecs="opus"') !== "";
   const src = `/audio/${settings.track}.${opus ? "webm" : "mp3"}`;
   if (!music.src.endsWith(src)) music.src = src;
-  if (musicHeld) return Promise.resolve();
+  if (musicHeld || musicFaded) return Promise.resolve();
   return music.paused ? music.play().catch(() => {}) : Promise.resolve();
 }
 
@@ -129,7 +138,29 @@ function startMusic() {
 export function holdMusic(on: boolean) {
   musicHeld = on;
   if (on) music?.pause();
-  else if (settings.musicOn) void startMusic();
+  else if (musicWanted()) void startMusic();
+}
+
+/**
+ * Fade the background music out (true) when a run ends, and bring it back (false) for the next one.
+ * It fades over MUSIC_FADE seconds and then pauses, so the next run picks up where the track left off.
+ */
+export function fadeMusic(out: boolean) {
+  if (out === musicFaded) return;
+  musicFaded = out;
+  clearTimeout(fadeTimer);
+  if (!ctx || !musicBus) return;
+  const g = musicBus.gain;
+  const now = ctx.currentTime;
+  g.cancelScheduledValues(now);
+  g.setValueAtTime(g.value, now);
+  if (out) {
+    g.linearRampToValueAtTime(0, now + MUSIC_FADE);
+    fadeTimer = setTimeout(() => music?.pause(), MUSIC_FADE * 1000 + 50);
+  } else {
+    applyVolumes();
+    if (musicWanted()) void startMusic();
+  }
 }
 
 // Music starts as soon as the game opens where the browser allows it. Most only allow sound after a
@@ -142,7 +173,7 @@ if (typeof window !== "undefined") {
     if (!ac) return;
     const playing = settings.musicOn ? startMusic() : Promise.resolve();
     void Promise.all([ac.resume().catch(() => {}), playing]).then(() => {
-      if (ac.state !== "running" || (settings.musicOn && !musicHeld && music?.paused)) return;
+      if (ac.state !== "running" || (musicWanted() && music?.paused)) return;
       for (const e of events) window.removeEventListener(e, unlock, true);
     });
   };
@@ -407,37 +438,52 @@ export function riverAmbience(level: number, lava = false) {
   river.tone.frequency.setTargetAtTime(lava ? 220 : 650, ac.currentTime, 0.3);
 }
 
-// ---- Button sound ----------------------------------------------------------------
+// ---- Recorded sounds -------------------------------------------------------------
 
-// The one recorded effect: a short click for pointing at or pressing a button in the menus and store.
-// It is fetched as soon as the game opens and decoded once the audio context exists, so the first
-// hover after the player's first tap already has it ready.
+// The few recorded effects: a short click for pointing at or pressing a button in the menus and store,
+// and the chest popping open. They are fetched as soon as the game opens and decoded once the audio
+// context exists, so they are ready by the time the player first needs them.
 
-function fetchButtonSound() {
-  buttonData ??= fetch(BUTTON_SRC)
+function fetchSample(id: SampleId) {
+  sampleData[id] ??= fetch(SAMPLES[id])
     .then((r) => (r.ok ? r.arrayBuffer() : null))
     .catch(() => null);
-  return buttonData;
+  return sampleData[id];
 }
-if (typeof window !== "undefined") void fetchButtonSound();
+if (typeof window !== "undefined") for (const id of Object.keys(SAMPLES) as SampleId[]) void fetchSample(id);
 
-function loadButtonSound(ac: AudioContext) {
-  void fetchButtonSound().then((data) => {
-    if (!data || buttonBuffer) return;
-    return ac.decodeAudioData(data.slice(0)).then((b) => void (buttonBuffer = b), () => {});
-  });
+function loadSamples(ac: AudioContext) {
+  for (const id of Object.keys(SAMPLES) as SampleId[]) {
+    void fetchSample(id).then((data) => {
+      if (!data || sampleBuffers[id]) return;
+      return ac.decodeAudioData(data.slice(0)).then((b) => void (sampleBuffers[id] = b), () => {});
+    });
+  }
+}
+
+/** Play a recorded effect through the effects volume, if it has loaded. */
+function playSample(ac: AudioContext, id: SampleId) {
+  const buffer = sampleBuffers[id];
+  if (!buffer || ac.state !== "running") return;
+  const src = ac.createBufferSource();
+  src.buffer = buffer;
+  src.connect(master!);
+  src.start();
+}
+
+/** A chest popping open. */
+export function chestOpen() {
+  const ac = audio();
+  if (ac) playSample(ac, "chestOpen");
 }
 
 /** The button click, through the effects volume. Rapid calls (sweeping across a row of buttons) are thinned out. */
 export function button() {
   const ac = audio();
-  if (!ac || !buttonBuffer || ac.state !== "running") return;
+  if (!ac || !sampleBuffers.button || ac.state !== "running") return;
   if (ac.currentTime - lastButton < 0.07) return;
   lastButton = ac.currentTime;
-  const src = ac.createBufferSource();
-  src.buffer = buttonBuffer;
-  src.connect(master!);
-  src.start();
+  playSample(ac, "button");
 }
 
 // Every button in the menus, store and dialogs clicks when the mouse moves onto it, when the keyboard
