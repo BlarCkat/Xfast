@@ -11,9 +11,10 @@ import {
   IDLE_LIMIT,
   MAGNET_PULL_TIME,
   MAGNET_RADIUS,
-  MAX_SPEED_SCALE,
-  SPEEDUP_STEP,
-  STEPS_PER_SPEEDUP,
+  SURGE_EVERY_ROWS,
+  SURGE_SECONDS,
+  SURGE_START_ROW,
+  SURGE_STEP,
   MAX_ROWS_BEHIND_CAMERA,
   RESPAWN_DELAY,
   RESPAWN_SHIELD,
@@ -116,7 +117,7 @@ export interface UiSnapshot {
   score: number;
   best: number;
   lives: number;
-  /** Hops taken this run; traffic speeds up every STEPS_PER_SPEEDUP. */
+  /** Hops taken this run. */
   steps: number;
   /** Coins picked up this run (they are banked in the wallet straight away). */
   coins: number;
@@ -190,8 +191,12 @@ export class Engine {
   private toastId = 0;
   /** Biome the player is currently in, announced when it changes. */
   biome: BiomeId = biomeAt(0);
-  /** Multiplier on car, truck and train speed, raised every STEPS_PER_SPEEDUP hops. */
+  /** Multiplier on car, truck and train speed: above 1 only while a speed surge is running. */
   speedScale = 1;
+  /** Seconds left on the current speed surge (0 when none is running). */
+  private surgeLeft = 0;
+  /** How many speed surges this run has reached so far. */
+  private surges = 0;
   /** How far into slowmo the world is, 0 (full speed) to 1 (fully slowed); eases rather than snapping. */
   slowmoBlend = 0;
 
@@ -720,14 +725,7 @@ export class Engine {
       this.syncEffects(true);
       this.setUi({ toast: { text: "ROAR!", id: ++this.toastId } });
     }
-    const tier = Math.floor(steps / STEPS_PER_SPEEDUP);
-    const scale = Math.min(MAX_SPEED_SCALE, 1 + tier * SPEEDUP_STEP);
-    if (scale > this.speedScale) {
-      this.speedScale = scale;
-      this.setUi({ steps, toast: { text: "SPEED UP!", id: ++this.toastId } });
-    } else {
-      this.setUi({ steps });
-    }
+    this.setUi({ steps });
   }
 
   private collect(lane: Lane) {
@@ -1110,6 +1108,8 @@ export class Engine {
       if (p.death.revive && p.death.t > delay) this.respawn();
     }
 
+    if (playing) this.updateSurge(dt);
+
     // Camera focus: chase the player when ahead, otherwise creep forward.
     if (playing) {
       const creep = 0.28 + Math.min(0.5, this.ui.score / 400);
@@ -1119,6 +1119,23 @@ export class Engine {
     this.cameraX += (Math.max(-2, Math.min(2, p.x * 0.6)) - this.cameraX) * Math.min(1, dt * 3);
 
     this.ensureLanes();
+  }
+
+  /**
+   * Start a speed surge each time the run reaches a new surge row, and end it when its time runs out.
+   * Surge n (row 1,000 is the first) is n × SURGE_STEP faster for n × SURGE_SECONDS seconds.
+   * Nothing on screen announces it: the player just feels the traffic pick up.
+   */
+  private updateSurge(dt: number) {
+    const reached = this.ui.score >= SURGE_START_ROW ? Math.floor((this.ui.score - SURGE_START_ROW) / SURGE_EVERY_ROWS) + 1 : 0;
+    if (reached > this.surges) {
+      this.surges = reached;
+      this.speedScale = 1 + reached * SURGE_STEP;
+      this.surgeLeft = reached * SURGE_SECONDS;
+    } else if (this.surgeLeft > 0) {
+      this.surgeLeft = Math.max(0, this.surgeLeft - dt);
+      if (this.surgeLeft === 0) this.speedScale = 1;
+    }
   }
 
   private updateLane(lane: Lane, dt: number) {

@@ -378,7 +378,6 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
         </div>
         <div className="hud-stats">
           <span>TOP {ui.best}</span>
-          {engine.speedScale > 1 && <span className="hud-speed">SPEED ×{engine.speedScale.toFixed(1)}</span>}
           <span className="hud-coins">
             <Icon id="coin" size={22} /> {w.coins}
           </span>

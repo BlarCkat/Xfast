@@ -43,7 +43,7 @@ Open http://localhost:3000.
 
 ## Getting faster
 
-Every 1,000 hops in a run, cars, trucks and trains speed up by 20% (up to 3x). The HUD shows the current speed once it rises.
+From row 1,000, and every 500 rows after it, cars, trucks and trains speed up for a while and then go back to normal. Each surge is 10% faster and a minute longer than the last: +10% for 1 minute at row 1,000, +20% for 2 minutes at row 1,500, +30% for 3 minutes at row 2,000, and so on. Nothing on screen announces it.
 
 Lanes stay at their starting density until score 500. From there roads gradually get more cars, longer stretches of road and faster base traffic, rivers get shorter logs with wider gaps, and grass gets more trees, all reaching full difficulty at score 1,000.
 
