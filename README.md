@@ -121,3 +121,15 @@ A character upgrade from a chest fills that character's next box, or takes the l
 - Coins sit on grass and road lanes. They are saved in your browser as soon as you pick them up, even if you die.
 - Open the **Store** from the start or game over screen to unlock characters (Duck 50, Frog 100, Penguin 150, Cat 200, Robot 250, Sparrow 300, Snail 350, Red Plumber 400, Green Plumber 450, Giant Turtle 500, Human 550, Leopard 600, Owl 650) and buy power-ups (Foresight 30, Slowmo 30, Rock 40, Extra life 60).
 - Bought power-ups appear as buttons in the bottom right during a run, or use keys 1 to 0 for the first ten power-ups in store order. Bought extra lives are added when your next run starts.
+
+## Leaderboard
+
+LEADERBOARD on the main menu shows the top 50 runs for **Today**, **This week** and **All time** (UTC days, weeks start on Monday), plus your own place if you're further down. The score screen shows where the run you just finished ranks.
+
+- There's no login. The first time you finish a run the game asks for a nickname (3 to 12 letters, numbers, spaces, `-` or `_`, nothing rude). It's saved in the browser with a random player id, and can be changed in Options or on the leaderboard. Reset game starts a new entry.
+- Each board keeps only your best score.
+- Scores go through `/api/leaderboard`, which turns away scores no real run could reach in the time it took, and limits each player to one save every 3 seconds.
+
+### Setting up storage
+
+Scores are kept in an Upstash Redis store connected to the Vercel project. In the Vercel dashboard open the project, go to **Storage → Create Database → Upstash for Redis** (the free plan is plenty), and connect it to the project. That adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`; redeploy afterwards. Without them the game still plays, and the leaderboard says it can't be reached. For local development, copy those two variables into `.env.local`.

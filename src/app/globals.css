@@ -2262,3 +2262,172 @@ kbd {
     animation: none;
   }
 }
+
+/* ---- Leaderboard --------------------------------------------------- */
+
+.lb-name {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: #1f1b45;
+}
+
+.lb-name-label {
+  font-size: 22px;
+}
+
+.lb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 16px;
+  border-radius: 14px;
+  background: #1f1b45;
+  font-size: 24px;
+}
+
+.lb-rank {
+  width: 2.4em;
+  font-family: var(--font-score);
+  font-size: 18px;
+  color: var(--ui-text-dim);
+}
+
+.lb-player {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-score {
+  font-family: var(--font-score);
+  font-size: 20px;
+  color: var(--ui-teal);
+}
+
+.lb-top-1 .lb-rank {
+  color: var(--ui-gold);
+}
+
+.lb-top-2 .lb-rank {
+  color: #d9e2ec;
+}
+
+.lb-top-3 .lb-rank {
+  color: #e39a5b;
+}
+
+/* The player's own row turns amber like a finished goal. */
+.lb-me {
+  background: var(--ui-amber);
+  color: #1f1b45;
+}
+
+.lb-me .lb-rank,
+.lb-me .lb-score {
+  color: #1f1b45;
+}
+
+.lb-gap {
+  margin-top: 10px;
+}
+
+.lb-note,
+.lb-foot {
+  padding: 12px 4px;
+  color: var(--ui-text-dim);
+  font-size: 20px;
+  text-align: center;
+}
+
+.lb-foot {
+  margin: 0;
+  padding-top: 0;
+  font-size: 16px;
+}
+
+.nickname {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.nickname-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  background: #15123a;
+  color: var(--ui-text);
+  font: inherit;
+  /* 16px or more stops iOS zooming in on focus. */
+  font-size: 22px;
+}
+
+.nickname-input:focus {
+  outline: none;
+  border-color: var(--ui-teal);
+}
+
+.nickname-save,
+.nickname-cancel {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.nickname-save {
+  background: var(--ui-teal);
+  color: var(--ui-ink);
+}
+
+.nickname-cancel {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ui-text);
+}
+
+.nickname-problem {
+  flex-basis: 100%;
+  color: #ff8fa3;
+  font-size: 18px;
+  text-align: left;
+}
+
+/* Score screen: the ranks this run earned, or a box to join the leaderboard. */
+.run-rank {
+  margin-top: 10px !important;
+  font-size: 20px;
+  letter-spacing: 1px;
+  color: var(--ui-teal);
+}
+
+.run-rank-join {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(420px, 100%);
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #1f1b45;
+  font-size: 22px;
+}

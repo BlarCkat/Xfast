@@ -11,6 +11,7 @@ import { Scene } from "./Scene";
 import { Hex, Icon } from "./icons";
 import { PowerRing } from "./PowerRing";
 import Achievements, { EarnedToast } from "./Achievements";
+import Leaderboard, { NicknameForm, RunRank, useNickname } from "./Leaderboard";
 import Store, { ShopBackdrop, useWallet, type StoreTab } from "./Store";
 import Walkthrough from "./Walkthrough";
 import Rewards, { useChests, useEvents } from "./Rewards";
@@ -92,12 +93,13 @@ export interface GameProps {
   locked?: boolean;
 }
 
-type MenuItem = "play" | "characters" | "store" | "rewards" | "achievements" | "options" | "exit";
+type MenuItem = "play" | "characters" | "store" | "rewards" | "leaderboard" | "achievements" | "options" | "exit";
 const MENU: { id: MenuItem; label: string }[] = [
   { id: "play", label: "PLAY" },
   { id: "characters", label: "CHARACTERS" },
   { id: "store", label: "STORE" },
   { id: "rewards", label: "REWARDS" },
+  { id: "leaderboard", label: "LEADERBOARD" },
   { id: "achievements", label: "ACHIEVEMENTS" },
   { id: "options", label: "OPTIONS" },
   { id: "exit", label: "EXIT" },
@@ -133,6 +135,12 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [goalsOpen, setGoalsOpen] = useState(false);
   const [rewardsOpen, setRewardsOpen] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
+  const nickname = useNickname();
+  const [renaming, setRenaming] = useState(false);
+  // How long the run lasted, so the leaderboard can turn away impossible scores.
+  const runStart = useRef<{ engine: number; at: number } | null>(null);
+  const [runSeconds, setRunSeconds] = useState(0);
   const eventState = useEvents();
   // Chests from this run are opened one by one when it ends, before the score screen.
   const [chestsShown, setChestsShown] = useState({ engine: 0, n: 0 });
@@ -155,7 +163,10 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   }>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   useEffect(() => {
-    if (!optionsOpen) setConfirmReset(false);
+    if (!optionsOpen) {
+      setConfirmReset(false);
+      setRenaming(false);
+    }
   }, [optionsOpen]);
   const openStore = useCallback((tab: StoreTab) => {
     setStoreTab(tab);
@@ -185,7 +196,10 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
   }, [engine, w.selected, selectedSteps]);
 
   useEffect(() => {
+    if (ui.status === "playing" && runStart.current?.engine !== engine.id) runStart.current = { engine: engine.id, at: performance.now() };
     if (ui.status !== "dead") return;
+    const started = runStart.current?.engine === engine.id ? runStart.current.at : performance.now();
+    setRunSeconds((performance.now() - started) / 1000);
     const id = engine.id;
     const t = setTimeout(() => {
       diedAt.current = performance.now();
@@ -264,8 +278,13 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // The Rewards screen handles its own keys.
+      // The Rewards screen handles its own keys, and typing a nickname mustn't hop.
       if (e.repeat || locked || guide || rewardsOpen || nextChest) return;
+      if (e.target instanceof HTMLInputElement) return;
+      if (boardOpen) {
+        if (e.code === "Escape") setBoardOpen(false);
+        return;
+      }
       if (optionsOpen) {
         if (e.code === "Escape") setOptionsOpen(false);
         else if (e.code === "KeyB") toggleFx();
@@ -313,13 +332,14 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [engine, restart, storeOpen, optionsOpen, goalsOpen, rewardsOpen, nextChest, locked, toggleFx, openStore, closeStore, guide, startRun]);
+  }, [engine, restart, storeOpen, optionsOpen, goalsOpen, rewardsOpen, nextChest, locked, toggleFx, openStore, closeStore, guide, startRun, boardOpen]);
 
   const pick = (item: MenuItem) => {
     if (item === "play") startRun("up");
     else if (item === "characters") openStore("characters");
     else if (item === "store") openStore("powerups");
     else if (item === "rewards") setRewardsOpen(true);
+    else if (item === "leaderboard") setBoardOpen(true);
     else if (item === "achievements") setGoalsOpen(true);
     else if (item === "options") setOptionsOpen(true);
     else onExit?.();
@@ -534,6 +554,16 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
                 <Volume label="Music volume" value={sound.music} onChange={(music) => setAudioSettings({ music })} />
               </>
             )}
+            {renaming ? (
+              <div className="options-row options-confirm">
+                <NicknameForm onSaved={() => setRenaming(false)} onCancel={() => setRenaming(false)} />
+              </div>
+            ) : (
+              <button className="options-row" onClick={() => setRenaming(true)}>
+                <span>Nickname</span>
+                <span className="options-value">{nickname ?? "Not set"}</span>
+              </button>
+            )}
             {confirmReset ? (
               <div className="options-row options-confirm" role="alertdialog" aria-label="Reset game">
                 <span>Erase all coins, friends and progress?</span>
@@ -588,6 +618,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
                 <EventIcon id={event.info.id} size={28} /> +<CountUp to={ui.eventItems} delay={1.2} />
               </p>
             )}
+            <RunRank runId={engine.id} score={ui.score} seconds={runSeconds} />
           </div>
           <div className="game-over-actions">
             <button className="game-over-store" style={{ "--i": 4 } as React.CSSProperties} onClick={() => openStore("powerups")}>
@@ -601,6 +632,7 @@ export default function Game({ onReady, onExit, locked = false }: GameProps) {
       )}
 
       {goalsOpen && <Achievements onClose={() => setGoalsOpen(false)} />}
+      {boardOpen && <Leaderboard onClose={() => setBoardOpen(false)} />}
       {rewardsOpen && <Rewards onClose={() => setRewardsOpen(false)} />}
       {storeOpen && <Store initialTab={storeTab} onClose={closeStore} onTab={onStoreTab} />}
       {guide && <Walkthrough pages={guide.pages} onDone={endGuide} doneLabel={guide.thenPlay ? "LET'S GO!" : "OK!"} />}
