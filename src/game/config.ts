@@ -66,10 +66,16 @@ export const POWERUP_DURATION = {
 export const FLIGHT_SPEED = 4;
 /** How high the player soars while flying, in hop heights. */
 export const FLIGHT_ALTITUDE = 5;
-/** Every this many hops, cars and trains get faster. */
-export const STEPS_PER_SPEEDUP = 1000;
-export const SPEEDUP_STEP = 0.2;
-export const MAX_SPEED_SCALE = 3;
+/**
+ * Speed surges: from SURGE_START_ROW, and again every SURGE_EVERY_ROWS after it, cars, trucks and
+ * trains speed up for a while, then go back to normal. Each surge is SURGE_STEP faster and lasts
+ * SURGE_SECONDS longer than the one before: row 1,000 is +10% for 1 minute, row 1,500 is +20% for
+ * 2 minutes, row 2,000 is +30% for 3 minutes, and so on. A new surge replaces one still running.
+ */
+export const SURGE_START_ROW = 1000;
+export const SURGE_EVERY_ROWS = 500;
+export const SURGE_STEP = 0.1;
+export const SURGE_SECONDS = 60;
 export const WARP_ROWS = 6;
 export const COIN_RAIN_ROWS = 12;
 export const MAGNET_RADIUS = 2;
